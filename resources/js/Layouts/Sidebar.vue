@@ -1,0 +1,235 @@
+<script setup>
+import { computed } from 'vue'
+import { Link } from '@inertiajs/vue3'
+
+const props = defineProps({
+    isOpen: {
+        type: Boolean,
+        default: false
+    },
+    user: {
+        type: Object,
+        default: () => ({})
+    },
+    roles: {
+        type: Array,
+        default: () => []
+    }
+})
+
+const emit = defineEmits(['close'])
+
+const closeSidebar = () => {
+    emit('close')
+}
+
+// ─── Role & Gender Helpers ──────────────────────────────────────────────────
+const hasRole = (role) => props.roles.includes(role)
+const hasAnyRole = (roleArray) => roleArray.some(r => props.roles.includes(r))
+const isFemale = computed(() => props.user?.gender === 'P')
+
+const roleLabel = computed(() => {
+    if (hasRole('superadmin')) return 'Super Admin'
+    if (hasRole('admin'))      return 'Admin'
+    return 'Pegawai'
+})
+
+const userInitial = computed(() =>
+    props.user?.name?.charAt(0)?.toUpperCase() ?? '?'
+)
+
+// ─── Active Route Helper (via Ziggy) ────────────────────────────────────────
+const isActive = (routeName) => {
+    try { return route().current(routeName) } catch { return false }
+}
+
+// ─── Nav Link Class Builder ──────────────────────────────────────────────────
+const navLinkClass = (routeName) => [
+    'group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium',
+    'transition-all duration-150 w-full',
+    isActive(routeName)
+        ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 font-semibold'
+        : 'text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:bg-emerald-50 dark:hover:bg-slate-700/60 hover:text-emerald-700 dark:hover:text-emerald-400',
+]
+</script>
+
+<template>
+    <aside
+        :class="[
+            'fixed inset-y-0 left-0 z-40 flex w-64 flex-col',
+            'bg-white dark:bg-slate-800',
+            'border-r border-slate-200 dark:border-slate-700',
+            'transition-transform duration-300 ease-in-out',
+            isOpen ? 'translate-x-0' : '-translate-x-full',
+            'md:relative md:z-auto md:flex-shrink-0 md:translate-x-0',
+        ]"
+    >
+        <!-- ── Sidebar Header / Brand ─────────────────────────── -->
+        <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
+            <img src="/logo.png" alt="Logo SDAM" class="w-9 h-9 object-contain flex-shrink-0" />
+            <div class="leading-none">
+                <p class="text-[15px] font-bold text-emerald-600 tracking-tight">HabitTracker</p>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Sistem Pantauan Ibadah</p>
+            </div>
+        </div>
+
+        <!-- ── Navigation Links ──────────────────────────────── -->
+        <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+            <!-- ── Section: Menu Utama ── -->
+            <p class="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Menu Utama
+            </p>
+
+            <!-- A. Dashboard — Semua Role -->
+            <Link
+                :href="route('dashboard')"
+                :class="navLinkClass('dashboard')"
+                @click="closeSidebar"
+            >
+                <svg
+                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('dashboard') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span>Dashboard</span>
+            </Link>
+
+            <!-- B. Menu Khusus Pegawai (role: user) -->
+            <template v-if="hasRole('user')">
+                <div class="pt-3 pb-1">
+                    <p class="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        Ibadah Saya
+                    </p>
+                </div>
+
+                <Link
+                    :href="route('habit.form')"
+                    :class="navLinkClass('habit.form')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('habit.form') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Form Isi Habit</span>
+                </Link>
+
+                <Link
+                    :href="route('kajian.index')"
+                    :class="navLinkClass('kajian.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('kajian.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    <span>Jurnal Kajian</span>
+                </Link>
+
+                <Link
+                    v-if="isFemale"
+                    :href="route('haid.index')"
+                    :class="navLinkClass('haid.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('haid.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4c0 0-6 5.5-6 8.5a6 6 0 0012 0C18 9.5 12 4 12 4z" />
+                    </svg>
+                    <span>Catatan Haid</span>
+                    <span class="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600">
+                        Aktif
+                    </span>
+                </Link>
+            </template>
+
+            <!-- C. Menu Administrasi (Admin & Superadmin) -->
+            <template v-if="hasAnyRole(['admin', 'superadmin'])">
+                <div class="pt-3 pb-1">
+                    <p class="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        Administrasi
+                    </p>
+                </div>
+
+                <Link
+                    :href="route('admin.laporan')"
+                    :class="navLinkClass('admin.laporan')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.laporan') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span>Laporan &amp; Leaderboard</span>
+                </Link>
+
+                <Link
+                    :href="route('admin.habits.index')"
+                    :class="navLinkClass('admin.habits.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.habits.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    <span>Master Data Habit</span>
+                </Link>
+
+                <Link
+                    :href="route('admin.users.index')"
+                    :class="navLinkClass('admin.users.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.users.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span>Manajemen User</span>
+                </Link>
+
+                <Link
+                    :href="route('admin.settings')"
+                    :class="navLinkClass('admin.settings')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.settings') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Pengaturan Sistem</span>
+                </Link>
+            </template>
+        </nav>
+
+        <!-- ── Sidebar Footer (mini user card) ───────────────── -->
+        <div class="flex-shrink-0 px-3 py-4 border-t border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 border-2 border-emerald-200 dark:border-emerald-700">
+                    <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400">{{ userInitial }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{{ user?.name }}</p>
+                    <p class="text-[10px] text-slate-400 dark:text-slate-500 truncate">{{ roleLabel }}</p>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 ring-2 ring-white dark:ring-slate-800" />
+            </div>
+        </div>
+    </aside>
+</template>

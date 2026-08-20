@@ -1,0 +1,212 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\UserTemplateExport;
+use App\Imports\UserImport;
+
+class UserController extends Controller
+{
+    /**
+     * Tampilkan daftar seluruh pengguna.
+     */
+    public function index()
+    {
+        $currentUser = Auth::user();
+
+        // Ambil data user, admin hanya bisa melihat role user. Superadmin bisa lihat semua.
+        // Tapi sementara kita tampilkan semua saja, atau jika admin, tampilkan pegawai saja.
+        $query = User::with('roles')->orderBy('created_at', 'desc');
+
+        if (!$currentUser->hasRole('superadmin')) {
+            // Admin biasa hanya melihat pegawai (role: user)
+            $query->whereHas('roles', function ($q) {
+                $q->where('name', 'user');
+            });
+        }
+
+        $users = $query->get()->map(function ($user) {
+            return [
+                'id'         => $user->id,
+                'name'       => $user->name,
+                'email'      => $user->email,
+                'gender'     => $user->gender,
+                'roles'      => $user->getRoleNames(),
+                'created_at' => $user->created_at->format('Y-m-d H:i:s'),
+            ];
+        });
+
+        return Inertia::render('Admin/Users/Index', [
+            'users'       => $users,
+            'isSuperadmin'=> $currentUser->hasRole('superadmin'),
+        ]);
+    }
+
+    /**
+     * Simpan user baru.
+     */
+    public function store(Request $request)
+    {
+        $currentUser = Auth::user();
+        $isSuperadmin = $currentUser->hasRole('superadmin');
+
+        $rules = [
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'password' => ['required', Rules\Password::defaults()],
+            'gender'   => 'required|in:L,P',
+        ];
+
+        // Jika superadmin, validasi pilihan role
+        if ($isSuperadmin) {
+            $rules['role'] = 'required|in:user,admin,superadmin';
+        }
+
+        $validated = $request->validate($rules);
+
+        $user = User::create([
+            'name'     => $validated['name'],
+            'email'    => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'gender'   => $validated['gender'],
+        ]);
+
+        // Tetapkan role
+        if ($isSuperadmin && isset($validated['role'])) {
+            $user->assignRole($validated['role']);
+        } else {
+            // Admin biasa hanya bisa membuat pegawai
+            $user->assignRole('user');
+        }
+
+        return redirect()->back()->with('success', 'Pengguna baru berhasil ditambahkan.');
+    }
+
+    /**
+     * Update data user.
+     */
+    public function update(Request $request, User $user)
+    {
+        $currentUser = Auth::user();
+        $isSuperadmin = $currentUser->hasRole('superadmin');
+
+        // Keamanan: Admin biasa hanya boleh edit role user. Superadmin bebas.
+        if (!$isSuperadmin && !$user->hasRole('user')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengedit pengguna ini.');
+        }
+
+        $rules = [
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|lowercase|email|max:255|unique:'.User::class.',email,'.$user->id,
+            'gender'   => 'required|in:L,P',
+        ];
+
+        // Jika form mengirim password (opsional di edit)
+        if ($request->filled('password')) {
+            $rules['password'] = ['required', Rules\Password::defaults()];
+        }
+
+        if ($isSuperadmin) {
+            $rules['role'] = 'required|in:user,admin,superadmin';
+        }
+
+        $validated = $request->validate($rules);
+
+        $updateData = [
+            'name'   => $validated['name'],
+            'email'  => $validated['email'],
+            'gender' => $validated['gender'],
+        ];
+
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($updateData);
+
+        if ($isSuperadmin && isset($validated['role'])) {
+            $user->syncRoles([$validated['role']]);
+        }
+
+        return redirect()->back()->with('success', 'Profil pengguna berhasil diperbarui.');
+    }
+
+    /**
+     * Reset password user (Oleh Admin/Superadmin).
+     */
+    public function resetPassword(Request $request, User $user)
+    {
+        $currentUser = Auth::user();
+
+        // Keamanan: Admin biasa hanya boleh reset password role user. Superadmin bebas.
+        if (!$currentUser->hasRole('superadmin')) {
+            if (!$user->hasRole('user')) {
+                abort(403, 'Anda tidak memiliki hak akses untuk mereset password pengguna ini.');
+            }
+        }
+
+        $request->validate([
+            'password' => ['required', Rules\Password::defaults()],
+        ]);
+
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->back()->with('success', "Password untuk {$user->name} berhasil di-reset.");
+    }
+
+    /**
+     * Download template Excel untuk import massal.
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new UserTemplateExport, 'Template_Pegawai_SDAM.xlsx');
+    }
+
+    /**
+     * Import user massal dari file Excel.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:10240', // max 10MB
+        ]);
+
+        try {
+            Excel::import(new UserImport(Auth::user()), $request->file('file'));
+            return redirect()->back()->with('success', 'Berhasil mengimpor data pegawai dari file Excel.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['file' => 'Gagal mengimpor file: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Hapus (soft delete) user.
+     */
+    public function destroy(User $user)
+    {
+        $currentUser = Auth::user();
+
+        // Keamanan: Admin biasa hanya boleh menghapus role user. Superadmin bebas.
+        if (!$currentUser->hasRole('superadmin') && !$user->hasRole('user')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus pengguna ini.');
+        }
+
+        if ($user->id === $currentUser->id) {
+            return redirect()->back()->withErrors(['delete' => 'Anda tidak dapat menghapus akun Anda sendiri.']);
+        }
+
+        $user->delete();
+
+        return redirect()->back()->with('success', "Pengguna {$user->name} berhasil dihapus.");
+    }
+}

@@ -1,0 +1,101 @@
+@import 'tailwindcss';
+
+/* ═══ Tailwind v4: Class-based Dark Mode ════════════════════════════
+   Mendaftarkan variant 'dark:' agar aktif saat class .dark ada di <html>
+   Tanpa ini, dark: hanya merespons prefers-color-scheme OS.
+════════════════════════════════════════════════════════════ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    
+    --animate-marquee: marquee 20s linear infinite;
+
+    @keyframes marquee {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
+    }
+}
+
+/* ============================================================
+   CSS Variables: Design Tokens (Light & Dark)
+   ============================================================ */
+:root {
+    --bg-base:         #f8fafc;
+    --bg-surface:      #ffffff;
+    --bg-surface-2:    #f1f5f9;
+    --bg-sidebar:      #ffffff;
+    --bg-topbar:       #ffffff;
+
+    --border-color:    #e2e8f0;
+    --border-subtle:   #f1f5f9;
+
+    --text-primary:    #0f172a;
+    --text-secondary:  #475569;
+    --text-muted:      #94a3b8;
+
+    --shadow-sm:       0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md:       0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Dark Mode Tokens */
+.dark {
+    --bg-base:         #0f172a;
+    --bg-surface:      #1e293b;
+    --bg-surface-2:    #293548;
+    --bg-sidebar:      #1e293b;
+    --bg-topbar:       #1e293b;
+
+    --border-color:    #334155;
+    --border-subtle:   #293548;
+
+    --text-primary:    #f1f5f9;
+    --text-secondary:  #94a3b8;
+    --text-muted:      #64748b;
+
+    --shadow-sm:       0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md:       0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+@layer base {
+    body {
+        background-color: var(--bg-base);
+        background-image: url("/img/islamic-pattern.png");
+        background-repeat: repeat;
+        background-size: 500px;
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Dark mode: overlay pattern sedikit lebih gelap */
+    .dark body {
+        background-color: #0f172a;
+    }
+}
+
+/* ============================================================
+   Utility Classes menggunakan CSS Variables
+   ============================================================ */
+@layer utilities {
+    .bg-surface      { background-color: var(--bg-surface); }
+    .bg-surface-2    { background-color: var(--bg-surface-2); }
+    .bg-sidebar      { background-color: var(--bg-sidebar); }
+    .bg-topbar       { background-color: var(--bg-topbar); }
+    .border-theme    { border-color: var(--border-color); }
+    .border-subtle   { border-color: var(--border-subtle); }
+    .text-primary    { color: var(--text-primary); }
+    .text-secondary  { color: var(--text-secondary); }
+    .text-muted      { color: var(--text-muted); }
+
+    /* Transition smooth untuk dark mode toggle */
+    .theme-transition {
+        transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease, box-shadow 0.25s ease;
+    }
+}
