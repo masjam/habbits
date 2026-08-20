@@ -5,11 +5,6 @@ use Inertia\Inertia;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('welcome');
 
-// Route khusus untuk mengetes Sentry (Anda bisa hapus ini nanti)
-Route::get('/debug-sentry', function () {
-    throw new Exception('Sentry Error Test dari HabitTracker!');
-});
-
 // Authentication Routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');
