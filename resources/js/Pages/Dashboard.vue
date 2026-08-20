@@ -327,7 +327,7 @@ const formatTanggal = (dateStr) => {
                         </div>
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Skor {{ semester }}</p>
+                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Skor Bulan Ini</p>
                                 <p class="text-2xl font-black text-blue-500">{{ skorBulanIni }}</p>
                             </div>
                         </div>

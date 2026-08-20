@@ -24,6 +24,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/habit/form', [\App\Http\Controllers\FormHabitController::class, 'index'])->name('habit.form');
     Route::post('/habit/form', [\App\Http\Controllers\FormHabitController::class, 'store'])->name('habit.form.store');
     
+    Route::get('/rekap-quran', [\App\Http\Controllers\QuranRecapController::class, 'index'])->name('quran.recap');
+    
     Route::get('/haid', [\App\Http\Controllers\MenstruationController::class, 'index'])->name('haid.index');
     Route::post('/haid/toggle', [\App\Http\Controllers\MenstruationController::class, 'toggle'])->name('haid.toggle');
     
