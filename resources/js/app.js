@@ -5,6 +5,8 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 
+import * as Sentry from "@sentry/vue";
+
 createInertiaApp({
     title: (title) => `${title} - Sistem Pantauan Habit`,
     resolve: (name) =>
@@ -13,7 +15,17 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
-        return createApp({ render: () => h(App, props) })
+        const app = createApp({ render: () => h(App, props) });
+
+        if (import.meta.env.VITE_SENTRY_DSN_PUBLIC) {
+            Sentry.init({
+                app,
+                dsn: import.meta.env.VITE_SENTRY_DSN_PUBLIC,
+                trackComponents: true,
+            });
+        }
+
+        return app
             .use(plugin)
             .use(ZiggyVue)
             .mount(el);
