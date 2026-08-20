@@ -25,6 +25,8 @@ const props = defineProps({
     skorHariIni:      { type: Number,  default: 0 },
     skorMaksimalHariIni:{ type: Number, default: 100 },
     skorBulanIni:     { type: Number,  default: 0 },
+    skorMaksimalBulanIni:{ type: Number, default: 0 },
+    targetSkorMinimal:{ type: Number, default: 0 },
     isSedangHaid:     { type: Boolean, default: false },
     dailyChartData:   { type: Array,   default: () => [] },
     monthlyChartData: { type: Array,   default: () => [] },
@@ -325,10 +327,20 @@ const formatTanggal = (dateStr) => {
                                 <p class="text-2xl font-bold text-slate-300 dark:text-slate-600">{{ skorMaksimalHariIni }}</p>
                             </div>
                         </div>
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
                             <div>
                                 <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Skor Bulan Ini</p>
                                 <p class="text-2xl font-black text-blue-500">{{ skorBulanIni }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Maksimal</p>
+                                <p class="text-2xl font-bold text-slate-300 dark:text-slate-600">{{ skorMaksimalBulanIni }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Target Minimal</p>
+                                <p class="text-xl font-bold text-amber-500">{{ targetSkorMinimal }}</p>
                             </div>
                         </div>
                     </div>

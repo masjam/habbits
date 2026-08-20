@@ -182,10 +182,19 @@ class DashboardController extends Controller
             })
             ->sum('skor_maksimal');
 
+        $daysInMonth = Carbon::now()->daysInMonth;
+        $skorMaksimalBulanIni = $skorMaksimalHariIni * $daysInMonth;
+
+        $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
+        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $targetSkorMinimal = (int) round($skorMaksimalBulanIni * ($targetBulanan / 100));
+
         return Inertia::render('Dashboard', [
             'skorHariIni'      => (int) $skorHariIni,
             'skorMaksimalHariIni'=> (int) $skorMaksimalHariIni,
             'skorBulanIni'     => (int) $skorBulanIni,
+            'skorMaksimalBulanIni'=> (int) $skorMaksimalBulanIni,
+            'targetSkorMinimal'=> $targetSkorMinimal,
             'isSedangHaid'     => $isSedangHaid,
             'dailyChartData'   => $dailyChartData,
             'monthlyChartData' => $monthlyChartData,
