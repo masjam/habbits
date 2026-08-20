@@ -119,8 +119,13 @@ class FormHabitController extends Controller
                 })->exists();
         }
 
+        // Optimasi N+1: Ambil semua data habit sekaligus dari database
+        $habitIds = collect($request->logs)->pluck('habit_id')->unique();
+        $habits = Habit::whereIn('id', $habitIds)->get()->keyBy('id');
+
         foreach ($request->logs as $logData) {
-            $habit = Habit::findOrFail($logData['habit_id']);
+            $habit = $habits->get($logData['habit_id']);
+            if (!$habit) continue; // Lewati jika habit tidak ditemukan
             $details = $logData['details'] ?? [];
             $nilaiInput = 0;
             $skorDiperoleh = 0;
@@ -312,6 +317,7 @@ class FormHabitController extends Controller
         // 2. Unlock Badges
         $badges = \Illuminate\Support\Facades\DB::table('badges')->get();
         $totalPoints = $dailyScores->sum();
+        $userBadgesToInsert = [];
 
         foreach ($badges as $badge) {
             $unlocked = false;
@@ -323,14 +329,19 @@ class FormHabitController extends Controller
             }
 
             if ($unlocked) {
-                \Illuminate\Support\Facades\DB::table('user_badges')->insertOrIgnore([
+                $userBadgesToInsert[] = [
                     'user_id' => $user->id,
                     'badge_id' => $badge->id,
                     'unlocked_at' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
             }
+        }
+
+        // Optimasi N+1: Bulk Insert (hanya 1 kueri ke database)
+        if (!empty($userBadgesToInsert)) {
+            \Illuminate\Support\Facades\DB::table('user_badges')->insertOrIgnore($userBadgesToInsert);
         }
     }
 }
