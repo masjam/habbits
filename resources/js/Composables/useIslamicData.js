@@ -110,7 +110,17 @@ export function useIslamicData() {
                     async (position) => {
                         const lat = position.coords.latitude
                         const lng = position.coords.longitude
-                        locationName.value = 'Lokasi Saat Ini (GPS)'
+                        
+                        // Coba dapatkan nama kota dari koordinat GPS
+                        try {
+                            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`);
+                            const geoData = await geoRes.json();
+                            const cityName = geoData.city || geoData.locality || geoData.principalSubdivision;
+                            locationName.value = cityName ? `${cityName} (GPS)` : 'Lokasi Saat Ini (GPS)';
+                        } catch (geoErr) {
+                            locationName.value = 'Lokasi Saat Ini (GPS)';
+                        }
+
                         await fetchFromAladhan(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=20`)
                         isLoading.value = false
                     },
