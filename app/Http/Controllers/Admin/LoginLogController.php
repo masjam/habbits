@@ -16,7 +16,7 @@ class LoginLogController extends Controller
     {
         $search = $request->query('search');
 
-        $logs = LoginLog::with('user:id,name,email,role')
+        $logs = LoginLog::with('user:id,name,email')
             ->when($search, function ($query, $search) {
                 $query->whereHas('user', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
