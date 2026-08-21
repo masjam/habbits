@@ -145,7 +145,7 @@ const submit = () => {
             
             <div class="px-6 sm:px-8 py-5 bg-slate-50/50 border-t border-slate-100 text-center">
                 <p class="text-xs text-slate-500">
-                    Bukan pegawai? <a href="#" class="font-bold text-slate-700 hover:text-emerald-600 transition-colors">Pelajari Sistem Ini</a>
+                    Gukar baru? <a href="https://wa.link/bh9pkl" class="font-bold text-slate-700 hover:text-emerald-600 transition-colors">Hubungi Waka SDM </a>
                 </p>
             </div>
         </div>
