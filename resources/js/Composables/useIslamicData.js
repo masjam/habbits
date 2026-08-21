@@ -110,58 +110,62 @@ export function useIslamicData() {
 
             // Coba ambil Geolocation GPS
             if (navigator.geolocation && window.isSecureContext !== false) {
-                navigator.geolocation.getCurrentPosition(
-                    async (position) => {
-                        const lat = position.coords.latitude
-                        const lng = position.coords.longitude
-                        
-                        // Coba dapatkan nama kota dari koordinat GPS
-                        try {
-                            const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`);
-                            const geoData = await geoRes.json();
+                await new Promise((resolve) => {
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const lat = position.coords.latitude
+                            const lng = position.coords.longitude
                             
-                            let kecamatan = '';
-                            let kabupaten = '';
-
-                            // Coba ekstrak dari array administrative (tingkat 6 = kecamatan, 5 = kabupaten/kota)
-                            if (geoData.localityInfo && geoData.localityInfo.administrative) {
-                                const admin = geoData.localityInfo.administrative;
-                                const level6 = admin.find(a => a.adminLevel === 6);
-                                const level5 = admin.find(a => a.adminLevel === 5);
+                            // Coba dapatkan nama kota dari koordinat GPS
+                            try {
+                                const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`);
+                                const geoData = await geoRes.json();
                                 
-                                if (level6) kecamatan = level6.name;
-                                if (level5) kabupaten = level5.name;
+                                let kecamatan = '';
+                                let kabupaten = '';
+
+                                // Coba ekstrak dari array administrative (tingkat 6 = kecamatan, 5 = kabupaten/kota)
+                                if (geoData.localityInfo && geoData.localityInfo.administrative) {
+                                    const admin = geoData.localityInfo.administrative;
+                                    const level6 = admin.find(a => a.adminLevel === 6);
+                                    const level5 = admin.find(a => a.adminLevel === 5);
+                                    
+                                    if (level6) kecamatan = level6.name;
+                                    if (level5) kabupaten = level5.name;
+                                }
+
+                                // Fallback jika tidak ditemukan di level administrative
+                                if (!kecamatan) kecamatan = geoData.locality || '';
+                                if (!kabupaten) kabupaten = geoData.city || '';
+
+                                let displayName = '';
+                                if (kecamatan && kabupaten && kecamatan !== kabupaten) {
+                                    displayName = `${kecamatan}, ${kabupaten}`;
+                                } else if (kabupaten) {
+                                    displayName = kabupaten;
+                                } else if (kecamatan) {
+                                    displayName = kecamatan;
+                                } else {
+                                    displayName = geoData.principalSubdivision || 'Lokasi Saat Ini';
+                                }
+
+                                locationName.value = displayName ? `${displayName} (GPS)` : 'Lokasi Saat Ini (GPS)';
+                            } catch (geoErr) {
+                                locationName.value = 'Lokasi Saat Ini (GPS)';
                             }
 
-                            // Fallback jika tidak ditemukan di level administrative
-                            if (!kecamatan) kecamatan = geoData.locality || '';
-                            if (!kabupaten) kabupaten = geoData.city || '';
-
-                            let displayName = '';
-                            if (kecamatan && kabupaten && kecamatan !== kabupaten) {
-                                displayName = `${kecamatan}, ${kabupaten}`;
-                            } else if (kabupaten) {
-                                displayName = kabupaten;
-                            } else if (kecamatan) {
-                                displayName = kecamatan;
-                            } else {
-                                displayName = geoData.principalSubdivision || 'Lokasi Saat Ini';
-                            }
-
-                            locationName.value = displayName ? `${displayName} (GPS)` : 'Lokasi Saat Ini (GPS)';
-                        } catch (geoErr) {
-                            locationName.value = 'Lokasi Saat Ini (GPS)';
-                        }
-
-                        await fetchFromAladhan(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=20`)
-                        isLoading.value = false
-                    },
-                    async (err) => {
-                        console.warn('Geolocation denied or failed, falling back to IP.', err)
-                        await fetchWithIpFallback()
-                    },
-                    { timeout: 5000, enableHighAccuracy: true }
-                )
+                            await fetchFromAladhan(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=20`)
+                            isLoading.value = false
+                            resolve()
+                        },
+                        async (err) => {
+                            console.warn('Geolocation denied or failed, falling back to IP.', err)
+                            await fetchWithIpFallback()
+                            resolve()
+                        },
+                        { timeout: 5000, enableHighAccuracy: true }
+                    )
+                })
             } else {
                 console.warn('Geolocation not supported or insecure context, falling back to IP.')
                 await fetchWithIpFallback()
