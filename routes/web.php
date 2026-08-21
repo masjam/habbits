@@ -54,9 +54,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/reset-password', [\App\Http\Controllers\Admin\UserController::class, 'resetPassword'])->name('admin.users.reset-password');
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
 
-        Route::get('/login-logs', [\App\Http\Controllers\Admin\LoginLogController::class, 'index'])->name('admin.login-logs');
-
         Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings');
         Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
+    });
+
+    // ─── Superadmin Only Routes ─────────────────────────────────────────────
+    Route::middleware('role:superadmin')->prefix('admin')->group(function () {
+        Route::get('/login-logs', [\App\Http\Controllers\Admin\LoginLogController::class, 'index'])->name('admin.login-logs');
     });
 });
