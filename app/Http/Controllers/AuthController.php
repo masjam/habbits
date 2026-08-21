@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
+use App\Models\LoginLog;
 
 class AuthController extends Controller
 {
@@ -30,6 +32,29 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
+
+            // Record login log
+            $ip = $request->ip();
+            $location = null;
+            if ($ip && $ip !== '127.0.0.1' && $ip !== '::1') {
+                try {
+                    $response = Http::timeout(2)->get("http://ip-api.com/json/{$ip}");
+                    if ($response->successful() && $response->json('status') === 'success') {
+                        $location = $response->json('city') . ', ' . $response->json('country');
+                    }
+                } catch (\Exception $e) {
+                    // Ignore, let location be null
+                }
+            } else {
+                $location = 'Lokal (Localhost)';
+            }
+
+            LoginLog::create([
+                'user_id' => Auth::id(),
+                'ip_address' => $ip,
+                'user_agent' => $request->userAgent(),
+                'location' => $location
+            ]);
 
             return redirect()->intended(route('dashboard'));
         }
