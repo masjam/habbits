@@ -1,14 +1,14 @@
 <script setup>
 import { useIslamicData } from '@/Composables/useIslamicData'
 
-const { prayerTimes, hijriDate, isLoading, error, locationName, getDailyHadith } = useIslamicData()
+const { prayerTimes, hijriDate, isLoading, error, locationName, getDailyHadith, nextPrayerName, countdownText } = useIslamicData()
 const hadith = getDailyHadith()
 
 const masehiDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())
 </script>
 
 <template>
-    <div class="bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-2xl p-6 shadow-md text-white relative overflow-hidden">
+    <div class="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl p-6 shadow-md text-white relative overflow-hidden">
         <!-- Background Decoration (Islamic Ornament) -->
         <div class="absolute -right-8 -top-8 opacity-20">
             <svg class="w-48 h-48 text-emerald-300" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
@@ -32,10 +32,17 @@ const masehiDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'lo
                 <div v-if="isLoading" class="h-8 bg-emerald-500/50 rounded animate-pulse w-3/4"></div>
                 <div v-else-if="error" class="text-sm text-rose-200">{{ error }}</div>
                 <div v-else>
-                    <div class="text-lg font-bold text-white mb-1">{{ masehiDate }}</div>
-                    <div class="text-xl font-medium tracking-tight text-emerald-50">{{ hijriDate }}</div>
+                    <div class="flex justify-between items-end mb-2">
+                        <div>
+                            <div class="text-lg font-bold text-white mb-1">{{ masehiDate }}</div>
+                            <div class="text-xl font-medium tracking-tight text-emerald-50">{{ hijriDate }}</div>
+                        </div>
+                        <div v-if="countdownText" class="text-right">
+                            <div class="text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-1">Menuju {{ nextPrayerName }}</div>
+                            <div class="text-xl font-black text-white tabular-nums tracking-wider leading-none">{{ countdownText }}</div>
+                        </div>
+                    </div>
                 </div>
-                <p class="text-xs text-emerald-200 mt-3 font-medium">Jadwal Sholat Harian</p>
             </div>
 
             <!-- Prayer Times Grid -->
@@ -73,7 +80,7 @@ const masehiDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'lo
             
             <!-- Hadits Harian (To fill empty space) -->
             <div class="mt-6 pt-6 border-t border-emerald-500/50">
-                <h4 class="text-xs font-bold text-amber-200 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <h4 class="text-xs font-bold text-emerald-200 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>

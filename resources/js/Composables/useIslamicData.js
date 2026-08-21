@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 export function useIslamicData() {
     const prayerTimes = ref(null)
@@ -6,6 +6,10 @@ export function useIslamicData() {
     const isLoading = ref(true)
     const error = ref(null)
     const locationName = ref('Jakarta, Indonesia')
+
+    const nextPrayerName = ref('')
+    const countdownText = ref('')
+    let timerInterval = null
 
     // Daftar hadits harian (30 buah untuk dirotasi berdasarkan tanggal)
     const dailyHadiths = [
@@ -169,8 +173,62 @@ export function useIslamicData() {
         }
     }
 
+    const calculateCountdown = () => {
+        if (!prayerTimes.value) return
+
+        const now = new Date()
+        let nextPrayer = null
+        
+        const prayers = [
+            { name: 'Subuh', time: prayerTimes.value.Subuh },
+            { name: 'Dzuhur', time: prayerTimes.value.Dzuhur },
+            { name: 'Ashar', time: prayerTimes.value.Ashar },
+            { name: 'Maghrib', time: prayerTimes.value.Maghrib },
+            { name: 'Isya', time: prayerTimes.value.Isya }
+        ]
+
+        let nextPrayerDate = new Date(now.getTime())
+        for (const p of prayers) {
+            // Hilangkan zona waktu (seperti WIB) dari string jika ada (biasanya format HH:mm)
+            const timeStr = p.time.split(' ')[0]
+            const [h, m] = timeStr.split(':').map(Number)
+            const pDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0)
+            if (pDate > now) {
+                nextPrayer = p
+                nextPrayerDate = pDate
+                break
+            }
+        }
+
+        // Jika tidak ada sholat selanjutnya hari ini, berarti Subuh besok
+        if (!nextPrayer) {
+            nextPrayer = prayers[0]
+            const timeStr = nextPrayer.time.split(' ')[0]
+            const [h, m] = timeStr.split(':').map(Number)
+            nextPrayerDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h, m, 0)
+        }
+
+        nextPrayerName.value = nextPrayer.name
+
+        const diff = nextPrayerDate - now // in ms
+        const h = Math.floor(diff / (1000 * 60 * 60))
+        const m = Math.floor((diff / (1000 * 60)) % 60)
+        const s = Math.floor((diff / 1000) % 60)
+
+        countdownText.value = `-${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    }
+
     onMounted(() => {
-        fetchPrayerTimes()
+        fetchPrayerTimes().then(() => {
+            if (prayerTimes.value) {
+                calculateCountdown()
+                timerInterval = setInterval(calculateCountdown, 1000)
+            }
+        })
+    })
+
+    onUnmounted(() => {
+        if (timerInterval) clearInterval(timerInterval)
     })
 
     return {
@@ -179,6 +237,8 @@ export function useIslamicData() {
         isLoading,
         error,
         locationName,
-        getDailyHadith
+        getDailyHadith,
+        nextPrayerName,
+        countdownText
     }
 }
