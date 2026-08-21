@@ -22,10 +22,10 @@ defineProps({
             <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 italic mb-1 font-medium bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700 shadow-sm border-l-2 border-l-amber-400">
                 📌 Form keterangan di bawah ini opsional (namun durasi wajib diisi jika ada target minimal).
             </p>
-            <div>
+            <!-- <div>
                 <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Durasi (Menit)</label>
                 <input type="number" min="0" v-model="log.details['durasi']" placeholder="Contoh: 5" class="w-full p-2 text-xs border-slate-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 shadow-sm dark:bg-slate-700 dark:text-slate-100" />
-            </div>
+            </div> -->
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Tema Hadist</label>
                 <input type="text" v-model="log.details['tema']" placeholder="Contoh: Menjaga lisan" class="w-full p-2 text-xs border-slate-300 dark:border-slate-600 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 shadow-sm dark:bg-slate-700 dark:text-slate-100" />
