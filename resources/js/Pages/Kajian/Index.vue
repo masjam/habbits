@@ -85,7 +85,7 @@ const formatTanggal = (dateStr) => {
                             </p>
                         </div>
                         
-                        <div class="prose prose-sm prose-slate max-w-none text-slate-600 leading-relaxed">
+                        <div class="prose prose-sm prose-slate max-w-none text-slate-600 leading-relaxed break-words">
                             <p class="whitespace-pre-wrap font-medium">{{ log.details?.isi || log.details?.catatan || 'Tidak ada catatan yang dilampirkan.' }}</p>
                         </div>
                     </div>

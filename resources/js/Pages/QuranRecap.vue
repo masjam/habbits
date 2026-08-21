@@ -91,7 +91,9 @@ const formatTanggal = (dateStr) => {
             </div>
 
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
+                
+                <!-- Desktop Table View -->
+                <div class="hidden md:block overflow-x-auto">
                     <table class="w-full text-left text-sm whitespace-nowrap">
                         <thead class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
                             <tr>
@@ -152,6 +154,67 @@ const formatTanggal = (dateStr) => {
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile Card View -->
+                <div class="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+                    <div v-for="item in recapData" :key="item.tanggal + '-mobile'" class="p-4 space-y-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2">
+                            <span class="font-bold text-slate-700 dark:text-slate-200">{{ formatTanggal(item.tanggal) }}</span>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <!-- Tilawah -->
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">Tilawah (Membaca)</h3>
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <div class="bg-emerald-50/50 dark:bg-emerald-900/20 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                                        <div class="text-[10px] text-slate-500 mb-1 font-semibold uppercase">Surat Awal</div>
+                                        <template v-if="item.tilawah && item.tilawah.surat_awal">
+                                            <div class="font-bold text-slate-700 dark:text-slate-300">{{ item.tilawah.surat_awal }}</div>
+                                            <div class="text-xs text-slate-500 mt-0.5">Ayat {{ item.tilawah.ayat_awal || '-' }}</div>
+                                        </template>
+                                        <div v-else class="text-slate-400">-</div>
+                                    </div>
+                                    <div class="bg-emerald-50/50 dark:bg-emerald-900/20 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                                        <div class="text-[10px] text-slate-500 mb-1 font-semibold uppercase">Surat Akhir</div>
+                                        <template v-if="item.tilawah && item.tilawah.surat_akhir">
+                                            <div class="font-bold text-slate-700 dark:text-slate-300">{{ item.tilawah.surat_akhir }}</div>
+                                            <div class="text-xs text-slate-500 mt-0.5">Ayat {{ item.tilawah.ayat_akhir || '-' }}</div>
+                                        </template>
+                                        <div v-else class="text-slate-400">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Murojaah -->
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2">Murojaah</h3>
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <div class="bg-blue-50/50 dark:bg-blue-900/20 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                                        <div class="text-[10px] text-slate-500 mb-1 font-semibold uppercase">Surat Awal</div>
+                                        <template v-if="item.murojaah && item.murojaah.surat_awal">
+                                            <div class="font-bold text-slate-700 dark:text-slate-300">{{ item.murojaah.surat_awal }}</div>
+                                            <div class="text-xs text-slate-500 mt-0.5">Ayat {{ item.murojaah.ayat_awal || '-' }}</div>
+                                        </template>
+                                        <div v-else class="text-slate-400">-</div>
+                                    </div>
+                                    <div class="bg-blue-50/50 dark:bg-blue-900/20 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                                        <div class="text-[10px] text-slate-500 mb-1 font-semibold uppercase">Surat Akhir</div>
+                                        <template v-if="item.murojaah && item.murojaah.surat_akhir">
+                                            <div class="font-bold text-slate-700 dark:text-slate-300">{{ item.murojaah.surat_akhir }}</div>
+                                            <div class="text-xs text-slate-500 mt-0.5">Ayat {{ item.murojaah.ayat_akhir || '-' }}</div>
+                                        </template>
+                                        <div v-else class="text-slate-400">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-if="recapData.length === 0" class="p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+                        Belum ada data bacaan untuk periode ini.
+                    </div>
                 </div>
             </div>
 
