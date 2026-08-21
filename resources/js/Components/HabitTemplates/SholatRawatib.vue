@@ -46,7 +46,7 @@ defineProps({
             <div class="flex justify-between items-center p-4 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors">
                 <span class="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-600 text-xs uppercase w-1/3">Asar</span>
                 <div class="flex gap-4 sm:gap-6 w-1/2 justify-end items-center">
-                    <div class="w-10 flex justify-center">
+                    <div class="w-10 flex justify-center bg-slate-200 dark:bg-slate-600 rounded p-1" title="Qobliyah Asar (Ghoiru Muakkad)">
                         <input type="checkbox" v-model="log.details['asar_q']" class="w-4 h-4 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 dark:bg-slate-700 dark:text-slate-100" />
                     </div>
                     <div class="w-10 flex justify-center">
@@ -58,7 +58,7 @@ defineProps({
             <div class="flex justify-between items-center p-4 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors">
                 <span class="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-600 text-xs uppercase w-1/3">Maghrib</span>
                 <div class="flex gap-4 sm:gap-6 w-1/2 justify-end items-center">
-                    <div class="w-10 flex justify-center bg-slate-100 dark:bg-slate-700 rounded p-1" title="Qobliyah Maghrib (Ghoiru Muakkad)">
+                    <div class="w-10 flex justify-center bg-slate-200 dark:bg-slate-600 rounded p-1" title="Qobliyah Maghrib (Ghoiru Muakkad)">
                         <input type="checkbox" v-model="log.details['maghrib_q']" class="w-4 h-4 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 dark:bg-slate-700 dark:text-slate-100" />
                     </div>
                     <div class="w-10 flex justify-center">
@@ -70,7 +70,7 @@ defineProps({
             <div class="flex justify-between items-center p-4 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors">
                 <span class="font-bold text-slate-700 dark:text-slate-300 dark:text-slate-600 text-xs uppercase w-1/3">Isya'</span>
                 <div class="flex gap-4 sm:gap-6 w-1/2 justify-end items-center">
-                    <div class="w-10 flex justify-center bg-slate-100 dark:bg-slate-700 rounded p-1" title="Qobliyah Isya (Ghoiru Muakkad)">
+                    <div class="w-10 flex justify-center bg-slate-200 dark:bg-slate-600 rounded p-1" title="Qobliyah Isya (Ghoiru Muakkad)">
                         <input type="checkbox" v-model="log.details['isya_q']" class="w-4 h-4 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 dark:bg-slate-700 dark:text-slate-100" />
                     </div>
                     <div class="w-10 flex justify-center">
@@ -117,19 +117,19 @@ defineProps({
                         <input type="checkbox" v-model="log.details['dhuhur_b']" class="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 pointer-events-none dark:bg-slate-700 dark:text-slate-100" />
                     </td>
                     <!-- Asar -->
-                    <td class="p-1 border-r border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-800/50 cursor-pointer" @click="log.details['asar_q'] = !log.details['asar_q']">
+                    <td class="p-1 border-r border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 cursor-pointer" title="Qobliyah Asar (Ghoiru Muakkad)" @click="log.details['asar_q'] = !log.details['asar_q']">
                         <input type="checkbox" v-model="log.details['asar_q']" class="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 pointer-events-none dark:bg-slate-700 dark:text-slate-100" />
                     </td>
                     <td class="p-1 border-r border-slate-200 dark:border-slate-700 bg-slate-800" title="Tidak ada Ba'diyah Asar"></td>
                     <!-- Maghrib -->
-                    <td class="p-1 border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 cursor-pointer" title="Qobliyah Maghrib (Ghoiru Muakkad)" @click="log.details['maghrib_q'] = !log.details['maghrib_q']">
+                    <td class="p-1 border-r border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 cursor-pointer" title="Qobliyah Maghrib (Ghoiru Muakkad)" @click="log.details['maghrib_q'] = !log.details['maghrib_q']">
                         <input type="checkbox" v-model="log.details['maghrib_q']" class="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 pointer-events-none dark:bg-slate-700 dark:text-slate-100" />
                     </td>
                     <td class="p-1 border-r border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-800/50 cursor-pointer" @click="log.details['maghrib_b'] = !log.details['maghrib_b']">
                         <input type="checkbox" v-model="log.details['maghrib_b']" class="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 pointer-events-none dark:bg-slate-700 dark:text-slate-100" />
                     </td>
                     <!-- Isya -->
-                    <td class="p-1 border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 cursor-pointer" title="Qobliyah Isya (Ghoiru Muakkad)" @click="log.details['isya_q'] = !log.details['isya_q']">
+                    <td class="p-1 border-r border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 cursor-pointer" title="Qobliyah Isya (Ghoiru Muakkad)" @click="log.details['isya_q'] = !log.details['isya_q']">
                         <input type="checkbox" v-model="log.details['isya_q']" class="w-3.5 h-3.5 text-emerald-600 rounded border-slate-300 dark:border-slate-600 focus:ring-emerald-500 pointer-events-none dark:bg-slate-700 dark:text-slate-100" />
                     </td>
                     <td class="p-1 hover:bg-slate-50 dark:bg-slate-800/50 cursor-pointer" @click="log.details['isya_b'] = !log.details['isya_b']">

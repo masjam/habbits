@@ -20,7 +20,7 @@ defineProps({
         <!-- Optional Form when checked -->
         <div v-if="log.nilai_input > 0" class="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
             <p class="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 italic mb-1 font-medium bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700 shadow-sm border-l-2 border-l-amber-400">
-                📌 Form keterangan di bawah ini opsional (namun durasi wajib diisi jika ada target minimal).
+                📌 Form keterangan di bawah ini opsional (hanya untuk catatan ).
             </p>
             <!-- <div>
                 <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Durasi (Menit)</label>

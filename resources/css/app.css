@@ -78,6 +78,16 @@
     .dark body {
         background-color: #0f172a;
     }
+
+    /* Mengembalikan border default pada form (Tailwind v4 menghilangkan border-width) */
+    input, textarea, select {
+        border-width: 1px;
+        border-color: #94a3b8; /* slate-400 default to make borders more visible */
+    }
+    
+    .dark input, .dark textarea, .dark select {
+        border-color: #475569; /* slate-600 default for dark mode */
+    }
 }
 
 /* ============================================================
