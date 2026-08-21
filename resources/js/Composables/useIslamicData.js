@@ -115,8 +115,36 @@ export function useIslamicData() {
                         try {
                             const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`);
                             const geoData = await geoRes.json();
-                            const cityName = geoData.city || geoData.locality || geoData.principalSubdivision;
-                            locationName.value = cityName ? `${cityName} (GPS)` : 'Lokasi Saat Ini (GPS)';
+                            
+                            let kecamatan = '';
+                            let kabupaten = '';
+
+                            // Coba ekstrak dari array administrative (tingkat 6 = kecamatan, 5 = kabupaten/kota)
+                            if (geoData.localityInfo && geoData.localityInfo.administrative) {
+                                const admin = geoData.localityInfo.administrative;
+                                const level6 = admin.find(a => a.adminLevel === 6);
+                                const level5 = admin.find(a => a.adminLevel === 5);
+                                
+                                if (level6) kecamatan = level6.name;
+                                if (level5) kabupaten = level5.name;
+                            }
+
+                            // Fallback jika tidak ditemukan di level administrative
+                            if (!kecamatan) kecamatan = geoData.locality || '';
+                            if (!kabupaten) kabupaten = geoData.city || '';
+
+                            let displayName = '';
+                            if (kecamatan && kabupaten && kecamatan !== kabupaten) {
+                                displayName = `${kecamatan}, ${kabupaten}`;
+                            } else if (kabupaten) {
+                                displayName = kabupaten;
+                            } else if (kecamatan) {
+                                displayName = kecamatan;
+                            } else {
+                                displayName = geoData.principalSubdivision || 'Lokasi Saat Ini';
+                            }
+
+                            locationName.value = displayName ? `${displayName} (GPS)` : 'Lokasi Saat Ini (GPS)';
                         } catch (geoErr) {
                             locationName.value = 'Lokasi Saat Ini (GPS)';
                         }
