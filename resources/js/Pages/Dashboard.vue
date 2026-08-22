@@ -27,6 +27,10 @@ const props = defineProps({
     skorBulanIni:     { type: Number,  default: 0 },
     skorMaksimalBulanIni:{ type: Number, default: 0 },
     targetSkorMinimal:{ type: Number, default: 0 },
+    targetBulanan:    { type: Number, default: 0 },
+    adminTargetBulanan: { type: Number, default: 0 },
+    adminTargetSkorMinimal: { type: Number, default: 0 },
+    isPersonalTarget: { type: Boolean, default: false },
     isSedangHaid:     { type: Boolean, default: false },
     dailyChartData:   { type: Array,   default: () => [] },
     monthlyChartData: { type: Array,   default: () => [] },
@@ -141,20 +145,6 @@ const formatTanggal = (dateStr) => {
             </div>
         </div>
 
-        <style>
-            @keyframes marquee {
-                0% { transform: translateX(0%); }
-                100% { transform: translateX(-50%); }
-            }
-            .animate-marquee {
-                animation: marquee 25s linear infinite;
-                display: inline-flex;
-            }
-            .animate-marquee:hover {
-                animation-play-state: paused;
-            }
-        </style>
-
         <!-- Modal Peringatan Tanggal Terlewat -->
         <div v-if="showMissedDatesModal" class="relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"></div>
@@ -184,7 +174,7 @@ const formatTanggal = (dateStr) => {
                                 <Link 
                                     v-for="date in missedDates" 
                                     :key="date"
-                                    :href="`/form?date=${date}`"
+                                    :href="`/habit/form?date=${date}`"
                                     class="block w-full text-left px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-amber-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 hover:border-amber-200 rounded-xl transition-colors group"
                                 >
                                     <div class="flex justify-between items-center">
@@ -205,12 +195,6 @@ const formatTanggal = (dateStr) => {
                     </div>
                 </div>
             </div>
-            <!-- Custom Scrollbar Style for the modal list -->
-            <component :is="'style'">
-                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-            </component>
         </div>
 
         <div class="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -317,30 +301,36 @@ const formatTanggal = (dateStr) => {
                     
                     <!-- Stat Cards -->
                     <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
-                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Skor Hari Ini</p>
-                                <p class="text-4xl font-black text-emerald-500">{{ skorHariIni }}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Maksimal</p>
-                                <p class="text-2xl font-bold text-slate-300 dark:text-slate-600">{{ skorMaksimalHariIni }}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Skor Bulan Ini</p>
-                                <p class="text-2xl font-black text-blue-500">{{ skorBulanIni }}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Maksimal</p>
-                                <p class="text-2xl font-bold text-slate-300 dark:text-slate-600">{{ skorMaksimalBulanIni }}</p>
+                        <div class="border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                                Perolehan Skor
+                            </p>
+                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
+                                <div>
+                                    <span class="text-xl font-bold text-emerald-500">{{ skorHariIni }}</span>
+                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalHariIni }} (Harian)</span>
+                                </div>
+                                <div>
+                                    <span class="text-xl font-bold text-blue-500">{{ skorBulanIni }}</span>
+                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalBulanIni }} (Bulanan)</span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Target Minimal</p>
-                                <p class="text-xl font-bold text-amber-500">{{ targetSkorMinimal }}</p>
+                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                                    Target Minimal
+                                </p>
+                                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
+                                    <div v-if="isPersonalTarget">
+                                        <span class="text-xl font-bold text-emerald-500">{{ targetSkorMinimal }}</span>
+                                        <span class="text-[10px] text-emerald-600 font-bold ml-1 tracking-wide">(Pribadi: {{ targetBulanan }}%)</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-xl font-bold text-amber-500">{{ adminTargetSkorMinimal }}</span>
+                                        <span class="text-[10px] text-slate-400 ml-1 tracking-wide">(Instansi: {{ adminTargetBulanan }}%)</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -357,3 +347,21 @@ const formatTanggal = (dateStr) => {
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style>
+@keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+    animation: marquee 25s linear infinite;
+    display: inline-flex;
+}
+.animate-marquee:hover {
+    animation-play-state: paused;
+}
+
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+</style>

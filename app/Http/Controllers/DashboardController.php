@@ -186,7 +186,10 @@ class DashboardController extends Controller
         $skorMaksimalBulanIni = $skorMaksimalHariIni * $daysInMonth;
 
         $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
-        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $adminTargetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $adminTargetSkorMinimal = (int) round($skorMaksimalBulanIni * ($adminTargetBulanan / 100));
+        
+        $targetBulanan = $user->personal_target ?? $adminTargetBulanan;
         $targetSkorMinimal = (int) round($skorMaksimalBulanIni * ($targetBulanan / 100));
 
         return Inertia::render('Dashboard', [
@@ -195,6 +198,10 @@ class DashboardController extends Controller
             'skorBulanIni'     => (int) $skorBulanIni,
             'skorMaksimalBulanIni'=> (int) $skorMaksimalBulanIni,
             'targetSkorMinimal'=> $targetSkorMinimal,
+            'targetBulanan'    => $targetBulanan,
+            'adminTargetBulanan' => $adminTargetBulanan,
+            'adminTargetSkorMinimal' => $adminTargetSkorMinimal,
+            'isPersonalTarget' => !is_null($user->personal_target),
             'isSedangHaid'     => $isSedangHaid,
             'dailyChartData'   => $dailyChartData,
             'monthlyChartData' => $monthlyChartData,

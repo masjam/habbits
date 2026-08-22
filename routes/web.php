@@ -19,6 +19,7 @@ Route::middleware('auth')->group(function () {
     // ─── Route Pegawai (semua role auth) ───────────────────────────────────────
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 
     Route::get('/habit/form', [\App\Http\Controllers\FormHabitController::class, 'index'])->name('habit.form');

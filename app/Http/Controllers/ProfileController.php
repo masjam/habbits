@@ -17,7 +17,26 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => false,
             'status' => session('status'),
+            'profileStatus' => session('profile_status'),
+            'user' => $request->user(),
         ]);
+    }
+
+    /**
+     * Update profil pengguna.
+     */
+    public function updateProfile(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'min:10', 'max:14'],
+            'personal_target' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        $request->user()->fill($validated);
+        $request->user()->save();
+
+        return back()->with('profile_status', 'profile-updated');
     }
 
     /**

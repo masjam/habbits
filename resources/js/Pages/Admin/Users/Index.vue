@@ -267,17 +267,15 @@ const canEditUser = (user) => {
                     </div>
                     <div class="flex flex-wrap gap-1">
                         <template v-for="(link, i) in users.links" :key="i">
-                            <component 
-                                :is="link.url ? 'Link' : 'span'"
+                            <Link 
+                                v-if="link.url"
                                 :href="link.url"
                                 class="px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors"
-                                :class="[
-                                    link.active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200',
-                                    link.url ? 'hover:bg-slate-50 cursor-pointer' : 'text-slate-400 bg-slate-50 cursor-default'
-                                ]"
+                                :class="link.active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'"
                                 v-html="link.label"
                                 preserve-scroll
                             />
+                            <span v-else class="px-3 py-1.5 text-sm font-medium border rounded-lg text-slate-400 border-slate-200 bg-slate-50" v-html="link.label"></span>
                         </template>
                     </div>
                 </div>
