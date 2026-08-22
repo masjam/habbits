@@ -31,17 +31,18 @@ const months = [
 const selectedMonth = ref(props.filters.month)
 const selectedYear = ref(props.filters.year)
 const searchQuery = ref(props.filters.search || '')
+const perPage = ref(props.filters.per_page || 10)
 
 let searchTimeout = null
 watch(searchQuery, (newVal) => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
-        router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: newVal }, { preserveState: true, preserveScroll: true, replace: true })
+        router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: newVal, per_page: perPage.value }, { preserveState: true, preserveScroll: true, replace: true })
     }, 300)
 })
 
-watch([selectedMonth, selectedYear], () => {
-    router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: searchQuery.value }, { preserveState: true, preserveScroll: true })
+watch([selectedMonth, selectedYear, perPage], () => {
+    router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: searchQuery.value, per_page: perPage.value }, { preserveState: true, preserveScroll: true })
 })
 
 const saveTarget = () => {
@@ -94,6 +95,13 @@ const getBadgeClass = (persentase) => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
+                        <select v-model="perPage" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:w-auto p-2" title="Data per halaman">
+                            <option :value="5">5 Baris</option>
+                            <option :value="10">10 Baris</option>
+                            <option :value="25">25 Baris</option>
+                            <option :value="50">50 Baris</option>
+                            <option :value="100">100 Baris</option>
+                        </select>
                         <select v-model="selectedMonth" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:w-auto p-2">
                             <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
                         </select>
@@ -142,6 +150,14 @@ const getBadgeClass = (persentase) => {
 
             <!-- Leaderboard List -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <!-- Header Laporan -->
+                <div class="flex items-center px-6 py-3 gap-4 bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <div class="w-8 flex-shrink-0 text-center">No</div>
+                    <div class="w-10 flex-shrink-0 hidden sm:block"></div>
+                    <div class="flex-1 min-w-0">Nama Pegawai & Skor</div>
+                    <div class="flex-shrink-0 text-right w-24">Pencapaian</div>
+                </div>
+
                 <ul class="divide-y divide-slate-100">
                     <li v-if="leaderboard.data.length === 0" class="p-8 text-center text-slate-500">Belum ada data pegawai.</li>
                     

@@ -22,6 +22,7 @@ class LaporanController extends Controller
         $month = $request->input('month', $now->month);
         $year = $request->input('year', $now->year);
         $search = $request->input('search');
+        $perPage = $request->input('per_page', 10);
 
         $date = Carbon::create($year, $month, 1);
         $startOfMonth = $date->copy()->startOfMonth();
@@ -49,7 +50,7 @@ class LaporanController extends Controller
             )
             ->orderByRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) DESC');
 
-        $paginatedUsers = $usersQuery->paginate(10)->withQueryString();
+        $paginatedUsers = $usersQuery->paginate($perPage)->withQueryString();
 
         $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
@@ -73,6 +74,7 @@ class LaporanController extends Controller
                 'month'  => (int) $month,
                 'year'   => (int) $year,
                 'search' => $search,
+                'per_page' => (int) $perPage,
             ]
         ]);
     }

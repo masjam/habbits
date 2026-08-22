@@ -18,9 +18,11 @@ class UserController extends Controller
     /**
      * Tampilkan daftar seluruh pengguna.
      */
-    public function index()
+    public function index(Request $request)
     {
         $currentUser = Auth::user();
+        $search = $request->input('search');
+        $perPage = $request->input('per_page', 10);
 
         // Ambil data user, admin hanya bisa melihat role user. Superadmin bisa lihat semua.
         // Tapi sementara kita tampilkan semua saja, atau jika admin, tampilkan pegawai saja.
@@ -33,7 +35,16 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->get()->map(function ($user) {
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->paginate($perPage)->withQueryString();
+
+        $users->getCollection()->transform(function ($user) {
             return [
                 'id'         => $user->id,
                 'name'       => $user->name,
@@ -46,6 +57,7 @@ class UserController extends Controller
 
         return Inertia::render('Admin/Users/Index', [
             'users'       => $users,
+            'filters'     => ['search' => $search, 'per_page' => (int) $perPage],
             'isSuperadmin'=> $currentUser->hasRole('superadmin'),
         ]);
     }

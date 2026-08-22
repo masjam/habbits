@@ -1,16 +1,33 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, useForm, router } from '@inertiajs/vue3'
+import { Head, Link, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 
 const props = defineProps({
-    users: Array,
+    users: Object,
+    filters: Object,
     isSuperadmin: Boolean,
 })
 
 const isModalOpen = ref(false)
 const isEditing = ref(false)
 const editingUserId = ref(null)
+
+const searchQuery = ref(props.filters?.search || '')
+const perPage = ref(props.filters?.per_page || 10)
+
+let searchTimeout = null
+import { watch } from 'vue'
+watch(searchQuery, (newVal) => {
+    clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => {
+        router.get(route('admin.users.index'), { search: newVal, per_page: perPage.value }, { preserveState: true, preserveScroll: true, replace: true })
+    }, 300)
+})
+
+watch(perPage, () => {
+    router.get(route('admin.users.index'), { search: searchQuery.value, per_page: perPage.value }, { preserveState: true, preserveScroll: true })
+})
 
 const isResetModalOpen = ref(false)
 const resettingUser = ref(null)
@@ -151,19 +168,34 @@ const canEditUser = (user) => {
                         Daftar seluruh akun yang terdaftar dalam sistem.
                     </p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button @click="openUploadModal" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-sm shadow-sm hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-slate-200">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                <div class="flex flex-col sm:flex-row items-center gap-3 mt-4 sm:mt-0">
+                    <div class="relative w-full sm:w-64">
+                        <input type="text" v-model="searchQuery" placeholder="Cari nama atau email..." class="bg-white border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2.5 pl-9 shadow-sm" />
+                        <svg class="w-4 h-4 absolute left-3 top-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <span class="hidden sm:inline">Upload Massal</span>
-                    </button>
-                    <button @click="openAddModal" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-sm hover:bg-emerald-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>Tambah Pengguna</span>
-                    </button>
+                    </div>
+                    <select v-model="perPage" class="bg-white border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:w-auto p-2.5 shadow-sm" title="Data per halaman">
+                        <option :value="5">5 Baris</option>
+                        <option :value="10">10 Baris</option>
+                        <option :value="25">25 Baris</option>
+                        <option :value="50">50 Baris</option>
+                        <option :value="100">100 Baris</option>
+                    </select>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button @click="openUploadModal" class="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-sm shadow-sm hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-slate-200">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span class="hidden sm:inline">Upload Massal</span>
+                        </button>
+                        <button @click="openAddModal" class="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-sm hover:bg-emerald-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>Tambah Pengguna</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -181,7 +213,10 @@ const canEditUser = (user) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200">
-                            <tr v-for="user in users" :key="user.id" class="bg-white hover:bg-slate-50 transition-colors">
+                            <tr v-if="users.data.length === 0">
+                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">Tidak ada data pegawai yang ditemukan.</td>
+                            </tr>
+                            <tr v-for="user in users.data" :key="user.id" class="bg-white hover:bg-slate-50 transition-colors">
                                 <td class="px-4 py-4 font-bold text-slate-800">{{ user.name }}</td>
                                 <td class="px-4 py-4 text-slate-500">{{ user.email }}</td>
                                 <td class="px-4 py-4 text-center">
@@ -223,6 +258,28 @@ const canEditUser = (user) => {
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div v-if="users.links && users.links.length > 3" class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="text-sm text-slate-500">
+                        Menampilkan <span class="font-bold text-slate-700">{{ users.from || 0 }}</span> sampai <span class="font-bold text-slate-700">{{ users.to || 0 }}</span> dari <span class="font-bold text-slate-700">{{ users.total }}</span> data
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                        <template v-for="(link, i) in users.links" :key="i">
+                            <component 
+                                :is="link.url ? 'Link' : 'span'"
+                                :href="link.url"
+                                class="px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors"
+                                :class="[
+                                    link.active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200',
+                                    link.url ? 'hover:bg-slate-50 cursor-pointer' : 'text-slate-400 bg-slate-50 cursor-default'
+                                ]"
+                                v-html="link.label"
+                                preserve-scroll
+                            />
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
