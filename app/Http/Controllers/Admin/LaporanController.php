@@ -21,6 +21,7 @@ class LaporanController extends Controller
         $now = Carbon::now();
         $month = $request->input('month', $now->month);
         $year = $request->input('year', $now->year);
+        $search = $request->input('search');
 
         $date = Carbon::create($year, $month, 1);
         $startOfMonth = $date->copy()->startOfMonth();
@@ -37,15 +38,20 @@ class LaporanController extends Controller
             ->sum('skor_maksimal') ?: 100;
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
 
-        // Ambil data semua pegawai (role user)
-        $users = User::role('user')
+        // Ambil data semua pegawai (role user) beserta pencarian dan pagination
+        $usersQuery = User::role('user')
+            ->when($search, function ($query, $search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
             ->withSum(
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'
             )
-            ->get();
+            ->orderByRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) DESC');
 
-        $leaderboard = $users->map(function ($user) use ($skorMaksimalSebulan) {
+        $paginatedUsers = $usersQuery->paginate(10)->withQueryString();
+
+        $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
             $persentase = ($skorMaksimalSebulan > 0) ? ($skorDiperoleh / $skorMaksimalSebulan) * 100 : 0;
 
@@ -56,16 +62,17 @@ class LaporanController extends Controller
                 'skor'       => $skorDiperoleh,
                 'persentase' => round($persentase, 1),
             ];
-        })->sortByDesc('persentase')->values();
+        });
 
         return Inertia::render('Admin/Laporan/Index', [
-            'leaderboard'         => $leaderboard,
+            'leaderboard'         => $paginatedUsers,
             'targetBulanan'       => $targetBulanan,
             'skorMaksimalSebulan' => $skorMaksimalSebulan,
             'namaBulan'           => $date->translatedFormat('F Y'),
             'filters'             => [
-                'month' => (int) $month,
-                'year'  => (int) $year,
+                'month'  => (int) $month,
+                'year'   => (int) $year,
+                'search' => $search,
             ]
         ]);
     }
