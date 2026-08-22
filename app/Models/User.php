@@ -25,6 +25,7 @@ class User extends Authenticatable
         'current_streak',
         'longest_streak',
         'personal_target',
+        'avatar',
     ];
 
     protected $hidden = [

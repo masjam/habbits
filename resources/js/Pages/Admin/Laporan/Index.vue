@@ -85,76 +85,96 @@ const getBadgeClass = (persentase) => {
                         Rekapitulasi pencapaian ibadah seluruh pegawai bulan <strong>{{ namaBulan }}</strong>.
                     </p>
                 </div>
+            </div>
                 
-                <div class="flex flex-col sm:flex-row items-center gap-4">
-                    <!-- Filter Section -->
-                    <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
-                        <div class="relative w-full sm:w-48">
-                            <input type="text" v-model="searchQuery" placeholder="Cari pegawai..." class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full p-2 pl-8" />
-                            <svg class="w-4 h-4 absolute left-2.5 top-2.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <select v-model="perPage" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:w-auto p-2" title="Data per halaman">
-                            <option :value="5">5 Baris</option>
-                            <option :value="10">10 Baris</option>
-                            <option :value="25">25 Baris</option>
-                            <option :value="50">50 Baris</option>
-                            <option :value="100">100 Baris</option>
-                        </select>
-                        <select v-model="selectedMonth" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:w-auto p-2">
-                            <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
-                        </select>
-                        <select v-model="selectedYear" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:w-auto p-2">
-                            <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
-                        </select>
-                        <a :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery })" class="px-3 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2" title="Unduh Rekap Excel">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Export
-                        </a>
-                    </div>
-
-                    <!-- Target Settings -->
-                    <form @submit.prevent="saveTarget" class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3 w-full sm:w-auto">
-                        <div class="flex flex-col">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Target Bulanan (%)</label>
-                            <div class="relative mt-1">
-                                <input type="number" step="0.1" min="0" max="100" v-model="form.target" class="w-24 p-1.5 pr-6 text-sm font-bold text-emerald-700 bg-emerald-50 border-emerald-200 rounded focus:ring-emerald-500 focus:border-emerald-500" />
-                                <span class="absolute right-2 top-1.5 text-sm text-emerald-600 font-bold">%</span>
+            <!-- Controls Card -->
+            <div class="bg-white rounded-3xl px-6 pt-6 pb-2 shadow-sm border border-slate-100">
+                <div class="flex flex-col lg:flex-row gap-6 items-start lg:items-end justify-between">
+                    
+                    <!-- Search & Filters -->
+                    <div class="flex-1 w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div class="col-span-1 md:col-span-2 xl:col-span-1">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pencarian</label>
+                            <div class="relative">
+                                <input type="text" v-model="searchQuery" placeholder="Cari nama pegawai..." class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 pr-4 py-2.5 transition-colors" />
+                                <svg class="w-5 h-5 absolute left-3 top-2.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
                             </div>
                         </div>
-                        <button type="submit" :disabled="form.processing" class="mt-4 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-900 transition-colors">
-                            Simpan
-                        </button>
-                    </form>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bulan</label>
+                            <select v-model="selectedMonth" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
+                                <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
+                            <select v-model="selectedYear" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
+                                <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tampil</label>
+                            <select v-model="perPage" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
+                                <option :value="5">5 Baris</option>
+                                <option :value="10">10 Baris</option>
+                                <option :value="25">25 Baris</option>
+                                <option :value="50">50 Baris</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Target & Export Actions -->
+                    <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto mt-4 lg:mt-0 border-t lg:border-t-0 pt-4 lg:pt-0 border-slate-100">
+                        <form @submit.prevent="saveTarget" class="flex items-end gap-2 bg-emerald-50 p-2 rounded-xl border border-emerald-100">
+                            <div>
+                                <label class="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 px-1">Target (%)</label>
+                                <input type="number" step="0.1" min="0" max="100" v-model="form.target" class="w-20 sm:w-24 px-3 py-2 text-sm font-black text-emerald-800 bg-white border-none rounded-lg focus:ring-2 focus:ring-emerald-500 text-center shadow-sm" />
+                            </div>
+                            <button type="submit" :disabled="form.processing" class="h-[36px] px-4 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm whitespace-nowrap">
+                                Simpan
+                            </button>
+                        </form>
+                        
+                        <a :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery })" class="h-[52px] px-5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 shadow-sm self-end" title="Unduh Rekap Excel">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span class="hidden sm:inline">Export</span>
+                        </a>
+                    </div>
+                    
+                    
+                </div>
+                <div class="flex flex-wrap gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider p-3">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-rose-500"></span> 0-30%
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-amber-500"></span> 30.1-50%
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-300"></span> 50.1% - &lt;{{ targetBulanan }}%
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-600"></span> &ge;{{ targetBulanan }}% (Tercapai)
+                    </div>
                 </div>
             </div>
 
             <!-- Legend -->
-            <div class="flex flex-wrap gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded-full bg-rose-500"></span> 0-30%
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded-full bg-amber-500"></span> 30.1-50%
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded-full bg-emerald-300"></span> 50.1% - &lt;{{ targetBulanan }}%
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="w-3 h-3 rounded-full bg-emerald-600"></span> &ge;{{ targetBulanan }}% (Tercapai)
-                </div>
-            </div>
 
             <!-- Leaderboard List -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <!-- Header Laporan -->
-                <div class="flex items-center px-6 py-3 gap-4 bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <div class="flex items-center px-4 py-2.5 gap-3 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     <div class="w-8 flex-shrink-0 text-center">No</div>
-                    <div class="w-10 flex-shrink-0 hidden sm:block"></div>
-                    <div class="flex-1 min-w-0">Nama Pegawai & Skor</div>
+                    <div class="w-9 flex-shrink-0 hidden sm:block"></div>
+                    <div class="flex-1 min-w-0 ml-1">Nama Pegawai & Skor</div>
                     <div class="flex-shrink-0 text-right w-24">Pencapaian</div>
                 </div>
 
@@ -165,34 +185,35 @@ const getBadgeClass = (persentase) => {
                         class="transition-colors group"
                         :class="getRowClass(user.persentase)"
                     >
-                        <Link :href="route('admin.laporan.detail', user.id)" class="flex items-center px-6 py-4 gap-4">
+                        <Link :href="route('admin.laporan.detail', user.id)" class="flex items-center px-4 py-2.5 gap-3">
                             <!-- Rank -->
                             <div class="w-8 flex-shrink-0 text-center">
-                                <span v-if="leaderboard.current_page === 1 && index === 0" class="text-2xl">🥇</span>
-                                <span v-else-if="leaderboard.current_page === 1 && index === 1" class="text-2xl">🥈</span>
-                                <span v-else-if="leaderboard.current_page === 1 && index === 2" class="text-2xl">🥉</span>
-                                <span v-else class="text-lg font-black text-slate-400">{{ (leaderboard.current_page - 1) * leaderboard.per_page + index + 1 }}</span>
+                                <span v-if="leaderboard.current_page === 1 && index === 0" class="text-xl">🥇</span>
+                                <span v-else-if="leaderboard.current_page === 1 && index === 1" class="text-xl">🥈</span>
+                                <span v-else-if="leaderboard.current_page === 1 && index === 2" class="text-xl">🥉</span>
+                                <span v-else class="text-base font-black text-slate-400">{{ (leaderboard.current_page - 1) * leaderboard.per_page + index + 1 }}</span>
                             </div>
 
                             <!-- Avatar & Name -->
-                            <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600 flex-shrink-0">
-                                {{ user.name.charAt(0).toUpperCase() }}
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-slate-600 flex-shrink-0 overflow-hidden border-2 border-white shadow-sm" :class="!user.avatar ? 'bg-slate-200' : 'bg-transparent'">
+                                <img v-if="user.avatar" :src="user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`" class="w-full h-full object-cover" />
+                                <span v-else class="text-xs">{{ user.name.charAt(0).toUpperCase() }}</span>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="font-bold text-slate-800 text-base truncate group-hover:text-emerald-700 transition-colors">
+                            <div class="flex-1 min-w-0 ml-1">
+                                <div class="font-bold text-slate-800 text-sm truncate group-hover:text-emerald-700 transition-colors">
                                     {{ user.name }}
                                 </div>
-                                <div class="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">
+                                <div class="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">
                                     Skor: {{ user.skor }} / {{ skorMaksimalSebulan }}
                                 </div>
                             </div>
 
                             <!-- Percentage -->
-                            <div class="flex-shrink-0 text-right flex items-center gap-3">
-                                <div class="px-3 py-1 rounded-full font-black text-sm" :class="getBadgeClass(user.persentase)">
+                            <div class="flex-shrink-0 text-right flex items-center gap-2">
+                                <div class="px-2.5 py-1 rounded-full font-black text-xs" :class="getBadgeClass(user.persentase)">
                                     {{ user.persentase }}%
                                 </div>
-                                <svg class="w-5 h-5 text-slate-300 group-hover:text-emerald-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                 </svg>
                             </div>

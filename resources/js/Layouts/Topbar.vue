@@ -34,6 +34,13 @@ const roleLabel = computed(() => {
 const userInitial = computed(() =>
     props.user?.name?.charAt(0)?.toUpperCase() ?? '?'
 )
+
+const userAvatarUrl = computed(() => {
+    if (props.user?.avatar) {
+        return props.user.avatar.startsWith('http') ? props.user.avatar : `/storage/${props.user.avatar}`
+    }
+    return null
+})
 </script>
 
 <template>
@@ -83,8 +90,9 @@ const userInitial = computed(() =>
                     :aria-expanded="isDropdownOpen"
                     @click="toggleDropdown"
                 >
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <span class="text-sm font-bold text-white">{{ userInitial }}</span>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden">
+                        <img v-if="userAvatarUrl" :src="userAvatarUrl" class="w-full h-full object-cover" />
+                        <span v-else class="text-sm font-bold text-white">{{ userInitial }}</span>
                     </div>
 
                     <div class="hidden sm:block text-left leading-tight">
@@ -126,8 +134,9 @@ const userInitial = computed(() =>
                         role="menu"
                     >
                         <div class="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0">
-                                <span class="text-sm font-bold text-white">{{ userInitial }}</span>
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                <img v-if="userAvatarUrl" :src="userAvatarUrl" class="w-full h-full object-cover" />
+                                <span v-else class="text-sm font-bold text-white">{{ userInitial }}</span>
                             </div>
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{{ user?.name }}</p>

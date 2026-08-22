@@ -38,6 +38,13 @@ const userInitial = computed(() =>
     props.user?.name?.charAt(0)?.toUpperCase() ?? '?'
 )
 
+const userAvatarUrl = computed(() => {
+    if (props.user?.avatar) {
+        return props.user.avatar.startsWith('http') ? props.user.avatar : `/storage/${props.user.avatar}`
+    }
+    return null
+})
+
 // ─── Active Route Helper (via Ziggy) ────────────────────────────────────────
 const isActive = (routeName) => {
     try { return route().current(routeName) } catch { return false }
@@ -251,8 +258,9 @@ const navLinkClass = (routeName) => [
         <!-- ── Sidebar Footer (mini user card) ───────────────── -->
         <div class="flex-shrink-0 px-3 py-4 border-t border-slate-100 dark:border-slate-700">
             <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 border-2 border-emerald-200 dark:border-emerald-700">
-                    <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400">{{ userInitial }}</span>
+                <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 border-2 border-emerald-200 dark:border-emerald-700 overflow-hidden">
+                    <img v-if="userAvatarUrl" :src="userAvatarUrl" class="w-full h-full object-cover" />
+                    <span v-else class="text-xs font-bold text-emerald-700 dark:text-emerald-400">{{ userInitial }}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{{ user?.name }}</p>

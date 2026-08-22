@@ -31,10 +31,37 @@ class ProfileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'min:10', 'max:14'],
             'personal_target' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'avatar' => ['nullable'], // can be string (predefined) or file
         ]);
 
-        $request->user()->fill($validated);
-        $request->user()->save();
+        $user = $request->user();
+        $user->fill([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'] ?? null,
+            'personal_target' => $validated['personal_target'] ?? null,
+        ]);
+
+        if ($request->hasFile('avatar')) {
+            $request->validate([
+                'avatar' => ['image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            ]);
+            
+            // Delete old avatar if it's a local file
+            if ($user->avatar && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->avatar)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            }
+
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $path;
+        } elseif ($request->filled('avatar') && is_string($validated['avatar'])) {
+            // Predefined avatar selected
+            if ($user->avatar && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->avatar) && $user->avatar !== $validated['avatar']) {
+                 \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            }
+            $user->avatar = $validated['avatar'];
+        }
+
+        $user->save();
 
         return back()->with('profile_status', 'profile-updated');
     }
