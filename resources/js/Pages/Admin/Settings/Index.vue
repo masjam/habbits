@@ -76,7 +76,7 @@ const submit = () => {
                                             v-model="form.announcement_text"
                                             tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js"
                                             :init="{
-                                                height: 250,
+                                                height: 200,
                                                 menubar: false,
                                                 plugins: [
                                                     'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
@@ -124,7 +124,7 @@ const submit = () => {
                                                 tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js"
                                                 :disabled="!form.popup_active"
                                                 :init="{
-                                                    height: 350,
+                                                    height: 150,
                                                     menubar: false,
                                                     plugins: [
                                                         'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
