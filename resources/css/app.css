@@ -105,7 +105,8 @@
     .text-muted      { color: var(--text-muted); }
 
     /* Transition smooth untuk dark mode toggle */
-    .theme-transition {
-        transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease, box-shadow 0.25s ease;
+    /* Font khusus teks Al-Quran & Arab */
+    .font-arabic {
+        font-family: 'Scheherazade New', 'Amiri Quran', 'Traditional Arabic', serif;
     }
 }

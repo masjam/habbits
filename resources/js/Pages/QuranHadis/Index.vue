@@ -527,6 +527,7 @@ onUnmounted(() => {
 
 <style scoped>
 .font-arabic {
-    font-family: 'Traditional Arabic', 'Scheherazade New', 'KFGQPC Uthmanic Script HAFS', serif;
+    font-family: 'Scheherazade New', 'Amiri Quran', 'Traditional Arabic', serif;
+    line-height: 2.2;
 }
 </style>
