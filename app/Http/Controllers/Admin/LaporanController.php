@@ -49,7 +49,7 @@ class LaporanController extends Controller
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'
             )
-            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan) {
+            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
                 $min = 0;
                 $max = 99999999;
                 if ($kategori === '0-30') {
@@ -63,10 +63,11 @@ class LaporanController extends Controller
                 } elseif ($kategori === 'tercapai') {
                     $min = ($targetBulanan / 100) * $skorMaksimalSebulan;
                 }
-                // When using havingRaw on alias in pagination, we must group by the main table id
-                $query->groupBy('users.id')
-                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) >= ?', [$min])
-                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) <= ?', [$max]);
+                
+                $query->where(function($q) use ($startOfMonth, $endOfMonth, $min, $max) {
+                    $q->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) >= ?", [$startOfMonth, $endOfMonth, $min])
+                      ->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) <= ?", [$startOfMonth, $endOfMonth, $max]);
+                });
             })
             ->orderByRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) DESC');
 
@@ -132,7 +133,7 @@ class LaporanController extends Controller
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'
             )
-            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan) {
+            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
                 $min = 0;
                 $max = 99999999;
                 if ($kategori === '0-30') {
@@ -146,9 +147,11 @@ class LaporanController extends Controller
                 } elseif ($kategori === 'tercapai') {
                     $min = ($targetBulanan / 100) * $skorMaksimalSebulan;
                 }
-                $query->groupBy('users.id')
-                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) >= ?', [$min])
-                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) <= ?', [$max]);
+                
+                $query->where(function($q) use ($startOfMonth, $endOfMonth, $min, $max) {
+                    $q->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) >= ?", [$startOfMonth, $endOfMonth, $min])
+                      ->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) <= ?", [$startOfMonth, $endOfMonth, $max]);
+                });
             })
             ->get();
 
