@@ -26,6 +26,11 @@ class User extends Authenticatable
         'longest_streak',
         'personal_target',
         'avatar',
+        'nip',
+        'divisi',
+        'status_kehadiran',
+        'catatan_pimpinan',
+        'target_tidak_aktif',
     ];
 
     protected $hidden = [
@@ -54,5 +59,12 @@ class User extends Authenticatable
     public function menstruationLogs(): HasMany
     {
         return $this->hasMany(MenstruationLog::class);
+    }
+
+    public function badges()
+    {
+        return $this->belongsToMany(Badge::class, 'user_badges')
+                    ->withPivot('unlocked_at')
+                    ->withTimestamps();
     }
 }

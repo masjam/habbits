@@ -43,6 +43,7 @@ class LaporanExport implements FromCollection, WithHeadings, WithMapping, WithEv
                 'Jenis Kelamin',
                 'Skor Diperoleh',
                 'Skor Maksimal',
+                'Target (%)',
                 'Persentase (%)'
             ]
         ];
@@ -57,6 +58,7 @@ class LaporanExport implements FromCollection, WithHeadings, WithMapping, WithEv
             $row['gender'] === 'L' ? 'Laki-laki' : 'Perempuan',
             $row['skor'],
             $this->skorMaksimal,
+            ($row['target'] ?? $this->targetBulanan) . '%',
             $row['persentase'] . '%'
         ];
     }
@@ -66,23 +68,26 @@ class LaporanExport implements FromCollection, WithHeadings, WithMapping, WithEv
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 // Style heading table
-                $event->sheet->getStyle('A4:F4')->getFont()->setBold(true);
+                $event->sheet->getStyle('A4:G4')->getFont()->setBold(true);
                 $event->sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
                 
                 $rowNum = 5; // Data starts at row 5 (after headings)
                 foreach ($this->leaderboard as $row) {
                     $persentase = $row['persentase'];
+                    $userTarget = $row['target'] ?? $this->targetBulanan;
                     $color = 'D1FAE5'; // emerald-100 (Tercapai)
                     
-                    if ($persentase <= 30) {
-                        $color = 'FFF1F2'; // rose-50
-                    } elseif ($persentase <= 50) {
-                        $color = 'FFFBEB'; // amber-50
-                    } elseif ($persentase < $this->targetBulanan) {
+                    if ($persentase >= $userTarget) {
+                        $color = 'D1FAE5'; // emerald-100
+                    } elseif ($persentase > 50) {
                         $color = 'ECFDF5'; // emerald-50
+                    } elseif ($persentase > 30) {
+                        $color = 'FFFBEB'; // amber-50
+                    } else {
+                        $color = 'FFF1F2'; // rose-50
                     }
                     
-                    $event->sheet->getStyle("A{$rowNum}:F{$rowNum}")->applyFromArray([
+                    $event->sheet->getStyle("A{$rowNum}:G{$rowNum}")->applyFromArray([
                         'fill' => [
                             'fillType' => Fill::FILL_SOLID,
                             'startColor' => ['argb' => $color]

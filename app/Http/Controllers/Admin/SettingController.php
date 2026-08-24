@@ -18,6 +18,19 @@ class SettingController extends Controller
         ]);
     }
 
+    public function hrIndex()
+    {
+        if (!auth()->user()->hasRole('superadmin')) {
+            abort(403, 'Hanya Superadmin yang dapat mengakses halaman ini.');
+        }
+
+        $settings = Setting::all()->pluck('value', 'key')->toArray();
+
+        return Inertia::render('Admin/Settings/Hr', [
+            'settings' => $settings
+        ]);
+    }
+
     public function update(Request $request)
     {
         $rules = [
@@ -34,6 +47,11 @@ class SettingController extends Controller
             $rules['dark_mode_active'] = 'boolean';
             $rules['auto_warning_active'] = 'boolean';
             $rules['custom_habit_divisions_active'] = 'boolean';
+            $rules['feature_badges'] = 'boolean';
+            $rules['feature_divisi'] = 'boolean';
+            $rules['feature_cuti'] = 'boolean';
+            $rules['feature_idcard'] = 'boolean';
+            $rules['feature_notes'] = 'boolean';
         }
 
         $data = $request->validate($rules);

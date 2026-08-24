@@ -26,7 +26,7 @@ class UserController extends Controller
 
         // Ambil data user, admin hanya bisa melihat role user. Superadmin bisa lihat semua.
         // Tapi sementara kita tampilkan semua saja, atau jika admin, tampilkan pegawai saja.
-        $query = User::with('roles')->orderBy('created_at', 'desc');
+        $query = User::with(['roles', 'badges'])->orderBy('created_at', 'desc');
 
         if (!$currentUser->hasRole('superadmin')) {
             // Admin biasa hanya melihat pegawai (role: user)
@@ -46,17 +46,25 @@ class UserController extends Controller
 
         $users->getCollection()->transform(function ($user) {
             return [
-                'id'         => $user->id,
-                'name'       => $user->name,
-                'email'      => $user->email,
-                'gender'     => $user->gender,
-                'roles'      => $user->getRoleNames(),
-                'created_at' => $user->created_at->format('Y-m-d H:i:s'),
+                'id'               => $user->id,
+                'name'             => $user->name,
+                'email'            => $user->email,
+                'gender'           => $user->gender,
+                'roles'            => $user->getRoleNames(),
+                'nip'              => $user->nip,
+                'divisi'           => $user->divisi,
+                'status_kehadiran' => $user->status_kehadiran,
+                'catatan_pimpinan' => $user->catatan_pimpinan,
+                'created_at'       => $user->created_at->format('Y-m-d H:i:s'),
+                'badges'           => $user->badges,
             ];
         });
 
+        $badges = \App\Models\Badge::all();
+
         return Inertia::render('Admin/Users/Index', [
             'users'       => $users,
+            'allBadges'   => $badges,
             'filters'     => ['search' => $search, 'per_page' => (int) $perPage],
             'isSuperadmin'=> $currentUser->hasRole('superadmin'),
         ]);
@@ -71,10 +79,13 @@ class UserController extends Controller
         $isSuperadmin = $currentUser->hasRole('superadmin');
 
         $rules = [
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', Rules\Password::defaults()],
-            'gender'   => 'required|in:L,P',
+            'name'             => 'required|string|max:255',
+            'email'            => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'password'         => ['required', Rules\Password::defaults()],
+            'gender'           => 'required|in:L,P',
+            'nip'              => 'nullable|string|max:255',
+            'divisi'           => 'nullable|string|max:255',
+            'status_kehadiran' => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
         ];
 
         // Jika superadmin, validasi pilihan role
@@ -85,10 +96,13 @@ class UserController extends Controller
         $validated = $request->validate($rules);
 
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'gender'   => $validated['gender'],
+            'name'             => $validated['name'],
+            'email'            => $validated['email'],
+            'password'         => Hash::make($validated['password']),
+            'gender'           => $validated['gender'],
+            'nip'              => $validated['nip'] ?? null,
+            'divisi'           => $validated['divisi'] ?? null,
+            'status_kehadiran' => $validated['status_kehadiran'] ?? 'Aktif',
         ]);
 
         // Tetapkan role
@@ -116,9 +130,13 @@ class UserController extends Controller
         }
 
         $rules = [
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|lowercase|email|max:255|unique:'.User::class.',email,'.$user->id,
-            'gender'   => 'required|in:L,P',
+            'name'               => 'required|string|max:255',
+            'email'              => 'required|string|lowercase|email|max:255|unique:'.User::class.',email,'.$user->id,
+            'gender'             => 'required|in:L,P',
+            'nip'                => 'nullable|string|max:255',
+            'divisi'             => 'nullable|string|max:255',
+            'status_kehadiran'   => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
+            'target_tidak_aktif' => 'nullable|integer|min:0|max:100',
         ];
 
         // Jika form mengirim password (opsional di edit)
@@ -128,15 +146,24 @@ class UserController extends Controller
 
         if ($isSuperadmin) {
             $rules['role'] = 'required|in:user,admin,superadmin';
+            $rules['catatan_pimpinan'] = 'nullable|string';
         }
 
         $validated = $request->validate($rules);
 
         $updateData = [
-            'name'   => $validated['name'],
-            'email'  => $validated['email'],
-            'gender' => $validated['gender'],
+            'name'               => $validated['name'],
+            'email'              => $validated['email'],
+            'gender'             => $validated['gender'],
+            'nip'                => $validated['nip'] ?? null,
+            'divisi'             => $validated['divisi'] ?? null,
+            'status_kehadiran'   => $validated['status_kehadiran'] ?? 'Aktif',
+            'target_tidak_aktif' => $validated['target_tidak_aktif'] ?? null,
         ];
+
+        if ($isSuperadmin && isset($validated['catatan_pimpinan'])) {
+            $updateData['catatan_pimpinan'] = $validated['catatan_pimpinan'];
+        }
 
         if ($request->filled('password')) {
             $updateData['password'] = Hash::make($validated['password']);
@@ -220,5 +247,45 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->back()->with('success', "Pengguna {$user->name} berhasil dihapus.");
+    }
+
+    /**
+     * Berikan lencana (badge) manual kepada user.
+     */
+    public function assignBadge(Request $request, User $user)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser->hasRole('superadmin') && !$currentUser->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses.');
+        }
+
+        $request->validate([
+            'badge_id' => 'required|exists:badges,id',
+        ]);
+
+        if (!$user->badges()->where('badge_id', $request->badge_id)->exists()) {
+            $user->badges()->attach($request->badge_id, ['unlocked_at' => now()]);
+            return redirect()->back()->with('success', 'Lencana berhasil diberikan kepada pegawai.');
+        }
+
+        return redirect()->back()->withErrors(['badge' => 'Pegawai sudah memiliki lencana ini.']);
+    }
+
+    /**
+     * Tarik kembali lencana (badge) dari user.
+     */
+    public function removeBadge(Request $request, User $user)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser->hasRole('superadmin') && !$currentUser->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses.');
+        }
+
+        $request->validate([
+            'badge_id' => 'required|exists:badges,id',
+        ]);
+
+        $user->badges()->detach($request->badge_id);
+        return redirect()->back()->with('success', 'Lencana berhasil ditarik dari pegawai.');
     }
 }

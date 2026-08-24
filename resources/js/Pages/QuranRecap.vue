@@ -98,12 +98,14 @@ const formatTanggal = (dateStr) => {
                         <thead class="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
                             <tr>
                                 <th rowspan="2" class="px-4 py-3 font-bold text-slate-700 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700 w-32">Tanggal</th>
-                                <th colspan="2" class="px-4 py-2 font-bold text-center text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/20 border-r border-slate-200 dark:border-slate-700">Tilawah (Membaca)</th>
-                                <th colspan="2" class="px-4 py-2 font-bold text-center text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">Murojaah</th>
+                                <th colspan="3" class="px-4 py-2 font-bold text-center text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/20 border-r border-slate-200 dark:border-slate-700">Tilawah (Membaca)</th>
+                                <th colspan="3" class="px-4 py-2 font-bold text-center text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">Murojaah</th>
                             </tr>
                             <tr>
+                                <th class="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-t border-slate-200 dark:border-slate-700 bg-emerald-50/20 dark:bg-emerald-900/10 w-24">Durasi</th>
                                 <th class="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-t border-slate-200 dark:border-slate-700 bg-emerald-50/20 dark:bg-emerald-900/10">Surat Awal</th>
                                 <th class="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-t border-slate-200 dark:border-slate-700 bg-emerald-50/20 dark:bg-emerald-900/10">Surat Akhir</th>
+                                <th class="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-t border-slate-200 dark:border-slate-700 bg-blue-50/20 dark:bg-blue-900/10 w-24">Durasi</th>
                                 <th class="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-t border-slate-200 dark:border-slate-700 bg-blue-50/20 dark:bg-blue-900/10">Surat Awal</th>
                                 <th class="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-700 bg-blue-50/20 dark:bg-blue-900/10">Surat Akhir</th>
                             </tr>
@@ -115,6 +117,10 @@ const formatTanggal = (dateStr) => {
                                 </td>
                                 
                                 <!-- Tilawah -->
+                                <td class="px-4 py-3 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold text-center">
+                                    <span v-if="item.tilawah && item.tilawah.durasi">{{ item.tilawah.durasi }} mnt</span>
+                                    <span v-else class="text-slate-300 dark:text-slate-600">-</span>
+                                </td>
                                 <td class="px-4 py-3 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400">
                                     <template v-if="item.tilawah && item.tilawah.surat_awal">
                                         <span class="font-semibold">{{ item.tilawah.surat_awal }}</span> 
@@ -131,6 +137,10 @@ const formatTanggal = (dateStr) => {
                                 </td>
                                 
                                 <!-- Murojaah -->
+                                <td class="px-4 py-3 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold text-center">
+                                    <span v-if="item.murojaah && item.murojaah.durasi">{{ item.murojaah.durasi }} mnt</span>
+                                    <span v-else class="text-slate-300 dark:text-slate-600">-</span>
+                                </td>
                                 <td class="px-4 py-3 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400">
                                     <template v-if="item.murojaah && item.murojaah.surat_awal">
                                         <span class="font-semibold">{{ item.murojaah.surat_awal }}</span> 
@@ -148,7 +158,7 @@ const formatTanggal = (dateStr) => {
                             </tr>
                             
                             <tr v-if="recapData.length === 0">
-                                <td colspan="5" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                                <td colspan="7" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
                                     Belum ada data bacaan untuk periode ini.
                                 </td>
                             </tr>
@@ -166,7 +176,10 @@ const formatTanggal = (dateStr) => {
                         <div class="space-y-4">
                             <!-- Tilawah -->
                             <div>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">Tilawah (Membaca)</h3>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Tilawah (Membaca)</h3>
+                                    <span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md" v-if="item.tilawah && item.tilawah.durasi">{{ item.tilawah.durasi }} mnt</span>
+                                </div>
                                 <div class="grid grid-cols-2 gap-2 text-sm">
                                     <div class="bg-emerald-50/50 dark:bg-emerald-900/20 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
                                         <div class="text-[10px] text-slate-500 mb-1 font-semibold uppercase">Surat Awal</div>
@@ -189,7 +202,10 @@ const formatTanggal = (dateStr) => {
                             
                             <!-- Murojaah -->
                             <div>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2">Murojaah</h3>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Murojaah</h3>
+                                    <span class="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md" v-if="item.murojaah && item.murojaah.durasi">{{ item.murojaah.durasi }} mnt</span>
+                                </div>
                                 <div class="grid grid-cols-2 gap-2 text-sm">
                                     <div class="bg-blue-50/50 dark:bg-blue-900/20 p-2.5 rounded-lg border border-blue-100 dark:border-blue-800/30">
                                         <div class="text-[10px] text-slate-500 mb-1 font-semibold uppercase">Surat Awal</div>

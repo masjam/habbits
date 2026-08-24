@@ -5,6 +5,10 @@ import { ref } from 'vue'
 
 const props = defineProps({
     users: Object,
+    allBadges: {
+        type: Array,
+        default: () => []
+    },
     filters: Object,
     isSuperadmin: Boolean,
 })
@@ -38,6 +42,11 @@ const form = useForm({
     password: '',
     gender: 'L',
     role: 'user', // Default
+    nip: '',
+    divisi: '',
+    status_kehadiran: 'Aktif',
+    catatan_pimpinan: '',
+    target_tidak_aktif: '',
 })
 
 const resetForm = useForm({
@@ -87,6 +96,13 @@ const openEditModal = (user) => {
     form.role = user.roles.includes('superadmin') ? 'superadmin' : (user.roles.includes('admin') ? 'admin' : 'user')
     form.password = '' // Don't prefill password
     
+    // HR Features
+    form.nip = user.nip || ''
+    form.divisi = user.divisi || ''
+    form.status_kehadiran = user.status_kehadiran || 'Aktif'
+    form.catatan_pimpinan = user.catatan_pimpinan || ''
+    form.target_tidak_aktif = user.target_tidak_aktif || ''
+    
     isModalOpen.value = true
 }
 
@@ -128,6 +144,43 @@ const saveResetPassword = () => {
     resetForm.post(route('admin.users.reset-password', resettingUser.value.id), {
         onSuccess: () => closeResetModal(),
     })
+}
+
+// Digital ID Card
+const isIdCardModalOpen = ref(false)
+const selectedUserForIdCard = ref(null)
+
+const openIdCardModal = (user) => {
+    selectedUserForIdCard.value = user
+    isIdCardModalOpen.value = true
+}
+
+const closeIdCardModal = () => {
+    isIdCardModalOpen.value = false
+    selectedUserForIdCard.value = null
+}
+
+// Badge Assignment
+const assignBadgeForm = useForm({
+    badge_id: ''
+})
+
+const assignBadge = (userId) => {
+    if(!assignBadgeForm.badge_id) return;
+    assignBadgeForm.post(route('admin.users.badges.assign', userId), {
+        preserveScroll: true,
+        onSuccess: () => {
+            assignBadgeForm.reset()
+        }
+    })
+}
+
+const removeBadge = (userId, badgeId) => {
+    if(confirm('Yakin ingin menarik lencana ini?')) {
+        router.delete(route('admin.users.badges.remove', { user: userId, badge_id: badgeId }), {
+            preserveScroll: true
+        })
+    }
 }
 
 // Security Check helper
@@ -217,8 +270,29 @@ const canEditUser = (user) => {
                             <tr v-if="users.data.length === 0">
                                 <td colspan="5" class="px-4 py-8 text-center text-slate-500">Tidak ada data pegawai yang ditemukan.</td>
                             </tr>
-                            <tr v-for="user in users.data" :key="user.id" class="bg-white hover:bg-slate-50 transition-colors">
-                                <td class="px-4 py-4 font-bold text-slate-800">{{ user.name }}</td>
+                            <tr v-for="user in users.data" :key="user.id" class="bg-white hover:bg-slate-50 transition-colors" :class="{'opacity-50': user.status_kehadiran !== 'Aktif'}">
+                                <td class="px-4 py-4">
+                                    <div v-if="$page.props.global_settings?.feature_idcard === '1' || $page.props.global_settings?.feature_idcard === 'true'"
+                                         @click="openIdCardModal(user)" 
+                                         class="font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer inline-flex items-center gap-1.5 transition-colors">
+                                        {{ user.name }}
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </div>
+                                    <div v-else class="font-bold text-slate-800">{{ user.name }}</div>
+                                    
+                                    <div class="text-xs mt-1 space-y-0.5">
+                                        <div v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'" class="text-slate-500">
+                                            Divisi: <span class="font-medium">{{ user.divisi || '-' }}</span>
+                                        </div>
+                                        <div v-if="$page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true'" class="text-slate-500">
+                                            Status: 
+                                            <span class="font-medium px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider" 
+                                                :class="user.status_kehadiran === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'">
+                                                {{ user.status_kehadiran || 'Aktif' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td class="px-4 py-4 text-slate-500">{{ user.email }}</td>
                                 <td class="px-4 py-4 text-center">
                                     <span v-if="user.gender === 'L'" class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 font-bold">Laki-laki</span>
@@ -262,11 +336,26 @@ const canEditUser = (user) => {
                     
                     <!-- Mobile View -->
                     <div class="md:hidden divide-y divide-slate-100">
-                        <div v-for="user in users.data" :key="`mobile-${user.id}`" class="p-4 space-y-3 bg-white hover:bg-slate-50 transition-colors">
+                        <div v-for="user in users.data" :key="`mobile-${user.id}`" class="p-4 space-y-3 bg-white hover:bg-slate-50 transition-colors" :class="{'opacity-50': user.status_kehadiran !== 'Aktif'}">
                             <div class="flex items-start justify-between gap-2">
                                 <div>
-                                    <div class="font-bold text-slate-800 text-sm">{{ user.name }}</div>
+                                    <div v-if="$page.props.global_settings?.feature_idcard === '1' || $page.props.global_settings?.feature_idcard === 'true'"
+                                         @click="openIdCardModal(user)" 
+                                         class="font-bold text-emerald-600 text-sm cursor-pointer hover:underline inline-flex items-center gap-1">
+                                        {{ user.name }}
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </div>
+                                    <div v-else class="font-bold text-slate-800 text-sm">{{ user.name }}</div>
                                     <div class="text-xs text-slate-500 truncate w-48">{{ user.email }}</div>
+                                    
+                                    <div class="text-[11px] mt-1.5 space-y-0.5">
+                                        <div v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'" class="text-slate-500">
+                                            Div: <span class="font-medium">{{ user.divisi || '-' }}</span>
+                                        </div>
+                                        <div v-if="$page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true'" class="text-slate-500">
+                                            Sts: <span class="font-medium">{{ user.status_kehadiran || 'Aktif' }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="flex items-center gap-1 flex-shrink-0">
                                     <button v-if="canEditUser(user)" @click="openEditModal(user)" title="Edit Profil" class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors">
@@ -363,6 +452,51 @@ const canEditUser = (user) => {
                                         </select>
                                         <p v-if="form.errors.gender" class="text-xs text-rose-500 mt-1">{{ form.errors.gender }}</p>
                                     </div>
+
+                                    <!-- HR Features (Conditional) -->
+                                    <template v-if="$page.props.global_settings?.feature_idcard === '1' || $page.props.global_settings?.feature_idcard === 'true'">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">NIP / ID Pegawai</label>
+                                            <input type="text" v-model="form.nip" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Opsional" />
+                                            <p v-if="form.errors.nip" class="text-xs text-rose-500 mt-1">{{ form.errors.nip }}</p>
+                                        </div>
+                                    </template>
+
+                                    <template v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Grup / Divisi</label>
+                                            <input type="text" v-model="form.divisi" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Contoh: IT, Keuangan, dll" />
+                                            <p v-if="form.errors.divisi" class="text-xs text-rose-500 mt-1">{{ form.errors.divisi }}</p>
+                                        </div>
+                                    </template>
+
+                                    <template v-if="$page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true'">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Status Kehadiran</label>
+                                            <select v-model="form.status_kehadiran" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                                                <option value="Aktif">Aktif</option>
+                                                <option value="Cuti">Cuti</option>
+                                                <option value="Sakit">Sakit</option>
+                                                <option value="Dinas Luar">Dinas Luar</option>
+                                            </select>
+                                            <p v-if="form.errors.status_kehadiran" class="text-xs text-rose-500 mt-1">{{ form.errors.status_kehadiran }}</p>
+                                        </div>
+                                        
+                                        <div v-if="form.status_kehadiran !== 'Aktif'" class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                            <label class="block text-xs font-bold text-amber-700 mb-1 uppercase tracking-wider">Target Khusus Inaktif (%) - Opsional</label>
+                                            <input type="number" v-model="form.target_tidak_aktif" min="0" max="100" class="w-full p-2 text-sm border-amber-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 bg-white" placeholder="Bisa diisi target khusus jika sedang tidak aktif..." />
+                                            <p class="text-[10px] text-amber-600 mt-1">Jika dikosongkan, akan menggunakan target instansi / target personal default.</p>
+                                            <p v-if="form.errors.target_tidak_aktif" class="text-xs text-rose-500 mt-1">{{ form.errors.target_tidak_aktif }}</p>
+                                        </div>
+                                    </template>
+
+                                    <template v-if="isSuperadmin && ($page.props.global_settings?.feature_notes === '1' || $page.props.global_settings?.feature_notes === 'true')">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider text-fuchsia-600">Catatan Rahasia Pimpinan</label>
+                                            <textarea v-model="form.catatan_pimpinan" rows="2" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-fuchsia-500 focus:border-fuchsia-500 bg-fuchsia-50/30" placeholder="Hanya bisa dilihat oleh Superadmin..."></textarea>
+                                            <p v-if="form.errors.catatan_pimpinan" class="text-xs text-rose-500 mt-1">{{ form.errors.catatan_pimpinan }}</p>
+                                        </div>
+                                    </template>
 
                                     <div v-if="isSuperadmin">
                                         <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Role (Hak Akses)</label>
@@ -470,4 +604,98 @@ const canEditUser = (user) => {
         </div>
 
     </AuthenticatedLayout>
+
+    <!-- Digital ID Card Modal -->
+    <div v-if="isIdCardModalOpen && selectedUserForIdCard" class="relative z-50" aria-labelledby="id-card-modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeIdCardModal"></div>
+        
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-slate-100">
+                    <!-- ID Card Header / Cover -->
+                    <div class="h-32 bg-gradient-to-r from-emerald-500 to-teal-500 relative">
+                        <button @click="closeIdCardModal" class="absolute top-4 right-4 text-white hover:text-emerald-100 transition-colors">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Profile Info -->
+                    <div class="px-6 pb-6 relative">
+                        <!-- Avatar -->
+                        <div class="flex justify-center -mt-16 mb-4">
+                            <div class="relative">
+                                <img :src="`https://api.dicebear.com/9.x/avataaars/svg?seed=${selectedUserForIdCard.name}&backgroundColor=d1fae5`" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-emerald-50">
+                                <span v-if="$page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true'" 
+                                    class="absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white"
+                                    :class="selectedUserForIdCard.status_kehadiran === 'Aktif' ? 'bg-emerald-500' : 'bg-rose-500'"
+                                    :title="selectedUserForIdCard.status_kehadiran">
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="text-center mb-6">
+                            <h3 class="text-2xl font-black text-slate-800 tracking-tight" id="id-card-modal-title">
+                                {{ selectedUserForIdCard.name }}
+                            </h3>
+                            <p class="text-slate-500 font-medium">{{ selectedUserForIdCard.email }}</p>
+                            
+                            <div class="flex items-center justify-center gap-2 mt-2" v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'">
+                                <span class="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+                                    Divisi: {{ selectedUserForIdCard.divisi || 'Belum Diatur' }}
+                                </span>
+                            </div>
+                            <div class="mt-2 text-sm text-slate-500 font-semibold" v-if="selectedUserForIdCard.nip">
+                                ID: {{ selectedUserForIdCard.nip }}
+                            </div>
+                        </div>
+
+                        <!-- Badges Section -->
+                        <div v-if="$page.props.global_settings?.feature_badges === '1' || $page.props.global_settings?.feature_badges === 'true'" class="mb-6 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                            <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                Lencana Penghargaan
+                            </h4>
+                            
+                            <div v-if="selectedUserForIdCard.badges && selectedUserForIdCard.badges.length > 0" class="flex flex-wrap gap-2">
+                                <div v-for="badge in selectedUserForIdCard.badges" :key="badge.id" class="group relative flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                    <span class="text-xl" v-html="badge.icon"></span>
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-700">{{ badge.name }}</span>
+                                    </div>
+                                    <button v-if="isSuperadmin || $page.props.auth.roles?.includes('admin')" @click="removeBadge(selectedUserForIdCard.id, badge.id)" class="absolute -top-2 -right-2 w-5 h-5 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="text-xs text-slate-500 italic">Belum ada lencana yang diberikan.</div>
+
+                            <!-- Assign New Badge (Admin/Superadmin only) -->
+                            <div v-if="isSuperadmin || $page.props.auth.roles?.includes('admin')" class="mt-4 pt-4 border-t border-slate-200">
+                                <form @submit.prevent="assignBadge(selectedUserForIdCard.id)" class="flex gap-2">
+                                    <select v-model="assignBadgeForm.badge_id" class="flex-1 text-sm border-slate-300 rounded-lg focus:ring-amber-500 focus:border-amber-500" required>
+                                        <option value="" disabled>Pilih Lencana...</option>
+                                        <option v-for="badge in allBadges" :key="badge.id" :value="badge.id">
+                                            {{ badge.name }}
+                                        </option>
+                                    </select>
+                                    <button type="submit" :disabled="assignBadgeForm.processing" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg shadow-sm transition-colors">
+                                        Berikan
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Catatan Pimpinan -->
+                        <div v-if="isSuperadmin && ($page.props.global_settings?.feature_notes === '1' || $page.props.global_settings?.feature_notes === 'true')" class="bg-fuchsia-50/50 rounded-2xl p-4 border border-fuchsia-100">
+                            <h4 class="text-sm font-bold text-fuchsia-800 mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Catatan Rahasia
+                            </h4>
+                            <p class="text-sm text-fuchsia-700 whitespace-pre-line">{{ selectedUserForIdCard.catatan_pimpinan || 'Belum ada catatan.' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>

@@ -54,8 +54,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/import', [\App\Http\Controllers\Admin\UserController::class, 'import'])->name('admin.users.import');
         Route::post('/users/{user}/reset-password', [\App\Http\Controllers\Admin\UserController::class, 'resetPassword'])->name('admin.users.reset-password');
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
+        Route::post('/users/{user}/badges', [\App\Http\Controllers\Admin\UserController::class, 'assignBadge'])->name('admin.users.badges.assign');
+        Route::delete('/users/{user}/badges', [\App\Http\Controllers\Admin\UserController::class, 'removeBadge'])->name('admin.users.badges.remove');
 
         Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings');
+        Route::get('/settings/hr', [\App\Http\Controllers\Admin\SettingController::class, 'hrIndex'])->name('admin.settings.hr');
         Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
     });
 

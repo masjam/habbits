@@ -189,8 +189,69 @@ class DashboardController extends Controller
         $adminTargetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
         $adminTargetSkorMinimal = (int) round($skorMaksimalBulanIni * ($adminTargetBulanan / 100));
         
-        $targetBulanan = $user->personal_target ?? $adminTargetBulanan;
+        $targetBulanan = $adminTargetBulanan;
+        if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
+            $targetBulanan = (float) $user->target_tidak_aktif;
+        } elseif (!is_null($user->personal_target)) {
+            $targetBulanan = (float) $user->personal_target;
+        }
+
         $targetSkorMinimal = (int) round($skorMaksimalBulanIni * ($targetBulanan / 100));
+
+        // ─── 8. Habit Analytics (Sholat Wajib, Rawatib, Quran) ───────────────────
+        $habitAnalytics = [
+            'sholat_wajib' => ['JM' => 0, 'JR' => 0, 'M' => 0],
+            'sholat_rawatib' => ['Qobliyah' => 0, 'Badiyah' => 0],
+            'quran' => ['durasi' => 0],
+            'others' => []
+        ];
+
+        $monthlyLogs = HabitLog::with('habit')
+            ->where('user_id', $targetUserId)
+            ->whereBetween('tanggal', [$startOfMonth, Carbon::today()])
+            ->get();
+        
+        foreach ($monthlyLogs as $log) {
+            $details = $log->details;
+            if (!$details || !is_array($details)) continue;
+
+            if ($log->habit && $log->habit->template === 'sholat_wajib') {
+                if (is_array($details)) {
+                    $waktus = ['subuh', 'dhuhur', 'asar', 'maghrib', 'isya'];
+                    foreach ($waktus as $w) {
+                        if (isset($details[$w])) {
+                            $val = $details[$w];
+                            if ($val === 'JM') $habitAnalytics['sholat_wajib']['JM']++;
+                            elseif ($val === 'JD' || $val === 'JR') $habitAnalytics['sholat_wajib']['JR']++;
+                            elseif ($val === 'M') $habitAnalytics['sholat_wajib']['M']++;
+                        }
+                    }
+                }
+            } elseif ($log->habit && $log->habit->template === 'sholat_rawatib') {
+                if (is_array($details)) {
+                    $qKeys = ['subuh_q', 'dhuhur_q', 'asar_q', 'maghrib_q', 'isya_q'];
+                    $bKeys = ['dhuhur_b', 'maghrib_b', 'isya_b'];
+                    foreach ($qKeys as $k) {
+                        if (!empty($details[$k])) $habitAnalytics['sholat_rawatib']['Qobliyah']++;
+                    }
+                    foreach ($bKeys as $k) {
+                        if (!empty($details[$k])) $habitAnalytics['sholat_rawatib']['Badiyah']++;
+                    }
+                }
+            } elseif ($log->habit && $log->habit->template === 'quran') {
+                if (is_array($details) && isset($details['durasi']) && is_numeric($details['durasi'])) {
+                    $habitAnalytics['quran']['durasi'] += (int) $details['durasi'];
+                }
+            } elseif ($log->habit) {
+                if ($log->nilai_input == 1) {
+                    $namaHabit = $log->habit->nama;
+                    if (!isset($habitAnalytics['others'][$namaHabit])) {
+                        $habitAnalytics['others'][$namaHabit] = 0;
+                    }
+                    $habitAnalytics['others'][$namaHabit]++;
+                }
+            }
+        }
 
         return Inertia::render('Dashboard', [
             'skorHariIni'      => (int) $skorHariIni,
@@ -221,6 +282,7 @@ class DashboardController extends Controller
             'pegawaiList'      => [],
             'missedDates'      => $missedDates,
             'announcement'     => $announcement,
+            'habitAnalytics'   => $habitAnalytics,
         ]);
     }
 

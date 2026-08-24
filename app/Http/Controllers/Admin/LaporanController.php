@@ -24,6 +24,7 @@ class LaporanController extends Controller
         $search = $request->input('search');
         $perPage = $request->input('per_page', 10);
         $kategori_skor = $request->input('kategori_skor');
+        $divisi = $request->input('divisi');
 
         $date = Carbon::create($year, $month, 1);
         $startOfMonth = $date->copy()->startOfMonth();
@@ -41,62 +42,79 @@ class LaporanController extends Controller
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
 
         // Ambil data semua pegawai (role user) beserta pencarian dan pagination
-        $usersQuery = User::role('user')
+        $usersQuery = User::role('user')->with('badges')
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
+            })
+            ->when($divisi, function ($query, $divisi) {
+                $query->where('divisi', $divisi);
             })
             ->withSum(
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'
             )
             ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
-                $min = 0;
-                $max = 99999999;
-                if ($kategori === '0-30') {
-                    $max = 0.30 * $skorMaksimalSebulan;
-                } elseif ($kategori === '30-50') {
-                    $min = (0.30 * $skorMaksimalSebulan) + 0.0001;
-                    $max = 0.50 * $skorMaksimalSebulan;
-                } elseif ($kategori === '50-target') {
-                    $min = (0.50 * $skorMaksimalSebulan) + 0.0001;
-                    $max = ($targetBulanan / 100) * $skorMaksimalSebulan - 0.0001;
-                } elseif ($kategori === 'tercapai') {
-                    $min = ($targetBulanan / 100) * $skorMaksimalSebulan;
-                }
+                // Gunakan target dinamis admin: target khusus inaktif > target global
+                $userTargetSql = "COALESCE(
+                    CASE WHEN status_kehadiran != 'Aktif' THEN target_tidak_aktif ELSE NULL END,
+                    $targetBulanan
+                )";
+
+                $scoreSql = "(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?)";
                 
-                $query->where(function($q) use ($startOfMonth, $endOfMonth, $min, $max) {
-                    $q->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) >= ?", [$startOfMonth, $endOfMonth, $min])
-                      ->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) <= ?", [$startOfMonth, $endOfMonth, $max]);
-                });
+                if ($kategori === '0-30') {
+                    $query->whereRaw("$scoreSql <= (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                } elseif ($kategori === '30-50') {
+                    $query->whereRaw("$scoreSql > (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
+                          ->whereRaw("$scoreSql <= (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                } elseif ($kategori === '50-target') {
+                    $query->whereRaw("$scoreSql > (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
+                          ->whereRaw("$scoreSql < (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                } elseif ($kategori === 'tercapai') {
+                    $query->whereRaw("$scoreSql >= (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                }
             })
             ->orderByRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) DESC');
 
         $paginatedUsers = $usersQuery->paginate($perPage)->withQueryString();
 
-        $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan) {
+        $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan, $targetBulanan) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
             $persentase = ($skorMaksimalSebulan > 0) ? ($skorDiperoleh / $skorMaksimalSebulan) * 100 : 0;
+            
+            $userTarget = $targetBulanan;
+            if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
+                $userTarget = (float) $user->target_tidak_aktif;
+            }
 
             return [
-                'id'         => $user->id,
-                'name'       => $user->name,
-                'gender'     => $user->gender,
-                'skor'       => $skorDiperoleh,
-                'persentase' => round($persentase, 1),
+                'id'               => $user->id,
+                'name'             => $user->name,
+                'gender'           => $user->gender,
+                'divisi'           => $user->divisi,
+                'status'           => $user->status_kehadiran,
+                'badges'           => $user->badges,
+                'skor'             => $skorDiperoleh,
+                'persentase'       => round($persentase, 1),
+                'target'           => $userTarget,
             ];
         });
+
+        $divisis = User::whereNotNull('divisi')->where('divisi', '!=', '')->distinct()->pluck('divisi');
 
         return Inertia::render('Admin/Laporan/Index', [
             'leaderboard'         => $paginatedUsers,
             'targetBulanan'       => $targetBulanan,
             'skorMaksimalSebulan' => $skorMaksimalSebulan,
             'namaBulan'           => $date->translatedFormat('F Y'),
+            'divisis'             => $divisis,
             'filters'             => [
                 'month'  => (int) $month,
                 'year'   => (int) $year,
                 'search' => $search,
                 'per_page' => (int) $perPage,
                 'kategori_skor' => $kategori_skor,
+                'divisi' => $divisi,
             ]
         ]);
     }
@@ -129,35 +147,44 @@ class LaporanController extends Controller
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
             })
+            ->when($request->input('divisi'), function ($query, $divisi) {
+                $query->where('divisi', $divisi);
+            })
             ->withSum(
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'
             )
             ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
-                $min = 0;
-                $max = 99999999;
-                if ($kategori === '0-30') {
-                    $max = 0.30 * $skorMaksimalSebulan;
-                } elseif ($kategori === '30-50') {
-                    $min = (0.30 * $skorMaksimalSebulan) + 0.0001;
-                    $max = 0.50 * $skorMaksimalSebulan;
-                } elseif ($kategori === '50-target') {
-                    $min = (0.50 * $skorMaksimalSebulan) + 0.0001;
-                    $max = ($targetBulanan / 100) * $skorMaksimalSebulan - 0.0001;
-                } elseif ($kategori === 'tercapai') {
-                    $min = ($targetBulanan / 100) * $skorMaksimalSebulan;
-                }
+                // Gunakan target dinamis admin: target khusus inaktif > target global
+                $userTargetSql = "COALESCE(
+                    CASE WHEN status_kehadiran != 'Aktif' THEN target_tidak_aktif ELSE NULL END,
+                    $targetBulanan
+                )";
+
+                $scoreSql = "(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?)";
                 
-                $query->where(function($q) use ($startOfMonth, $endOfMonth, $min, $max) {
-                    $q->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) >= ?", [$startOfMonth, $endOfMonth, $min])
-                      ->whereRaw("(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?) <= ?", [$startOfMonth, $endOfMonth, $max]);
-                });
+                if ($kategori === '0-30') {
+                    $query->whereRaw("$scoreSql <= (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                } elseif ($kategori === '30-50') {
+                    $query->whereRaw("$scoreSql > (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
+                          ->whereRaw("$scoreSql <= (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                } elseif ($kategori === '50-target') {
+                    $query->whereRaw("$scoreSql > (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
+                          ->whereRaw("$scoreSql < (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                } elseif ($kategori === 'tercapai') {
+                    $query->whereRaw("$scoreSql >= (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
+                }
             })
             ->get();
 
-        $leaderboard = $users->map(function ($user) use ($skorMaksimalSebulan) {
+        $leaderboard = $users->map(function ($user) use ($skorMaksimalSebulan, $targetBulanan) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
             $persentase = ($skorMaksimalSebulan > 0) ? ($skorDiperoleh / $skorMaksimalSebulan) * 100 : 0;
+            
+            $userTarget = $targetBulanan;
+            if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
+                $userTarget = (float) $user->target_tidak_aktif;
+            }
 
             return [
                 'id'         => $user->id,
@@ -165,6 +192,8 @@ class LaporanController extends Controller
                 'gender'     => $user->gender,
                 'skor'       => $skorDiperoleh,
                 'persentase' => round($persentase, 1),
+                'target'     => $userTarget,
+                'status'     => $user->status_kehadiran,
             ];
         })->sortByDesc('persentase')->values();
 

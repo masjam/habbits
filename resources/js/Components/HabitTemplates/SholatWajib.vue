@@ -15,7 +15,7 @@ defineProps({
                 <span>Waktu</span>
                 <div class="flex gap-4 sm:gap-6 w-3/5 sm:w-1/2 justify-end">
                     <span class="w-8 text-center" title="Jamaah Masjid">JM</span>
-                    <span class="w-8 text-center" title="Jamaah di Rumah">JD</span>
+                    <span class="w-8 text-center" title="Jamaah di Rumah">JR</span>
                     <span class="w-8 text-center" title="Munfarid">M</span>
                 </div>
             </div>
@@ -26,7 +26,7 @@ defineProps({
                         <input type="radio" :name="`sw_mob_${waktu}_${log.habit_id}`" value="JM" v-model="log.details[waktu]" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />
                     </div>
                     <div class="w-8 flex justify-center">
-                        <input type="radio" :name="`sw_mob_${waktu}_${log.habit_id}`" value="JD" v-model="log.details[waktu]" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />
+                        <input type="radio" :name="`sw_mob_${waktu}_${log.habit_id}`" value="JR" v-model="log.details[waktu]" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />
                     </div>
                     <div class="w-8 flex justify-center">
                         <input type="radio" :name="`sw_mob_${waktu}_${log.habit_id}`" value="M" v-model="log.details[waktu]" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />
@@ -69,7 +69,7 @@ defineProps({
                             <input type="radio" :name="`sw_desk_${waktu}_${log.habit_id}`" value="JM" v-model="log.details[waktu]" class="w-3 h-3 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />
                         </td>
                         <td class="p-1 border-r border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:bg-slate-800/50">
-                            <input type="radio" :name="`sw_desk_${waktu}_${log.habit_id}`" value="JD" v-model="log.details[waktu]" class="w-3 h-3 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />
+                            <input type="radio" :name="`sw_desk_${waktu}_${log.habit_id}`" value="JR" v-model="log.details[waktu]" class="w-3 h-3 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />
                         </td>
                         <td class="p-1 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:bg-slate-700">
                             <input type="radio" :name="`sw_desk_${waktu}_${log.habit_id}`" value="M" v-model="log.details[waktu]" class="w-3 h-3 text-emerald-600 focus:ring-emerald-500 cursor-pointer dark:bg-slate-700 dark:text-slate-100" />

@@ -51,7 +51,7 @@ const submit = () => {
                 <span class="font-bold">{{ $page.props.flash.success }}</span>
             </div>
 
-            <form @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 gap-6 xl:gap-8">
+            <form @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6 xl:gap-8">
                 
                 <!-- Kolom 1: Pengaturan Umum (Pengumuman & Popup) -->
                 <div class="space-y-6">
@@ -199,81 +199,9 @@ const submit = () => {
                         </div>
                     </div>
                 </div>
-
-                <!-- Kolom 3: Pengaturan Lanjutan -->
-                <div class="space-y-6">
-                    <div class="bg-white overflow-hidden shadow-sm rounded-3xl border border-slate-100 p-6 relative">
-                        <div v-if="$page.props.auth.roles?.includes('superadmin')">
-                            <div class="flex flex-col mb-6">
-                                <h2 class="text-xl font-black text-slate-800 flex items-center gap-2">
-                                    <svg class="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                    </svg>
-                                    Fitur Lanjutan
-                                </h2>
-                                <p class="text-xs text-slate-500 mt-2">Aktifkan atau nonaktifkan fitur-fitur eksperimental (Fase 2 & Fase 3).</p>
-                            </div>
-                            
-                            <div class="space-y-3">
-                                <!-- Gamification -->
-                                <div class="flex items-start bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                                    <div class="flex h-5 items-center mt-0.5">
-                                        <input id="gamification_active" type="checkbox" v-model="form.gamification_active" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer" />
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="gamification_active" class="font-bold text-slate-700 cursor-pointer">Sistem Gamifikasi</label>
-                                        <p class="text-slate-500 text-xs mt-0.5">Reward lencana digital untuk pengguna.</p>
-                                    </div>
-                                </div>
-
-                                <!-- Push Notifications -->
-                                <div class="flex items-start bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                                    <div class="flex h-5 items-center mt-0.5">
-                                        <input id="push_notifications_active" type="checkbox" v-model="form.push_notifications_active" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer" />
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="push_notifications_active" class="font-bold text-slate-700 cursor-pointer">Push Notifications</label>
-                                        <p class="text-slate-500 text-xs mt-0.5">Kirim notifikasi langsung ke HP (PWA).</p>
-                                    </div>
-                                </div>
-
-                                <!-- Custom Habits -->
-                                <div class="flex items-start bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                                    <div class="flex h-5 items-center mt-0.5">
-                                        <input id="custom_habit_divisions_active" type="checkbox" v-model="form.custom_habit_divisions_active" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer" />
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="custom_habit_divisions_active" class="font-bold text-slate-700 cursor-pointer">Custom Habit per Divisi</label>
-                                        <p class="text-slate-500 text-xs mt-0.5">Habit spesifik untuk grup tertentu.</p>
-                                    </div>
-                                </div>
-
-                                <!-- Auto Warning -->
-                                <div class="flex items-start bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                                    <div class="flex h-5 items-center mt-0.5">
-                                        <input id="auto_warning_active" type="checkbox" v-model="form.auto_warning_active" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer" />
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="auto_warning_active" class="font-bold text-slate-700 cursor-pointer">Auto-Warning System</label>
-                                        <p class="text-slate-500 text-xs mt-0.5">Peringatan bagi yang di bawah target.</p>
-                                    </div>
-                                </div>
-
-                                <!-- Dark Mode -->
-                                <div class="flex items-start bg-slate-50 p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                                    <div class="flex h-5 items-center mt-0.5">
-                                        <input id="dark_mode_active" type="checkbox" v-model="form.dark_mode_active" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer" />
-                                    </div>
-                                    <div class="ml-3 text-sm">
-                                        <label for="dark_mode_active" class="font-bold text-slate-700 cursor-pointer">Dark Mode Toggle</label>
-                                        <p class="text-slate-500 text-xs mt-0.5">Aktifkan opsi tema gelap bagi pengguna.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Submit Button -->
+                
+                <!-- Submit Button -->
+                <div class="col-span-1 lg:col-span-2 xl:col-span-2">
                     <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col items-center">
                         <button
                             type="submit"
@@ -291,7 +219,6 @@ const submit = () => {
                         </button>
                     </div>
                 </div>
-
             </form>
         </div>
     </AuthenticatedLayout>

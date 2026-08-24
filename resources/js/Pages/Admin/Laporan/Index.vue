@@ -7,6 +7,7 @@ const props = defineProps({
     targetBulanan: Number,
     skorMaksimalSebulan: Number,
     namaBulan: String,
+    divisis: Array,
     filters: Object,
 })
 
@@ -33,18 +34,19 @@ const selectedYear = ref(props.filters.year)
 const searchQuery = ref(props.filters.search || '')
 const perPage = ref(props.filters.per_page || 10)
 const kategoriSkor = ref(props.filters.kategori_skor || '')
+const selectedDivisi = ref(props.filters.divisi || '')
 const showMobileFilters = ref(false)
 
 let searchTimeout = null
 watch(searchQuery, (newVal) => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
-        router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: newVal, per_page: perPage.value, kategori_skor: kategoriSkor.value }, { preserveState: true, preserveScroll: true, replace: true })
+        router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: newVal, per_page: perPage.value, kategori_skor: kategoriSkor.value, divisi: selectedDivisi.value }, { preserveState: true, preserveScroll: true, replace: true })
     }, 300)
 })
 
-watch([selectedMonth, selectedYear, perPage, kategoriSkor], () => {
-    router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: searchQuery.value, per_page: perPage.value, kategori_skor: kategoriSkor.value }, { preserveState: true, preserveScroll: true })
+watch([selectedMonth, selectedYear, perPage, kategoriSkor, selectedDivisi], () => {
+    router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: searchQuery.value, per_page: perPage.value, kategori_skor: kategoriSkor.value, divisi: selectedDivisi.value }, { preserveState: true, preserveScroll: true })
 })
 
 const saveTarget = () => {
@@ -54,23 +56,25 @@ const saveTarget = () => {
 }
 
 // Logic pewarnaan berdasarkan persentase
-const getRowClass = (persentase) => {
-    if (persentase <= 30) {
-        return 'bg-rose-50 hover:bg-rose-100/80 border-l-4 border-rose-500' // 0-30%
-    } else if (persentase <= 50) {
-        return 'bg-amber-50 hover:bg-amber-100/80 border-l-4 border-amber-500' // 30.1-50%
-    } else if (persentase < props.targetBulanan) {
+const getRowClass = (persentase, target) => {
+    const targetBulanan = target ?? props.targetBulanan;
+    if (persentase >= targetBulanan) {
+        return 'bg-emerald-100/60 hover:bg-emerald-100 border-l-4 border-emerald-600' // Tercapai
+    } else if (persentase > 50) {
         return 'bg-emerald-50/50 hover:bg-emerald-50 border-l-4 border-emerald-300' // 50.1 - Target
+    } else if (persentase > 30) {
+        return 'bg-amber-50 hover:bg-amber-100/80 border-l-4 border-amber-500' // 30.1-50%
     } else {
-        return 'bg-emerald-100/60 hover:bg-emerald-100 border-l-4 border-emerald-600' // Target - 100%
+        return 'bg-rose-50 hover:bg-rose-100/80 border-l-4 border-rose-500' // 0-30%
     }
 }
 
-const getBadgeClass = (persentase) => {
-    if (persentase <= 30) return 'bg-rose-200 text-rose-800'
-    if (persentase <= 50) return 'bg-amber-200 text-amber-800'
-    if (persentase < props.targetBulanan) return 'bg-emerald-200 text-emerald-800'
-    return 'bg-emerald-600 text-white shadow-sm'
+const getBadgeClass = (persentase, target) => {
+    const targetBulanan = target ?? props.targetBulanan;
+    if (persentase >= targetBulanan) return 'bg-emerald-600 text-white shadow-sm'
+    if (persentase > 50) return 'bg-emerald-200 text-emerald-800'
+    if (persentase > 30) return 'bg-amber-200 text-amber-800'
+    return 'bg-rose-200 text-rose-800'
 }
 </script>
 
@@ -146,6 +150,14 @@ const getBadgeClass = (persentase) => {
                             </select>
                         </div>
                         
+                        <div v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Divisi</label>
+                            <select v-model="selectedDivisi" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
+                                <option value="">Semua Divisi</option>
+                                <option v-for="divisi in divisis" :key="divisi" :value="divisi">{{ divisi }}</option>
+                            </select>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tampil</label>
                             <select v-model="perPage" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
@@ -220,7 +232,7 @@ const getBadgeClass = (persentase) => {
                     
                     <li v-for="(user, index) in leaderboard.data" :key="user.id" 
                         class="transition-colors group"
-                        :class="getRowClass(user.persentase)"
+                        :class="getRowClass(user.persentase, user.target)"
                     >
                         <Link :href="route('admin.laporan.detail', user.id)" class="flex items-center px-4 py-2.5 gap-3">
                             <!-- Rank -->
@@ -237,18 +249,34 @@ const getBadgeClass = (persentase) => {
                                 <span v-else class="text-xs">{{ user.name.charAt(0).toUpperCase() }}</span>
                             </div>
                             <div class="flex-1 min-w-0 ml-1">
-                                <div class="font-bold text-slate-800 text-sm truncate group-hover:text-emerald-700 transition-colors">
-                                    {{ user.name }}
+                                <div class="flex items-center gap-2">
+                                    <div class="font-bold text-slate-800 text-sm truncate group-hover:text-emerald-700 transition-colors">
+                                        {{ user.name }}
+                                    </div>
+                                    <div v-if="$page.props.global_settings?.feature_badges === '1' || $page.props.global_settings?.feature_badges === 'true'" class="flex -space-x-1">
+                                        <span v-for="badge in (user.badges || [])" :key="badge.id" class="text-sm bg-white rounded-full border border-slate-200 shadow-sm z-10" :title="badge.name" v-html="badge.icon"></span>
+                                    </div>
                                 </div>
-                                <div class="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">
-                                    Skor: {{ user.skor }} / {{ skorMaksimalSebulan }}
+                                <div class="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5 flex flex-wrap gap-2 items-center">
+                                    <span>Skor: {{ user.skor }} / {{ skorMaksimalSebulan }}</span>
+                                    <span v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'" class="text-emerald-600 font-bold">
+                                        • {{ user.divisi || 'Tanpa Divisi' }}
+                                    </span>
+                                    <span v-if="user.status && user.status !== 'Aktif' && ($page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true')" class="bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded font-bold uppercase">
+                                        Sedang {{ user.status }}
+                                    </span>
                                 </div>
                             </div>
 
-                            <!-- Percentage -->
+                            <!-- Percentage & Target -->
                             <div class="flex-shrink-0 text-right flex items-center gap-2">
-                                <div class="px-2.5 py-1 rounded-full font-black text-xs" :class="getBadgeClass(user.persentase)">
-                                    {{ user.persentase }}%
+                                <div class="flex flex-col items-end">
+                                    <div class="px-2.5 py-1 rounded-full font-black text-xs" :class="getBadgeClass(user.persentase, user.target)">
+                                        {{ user.persentase }}%
+                                    </div>
+                                    <div class="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-wider" title="Target skor untuk pegawai ini">
+                                        Trg: {{ user.target ?? targetBulanan }}%
+                                    </div>
                                 </div>
                                 <svg class="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

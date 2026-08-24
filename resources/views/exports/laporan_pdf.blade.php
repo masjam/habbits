@@ -64,16 +64,16 @@
 
     @php
     function getRowColor($persentase, $targetBulanan) {
-        if ($persentase <= 30) return '#fff1f2';
-        if ($persentase <= 50) return '#fffbeb';
-        if ($persentase < $targetBulanan) return '#ecfdf5';
-        return '#d1fae5';
+        if ($persentase >= $targetBulanan) return '#d1fae5';
+        if ($persentase > 50) return '#ecfdf5';
+        if ($persentase > 30) return '#fffbeb';
+        return '#fff1f2';
     }
     function getBadgeStyle($persentase, $targetBulanan) {
-        if ($persentase <= 30) return 'background-color: #fecdd3; color: #9f1239;';
-        if ($persentase <= 50) return 'background-color: #fde68a; color: #92400e;';
-        if ($persentase < $targetBulanan) return 'background-color: #a7f3d0; color: #065f46;';
-        return 'background-color: #059669; color: #ffffff;';
+        if ($persentase >= $targetBulanan) return 'background-color: #059669; color: #ffffff;';
+        if ($persentase > 50) return 'background-color: #a7f3d0; color: #065f46;';
+        if ($persentase > 30) return 'background-color: #fde68a; color: #92400e;';
+        return 'background-color: #fecdd3; color: #9f1239;';
     }
     @endphp
 
@@ -86,30 +86,35 @@
         <thead>
             <tr>
                 <th class="text-center" style="width: 5%">No</th>
-                <th style="width: 35%">Nama Pegawai</th>
+                <th style="width: 30%">Nama Pegawai</th>
                 <th class="text-center" style="width: 15%">Jenis Kelamin</th>
-                <th class="text-center" style="width: 15%">Skor Diperoleh</th>
-                <th class="text-center" style="width: 15%">Skor Maksimal</th>
-                <th class="text-center" style="width: 15%">Persentase</th>
+                <th class="text-center" style="width: 12%">Skor Diperoleh</th>
+                <th class="text-center" style="width: 12%">Skor Maksimal</th>
+                <th class="text-center" style="width: 12%">Target</th>
+                <th class="text-center" style="width: 14%">Persentase</th>
             </tr>
         </thead>
         <tbody>
             @forelse($leaderboard as $index => $row)
-            <tr style="background-color: {{ getRowColor($row['persentase'], $targetBulanan) }};">
+            @php
+                $userTarget = $row['target'] ?? $targetBulanan;
+            @endphp
+            <tr style="background-color: {{ getRowColor($row['persentase'], $userTarget) }};">
                 <td class="text-center">{{ $index + 1 }}</td>
                 <td class="font-bold">{{ $row['name'] }}</td>
                 <td class="text-center">{{ $row['gender'] === 'L' ? 'Laki-laki' : 'Perempuan' }}</td>
                 <td class="text-center">{{ $row['skor'] }}</td>
                 <td class="text-center">{{ $skorMaksimal }}</td>
+                <td class="text-center">{{ $userTarget }}%</td>
                 <td class="text-center">
-                    <span class="badge" style="{{ getBadgeStyle($row['persentase'], $targetBulanan) }}">
+                    <span class="badge" style="{{ getBadgeStyle($row['persentase'], $userTarget) }}">
                         {{ $row['persentase'] }}%
                     </span>
                 </td>
             </tr>
             @empty
             <tr>
-                <td colspan="6" class="text-center">Tidak ada data pegawai pada periode ini.</td>
+                <td colspan="7" class="text-center">Tidak ada data pegawai pada periode ini.</td>
             </tr>
             @endforelse
         </tbody>
