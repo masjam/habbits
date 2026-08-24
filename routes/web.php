@@ -57,6 +57,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/badges', [\App\Http\Controllers\Admin\UserController::class, 'assignBadge'])->name('admin.users.badges.assign');
         Route::delete('/users/{user}/badges', [\App\Http\Controllers\Admin\UserController::class, 'removeBadge'])->name('admin.users.badges.remove');
 
+        Route::resource('divisions', \App\Http\Controllers\Admin\DivisionController::class)->except(['create', 'show', 'edit'])->names([
+            'index' => 'admin.divisions.index',
+            'store' => 'admin.divisions.store',
+            'update' => 'admin.divisions.update',
+            'destroy' => 'admin.divisions.destroy',
+        ]);
+
         Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings');
         Route::get('/settings/hr', [\App\Http\Controllers\Admin\SettingController::class, 'hrIndex'])->name('admin.settings.hr');
         Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');

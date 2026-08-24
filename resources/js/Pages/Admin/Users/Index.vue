@@ -5,10 +5,8 @@ import { ref } from 'vue'
 
 const props = defineProps({
     users: Object,
-    allBadges: {
-        type: Array,
-        default: () => []
-    },
+    allBadges: Array,
+    divisions: Array,
     filters: Object,
     isSuperadmin: Boolean,
 })
@@ -465,7 +463,12 @@ const canEditUser = (user) => {
                                     <template v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'">
                                         <div>
                                             <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Grup / Divisi</label>
-                                            <input type="text" v-model="form.divisi" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Contoh: IT, Keuangan, dll" />
+                                            <select v-model="form.divisi" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                                                <option value="">-- Pilih Divisi (Opsional) --</option>
+                                                <option v-for="div in divisions" :key="div.id" :value="div.name">
+                                                    {{ div.name }}
+                                                </option>
+                                            </select>
                                             <p v-if="form.errors.divisi" class="text-xs text-rose-500 mt-1">{{ form.errors.divisi }}</p>
                                         </div>
                                     </template>
@@ -490,10 +493,10 @@ const canEditUser = (user) => {
                                         </div>
                                     </template>
 
-                                    <template v-if="isSuperadmin && ($page.props.global_settings?.feature_notes === '1' || $page.props.global_settings?.feature_notes === 'true')">
+                                    <template v-if="$page.props.global_settings?.feature_notes === '1' || $page.props.global_settings?.feature_notes === 'true'">
                                         <div>
-                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider text-fuchsia-600">Catatan Rahasia Pimpinan</label>
-                                            <textarea v-model="form.catatan_pimpinan" rows="2" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-fuchsia-500 focus:border-fuchsia-500 bg-fuchsia-50/30" placeholder="Hanya bisa dilihat oleh Superadmin..."></textarea>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider text-fuchsia-600">Catatan</label>
+                                            <textarea v-model="form.catatan_pimpinan" rows="2" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-fuchsia-500 focus:border-fuchsia-500 bg-fuchsia-50/30" placeholder="Catatan internal tentang pegawai ini..."></textarea>
                                             <p v-if="form.errors.catatan_pimpinan" class="text-xs text-rose-500 mt-1">{{ form.errors.catatan_pimpinan }}</p>
                                         </div>
                                     </template>
@@ -685,11 +688,11 @@ const canEditUser = (user) => {
                             </div>
                         </div>
 
-                        <!-- Catatan Pimpinan -->
-                        <div v-if="isSuperadmin && ($page.props.global_settings?.feature_notes === '1' || $page.props.global_settings?.feature_notes === 'true')" class="bg-fuchsia-50/50 rounded-2xl p-4 border border-fuchsia-100">
+                        <!-- Catatan -->
+                        <div v-if="$page.props.global_settings?.feature_notes === '1' || $page.props.global_settings?.feature_notes === 'true'" class="bg-fuchsia-50/50 rounded-2xl p-4 border border-fuchsia-100">
                             <h4 class="text-sm font-bold text-fuchsia-800 mb-2 flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                Catatan Rahasia
+                                Catatan
                             </h4>
                             <p class="text-sm text-fuchsia-700 whitespace-pre-line">{{ selectedUserForIdCard.catatan_pimpinan || 'Belum ada catatan.' }}</p>
                         </div>

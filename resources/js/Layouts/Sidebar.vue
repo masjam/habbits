@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
 
 const props = defineProps({
     isOpen: {
@@ -58,6 +58,13 @@ const navLinkClass = (routeName) => [
         ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 font-semibold'
         : 'text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:bg-emerald-50 dark:hover:bg-slate-700/60 hover:text-emerald-700 dark:hover:text-emerald-400',
 ]
+
+// ─── Feature Flags (dari global_settings yang di-share via Inertia) ─────────
+const page = usePage()
+const featureEnabled = (key) => {
+    const val = page.props.global_settings?.[key]
+    return val === '1' || val === 'true' || val === true
+}
 </script>
 
 <template>
@@ -208,19 +215,35 @@ const navLinkClass = (routeName) => [
                     <span>Master Data Habit</span>
                 </Link>
 
-                <Link
-                    :href="route('admin.users.index')"
-                    :class="navLinkClass('admin.users.index')"
-                    @click="closeSidebar"
-                >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.users.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                <div class="space-y-0.5">
+                    <Link
+                        :href="route('admin.users.index')"
+                        :class="navLinkClass('admin.users.index')"
+                        @click="closeSidebar"
                     >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <span>Manajemen User</span>
-                </Link>
+                        <svg
+                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.users.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>Manajemen User</span>
+                    </Link>
+
+                    <!-- Submenu Daftar Divisi — hanya jika fitur Divisi aktif -->
+                    <div v-if="featureEnabled('feature_divisi')" class="ml-5 pl-2 border-l-2 border-slate-100 dark:border-slate-700 space-y-0.5">
+                        <Link
+                            :href="route('admin.divisions.index')"
+                            :class="[...navLinkClass('admin.divisions.index'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.divisions.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <span>Daftar Divisi</span>
+                        </Link>
+                    </div>
+                </div>
 
                 <template v-if="hasRole('superadmin')">
                     <Link

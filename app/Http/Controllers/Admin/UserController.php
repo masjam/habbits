@@ -61,10 +61,12 @@ class UserController extends Controller
         });
 
         $badges = \App\Models\Badge::all();
+        $divisions = \App\Models\Division::orderBy('name')->get();
 
         return Inertia::render('Admin/Users/Index', [
             'users'       => $users,
             'allBadges'   => $badges,
+            'divisions'   => $divisions,
             'filters'     => ['search' => $search, 'per_page' => (int) $perPage],
             'isSuperadmin'=> $currentUser->hasRole('superadmin'),
         ]);
@@ -146,6 +148,12 @@ class UserController extends Controller
 
         if ($isSuperadmin) {
             $rules['role'] = 'required|in:user,admin,superadmin';
+        }
+
+        // Admin & Superadmin sama-sama bisa isi catatan jika fitur Notes aktif
+        $featureNotes = \App\Models\Setting::where('key', 'feature_notes')->value('value');
+        $notesEnabled = $featureNotes === '1' || $featureNotes === 'true';
+        if ($notesEnabled) {
             $rules['catatan_pimpinan'] = 'nullable|string';
         }
 
@@ -161,7 +169,7 @@ class UserController extends Controller
             'target_tidak_aktif' => $validated['target_tidak_aktif'] ?? null,
         ];
 
-        if ($isSuperadmin && isset($validated['catatan_pimpinan'])) {
+        if (($isSuperadmin || $notesEnabled) && isset($validated['catatan_pimpinan'])) {
             $updateData['catatan_pimpinan'] = $validated['catatan_pimpinan'];
         }
 

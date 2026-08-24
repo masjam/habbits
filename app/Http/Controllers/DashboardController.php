@@ -190,10 +190,17 @@ class DashboardController extends Controller
         $adminTargetSkorMinimal = (int) round($skorMaksimalBulanIni * ($adminTargetBulanan / 100));
         
         $targetBulanan = $adminTargetBulanan;
+        $divisionTarget = null;
+        if (!empty($user->divisi)) {
+            $divisionTarget = \App\Models\Division::where('name', $user->divisi)->value('target_divisi');
+        }
+
         if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
             $targetBulanan = (float) $user->target_tidak_aktif;
         } elseif (!is_null($user->personal_target)) {
             $targetBulanan = (float) $user->personal_target;
+        } elseif (!is_null($divisionTarget)) {
+            $targetBulanan = (float) $divisionTarget;
         }
 
         $targetSkorMinimal = (int) round($skorMaksimalBulanIni * ($targetBulanan / 100));

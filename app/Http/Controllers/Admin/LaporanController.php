@@ -54,9 +54,20 @@ class LaporanController extends Controller
                 'skor_diperoleh'
             )
             ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
-                // Gunakan target dinamis admin: target khusus inaktif > target global
+                
+                // Build CASE statement for division targets
+                $divisions = \App\Models\Division::whereNotNull('target_divisi')->get();
+                $divisionCases = "";
+                foreach($divisions as $div) {
+                    $name = addslashes($div->name);
+                    $divisionCases .= " WHEN users.divisi = '{$name}' THEN {$div->target_divisi} ";
+                }
+                $divisionCaseSql = $divisionCases ? "CASE $divisionCases ELSE NULL END" : "NULL";
+
+                // Gunakan target dinamis admin: target khusus inaktif > target divisi > target global
                 $userTargetSql = "COALESCE(
                     CASE WHEN status_kehadiran != 'Aktif' THEN target_tidak_aktif ELSE NULL END,
+                    $divisionCaseSql,
                     $targetBulanan
                 )";
 
@@ -78,13 +89,23 @@ class LaporanController extends Controller
 
         $paginatedUsers = $usersQuery->paginate($perPage)->withQueryString();
 
-        $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan, $targetBulanan) {
+        $divisionsLookup = \App\Models\Division::pluck('target_divisi', 'name')->toArray();
+
+        $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan, $targetBulanan, $divisionsLookup) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
             $persentase = ($skorMaksimalSebulan > 0) ? ($skorDiperoleh / $skorMaksimalSebulan) * 100 : 0;
             
             $userTarget = $targetBulanan;
+            
+            $divisionTarget = null;
+            if (!empty($user->divisi) && isset($divisionsLookup[$user->divisi])) {
+                $divisionTarget = $divisionsLookup[$user->divisi];
+            }
+
             if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
                 $userTarget = (float) $user->target_tidak_aktif;
+            } elseif (!is_null($divisionTarget)) {
+                $userTarget = (float) $divisionTarget;
             }
 
             return [
@@ -100,7 +121,7 @@ class LaporanController extends Controller
             ];
         });
 
-        $divisis = User::whereNotNull('divisi')->where('divisi', '!=', '')->distinct()->pluck('divisi');
+        $divisis = \App\Models\Division::orderBy('name')->pluck('name');
 
         return Inertia::render('Admin/Laporan/Index', [
             'leaderboard'         => $paginatedUsers,
@@ -155,9 +176,19 @@ class LaporanController extends Controller
                 'skor_diperoleh'
             )
             ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
-                // Gunakan target dinamis admin: target khusus inaktif > target global
+                // Build CASE statement for division targets
+                $divisions = \App\Models\Division::whereNotNull('target_divisi')->get();
+                $divisionCases = "";
+                foreach($divisions as $div) {
+                    $name = addslashes($div->name);
+                    $divisionCases .= " WHEN users.divisi = '{$name}' THEN {$div->target_divisi} ";
+                }
+                $divisionCaseSql = $divisionCases ? "CASE $divisionCases ELSE NULL END" : "NULL";
+
+                // Gunakan target dinamis admin: target khusus inaktif > target divisi > target global
                 $userTargetSql = "COALESCE(
                     CASE WHEN status_kehadiran != 'Aktif' THEN target_tidak_aktif ELSE NULL END,
+                    $divisionCaseSql,
                     $targetBulanan
                 )";
 
@@ -177,13 +208,23 @@ class LaporanController extends Controller
             })
             ->get();
 
-        $leaderboard = $users->map(function ($user) use ($skorMaksimalSebulan, $targetBulanan) {
+        $divisionsLookup = \App\Models\Division::pluck('target_divisi', 'name')->toArray();
+
+        $leaderboard = $users->map(function ($user) use ($skorMaksimalSebulan, $targetBulanan, $divisionsLookup) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
             $persentase = ($skorMaksimalSebulan > 0) ? ($skorDiperoleh / $skorMaksimalSebulan) * 100 : 0;
             
             $userTarget = $targetBulanan;
+            
+            $divisionTarget = null;
+            if (!empty($user->divisi) && isset($divisionsLookup[$user->divisi])) {
+                $divisionTarget = $divisionsLookup[$user->divisi];
+            }
+
             if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
                 $userTarget = (float) $user->target_tidak_aktif;
+            } elseif (!is_null($divisionTarget)) {
+                $userTarget = (float) $divisionTarget;
             }
 
             return [
