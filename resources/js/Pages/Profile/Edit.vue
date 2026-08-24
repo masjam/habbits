@@ -40,7 +40,7 @@ const maleSeeds = ['Ahmad', 'Umar', 'Ali', 'Usman', 'Hasan', 'Husain', 'Ibrahim'
 
 const predefinedAvatars = [
     ...femaleSeeds.map(seed => `https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}&top=hijab&clothingColor=pastelBlue,pastelGreen,pastelOrange,pastelRed,pastelYellow,pink,red`),
-    ...maleSeeds.map(seed => `https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}Male&top=shortHairShortFlat,shortHairShortRound,shortHairTheCaesar`)
+    ...maleSeeds.map(seed => `https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}&top=turban&clothingColor=black,blue01,blue02,gray01`)
 ]
 
 const userAvatarUrl = computed(() => {

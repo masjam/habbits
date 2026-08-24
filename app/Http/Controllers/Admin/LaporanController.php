@@ -23,6 +23,7 @@ class LaporanController extends Controller
         $year = $request->input('year', $now->year);
         $search = $request->input('search');
         $perPage = $request->input('per_page', 10);
+        $kategori_skor = $request->input('kategori_skor');
 
         $date = Carbon::create($year, $month, 1);
         $startOfMonth = $date->copy()->startOfMonth();
@@ -48,6 +49,25 @@ class LaporanController extends Controller
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'
             )
+            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan) {
+                $min = 0;
+                $max = 99999999;
+                if ($kategori === '0-30') {
+                    $max = 0.30 * $skorMaksimalSebulan;
+                } elseif ($kategori === '30-50') {
+                    $min = (0.30 * $skorMaksimalSebulan) + 0.0001;
+                    $max = 0.50 * $skorMaksimalSebulan;
+                } elseif ($kategori === '50-target') {
+                    $min = (0.50 * $skorMaksimalSebulan) + 0.0001;
+                    $max = ($targetBulanan / 100) * $skorMaksimalSebulan - 0.0001;
+                } elseif ($kategori === 'tercapai') {
+                    $min = ($targetBulanan / 100) * $skorMaksimalSebulan;
+                }
+                // When using havingRaw on alias in pagination, we must group by the main table id
+                $query->groupBy('users.id')
+                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) >= ?', [$min])
+                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) <= ?', [$max]);
+            })
             ->orderByRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) DESC');
 
         $paginatedUsers = $usersQuery->paginate($perPage)->withQueryString();
@@ -75,6 +95,7 @@ class LaporanController extends Controller
                 'year'   => (int) $year,
                 'search' => $search,
                 'per_page' => (int) $perPage,
+                'kategori_skor' => $kategori_skor,
             ]
         ]);
     }
@@ -87,6 +108,8 @@ class LaporanController extends Controller
         $now = Carbon::now();
         $month = $request->input('month', $now->month);
         $year = $request->input('year', $now->year);
+        $search = $request->input('search');
+        $kategori_skor = $request->input('kategori_skor');
 
         $date = Carbon::create($year, $month, 1);
         $startOfMonth = $date->copy()->startOfMonth();
@@ -98,11 +121,35 @@ class LaporanController extends Controller
             ->sum('skor_maksimal') ?: 100;
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
 
+        $settingTarget = Setting::where('key', 'monthly_target_score')->first();
+        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+
         $users = User::role('user')
+            ->when($search, function ($query, $search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
             ->withSum(
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'
             )
+            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan) {
+                $min = 0;
+                $max = 99999999;
+                if ($kategori === '0-30') {
+                    $max = 0.30 * $skorMaksimalSebulan;
+                } elseif ($kategori === '30-50') {
+                    $min = (0.30 * $skorMaksimalSebulan) + 0.0001;
+                    $max = 0.50 * $skorMaksimalSebulan;
+                } elseif ($kategori === '50-target') {
+                    $min = (0.50 * $skorMaksimalSebulan) + 0.0001;
+                    $max = ($targetBulanan / 100) * $skorMaksimalSebulan - 0.0001;
+                } elseif ($kategori === 'tercapai') {
+                    $min = ($targetBulanan / 100) * $skorMaksimalSebulan;
+                }
+                $query->groupBy('users.id')
+                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) >= ?', [$min])
+                      ->havingRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) <= ?', [$max]);
+            })
             ->get();
 
         $leaderboard = $users->map(function ($user) use ($skorMaksimalSebulan) {
@@ -119,10 +166,22 @@ class LaporanController extends Controller
         })->sortByDesc('persentase')->values();
 
         $namaBulan = $date->translatedFormat('F Y');
-        $fileName = 'Laporan_Ibadah_Pegawai_' . $date->format('Y_m') . '.xlsx';
+        $type = $request->input('type', 'excel');
 
+        if ($type === 'pdf') {
+            $fileName = 'Laporan_Ibadah_Pegawai_' . $date->format('Y_m') . '.pdf';
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.laporan_pdf', [
+                'leaderboard' => $leaderboard,
+                'skorMaksimal' => $skorMaksimalSebulan,
+                'namaBulan' => $namaBulan,
+                'targetBulanan' => $targetBulanan
+            ]);
+            return $pdf->download($fileName);
+        }
+
+        $fileName = 'Laporan_Ibadah_Pegawai_' . $date->format('Y_m') . '.xlsx';
         return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\LaporanExport($leaderboard, $skorMaksimalSebulan, $namaBulan),
+            new \App\Exports\LaporanExport($leaderboard, $skorMaksimalSebulan, $namaBulan, $targetBulanan),
             $fileName
         );
     }

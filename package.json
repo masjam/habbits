@@ -16,6 +16,7 @@
     "dependencies": {
         "@inertiajs/vue3": "^3.6.1",
         "@sentry/vue": "^10.70.0",
+        "@tinymce/tinymce-vue": "^6.3.0",
         "@vitejs/plugin-vue": "^6.0.8",
         "axios": "^1.19.0",
         "chart.js": "^4.5.1",

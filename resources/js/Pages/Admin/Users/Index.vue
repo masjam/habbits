@@ -199,10 +199,11 @@ const canEditUser = (user) => {
                 </div>
             </div>
 
-            <!-- Table -->
+            <!-- Table & Mobile Cards -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-slate-600">
+                    <!-- Desktop View -->
+                    <table class="hidden md:table w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-semibold border-b border-slate-200">
                             <tr>
                                 <th class="px-4 py-3">Nama Pegawai</th>
@@ -258,19 +259,57 @@ const canEditUser = (user) => {
                             </tr>
                         </tbody>
                     </table>
+                    
+                    <!-- Mobile View -->
+                    <div class="md:hidden divide-y divide-slate-100">
+                        <div v-for="user in users.data" :key="`mobile-${user.id}`" class="p-4 space-y-3 bg-white hover:bg-slate-50 transition-colors">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <div class="font-bold text-slate-800 text-sm">{{ user.name }}</div>
+                                    <div class="text-xs text-slate-500 truncate w-48">{{ user.email }}</div>
+                                </div>
+                                <div class="flex items-center gap-1 flex-shrink-0">
+                                    <button v-if="canEditUser(user)" @click="openEditModal(user)" title="Edit Profil" class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                    </button>
+                                    <button v-if="canResetPassword(user)" @click="openResetModal(user)" title="Reset Password" class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                                    </button>
+                                    <button v-if="canDeleteUser(user)" @click="deleteUser(user)" title="Hapus User" class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center flex-wrap gap-2 pt-1 border-t border-slate-100">
+                                <span v-if="user.gender === 'L'" class="px-2 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 font-bold uppercase tracking-wider">Laki-laki</span>
+                                <span v-else class="px-2 py-0.5 rounded text-[10px] bg-pink-100 text-pink-700 font-bold uppercase tracking-wider">Perempuan</span>
+                                
+                                <span v-for="role in user.roles" :key="role" 
+                                      class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                                      :class="{
+                                          'bg-emerald-100 text-emerald-800': role === 'user',
+                                          'bg-amber-100 text-amber-800': role === 'admin',
+                                          'bg-purple-100 text-purple-800': role === 'superadmin'
+                                      }">
+                                    {{ role === 'user' ? 'Pegawai' : role }}
+                                </span>
+                            </div>
+                        </div>
+                        <div v-if="users.data.length === 0" class="p-6 text-center text-slate-500 text-sm">Tidak ada data pegawai yang ditemukan.</div>
+                    </div>
                 </div>
                 
                 <!-- Pagination -->
                 <div v-if="users.links && users.links.length > 3" class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div class="text-sm text-slate-500">
+                    <div class="text-sm text-slate-500 text-center sm:text-left">
                         Menampilkan <span class="font-bold text-slate-700">{{ users.from || 0 }}</span> sampai <span class="font-bold text-slate-700">{{ users.to || 0 }}</span> dari <span class="font-bold text-slate-700">{{ users.total }}</span> data
                     </div>
-                    <div class="flex flex-wrap gap-1">
+                    <div class="flex flex-wrap justify-center gap-1.5">
                         <template v-for="(link, i) in users.links" :key="i">
                             <Link 
                                 v-if="link.url"
                                 :href="link.url"
-                                class="px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors"
+                                class="px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors shadow-sm"
                                 :class="link.active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'"
                                 v-html="link.label"
                                 preserve-scroll

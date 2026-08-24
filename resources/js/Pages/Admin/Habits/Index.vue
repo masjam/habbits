@@ -118,10 +118,11 @@ const saveHabit = () => {
                 </button>
             </div>
 
-            <!-- Table -->
+            <!-- Table & Mobile Cards -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-slate-600">
+                    <!-- Desktop View -->
+                    <table class="hidden md:table w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-semibold border-b border-slate-200">
                             <tr>
                                 <th class="px-2 py-3 text-center w-8"></th>
@@ -188,6 +189,48 @@ const saveHabit = () => {
                             </template>
                         </draggable>
                     </table>
+                    
+                    <!-- Mobile View -->
+                    <draggable 
+                        v-model="localHabits"
+                        class="md:hidden divide-y divide-slate-100"
+                        item-key="id"
+                        handle=".drag-handle"
+                        @end="onDragEnd"
+                        animation="200"
+                    >
+                        <template #item="{ element: habit, index }">
+                            <div class="p-4 space-y-3 bg-white hover:bg-slate-50 transition-colors">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex items-start gap-2">
+                                        <button type="button" class="drag-handle cursor-move mt-0.5 text-slate-300 hover:text-slate-500">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" /></svg>
+                                        </button>
+                                        <div>
+                                            <div class="font-bold text-slate-800 text-sm">{{ habit.nama_habit }}</div>
+                                            <div class="text-[10px] text-slate-500 mt-0.5">
+                                                Target: <span class="font-bold text-slate-700">{{ habit.target_pencapaian }} {{ habit.satuan || '' }}</span> &bull; Skor: <span class="font-bold text-slate-700">{{ habit.skor_maksimal }}pt</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <span v-if="habit.status_aktif" class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200" title="Aktif"></span>
+                                        <span v-else class="w-2.5 h-2.5 rounded-full bg-slate-300 shadow-sm" title="Non-aktif"></span>
+                                        <button @click="openEditModal(habit)" class="w-7 h-7 inline-flex items-center justify-center rounded-lg text-emerald-600 bg-emerald-50 hover:bg-emerald-100">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="pl-7 flex flex-wrap gap-1.5 text-[9px] font-bold uppercase tracking-wider">
+                                    <span v-if="habit.is_pengganti_haid" class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">P. Haid</span>
+                                    <span v-if="habit.hide_saat_haid" class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">Sembunyi Haid</span>
+                                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">Tipe: {{ habit.tipe_input }}</span>
+                                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">Tpl: {{ habit.template }}</span>
+                                </div>
+                            </div>
+                        </template>
+                    </draggable>
+                    <div v-if="localHabits.length === 0" class="md:hidden p-6 text-center text-slate-500 text-sm bg-white">Belum ada habit.</div>
                 </div>
             </div>
         </div>

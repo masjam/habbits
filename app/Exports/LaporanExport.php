@@ -5,20 +5,25 @@ namespace App\Exports;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
 use Illuminate\Support\Collection;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class LaporanExport implements FromCollection, WithHeadings, WithMapping
+class LaporanExport implements FromCollection, WithHeadings, WithMapping, WithEvents
 {
     protected $leaderboard;
     protected $skorMaksimal;
     protected $namaBulan;
+    protected $targetBulanan;
     protected $rank = 0;
 
-    public function __construct(Collection $leaderboard, $skorMaksimal, $namaBulan)
+    public function __construct(Collection $leaderboard, $skorMaksimal, $namaBulan, $targetBulanan)
     {
         $this->leaderboard = $leaderboard;
         $this->skorMaksimal = $skorMaksimal;
         $this->namaBulan = $namaBulan;
+        $this->targetBulanan = $targetBulanan;
     }
 
     public function collection(): \Illuminate\Support\Enumerable
@@ -53,6 +58,40 @@ class LaporanExport implements FromCollection, WithHeadings, WithMapping
             $row['skor'],
             $this->skorMaksimal,
             $row['persentase'] . '%'
+        ];
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function(AfterSheet $event) {
+                // Style heading table
+                $event->sheet->getStyle('A4:F4')->getFont()->setBold(true);
+                $event->sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+                
+                $rowNum = 5; // Data starts at row 5 (after headings)
+                foreach ($this->leaderboard as $row) {
+                    $persentase = $row['persentase'];
+                    $color = 'D1FAE5'; // emerald-100 (Tercapai)
+                    
+                    if ($persentase <= 30) {
+                        $color = 'FFF1F2'; // rose-50
+                    } elseif ($persentase <= 50) {
+                        $color = 'FFFBEB'; // amber-50
+                    } elseif ($persentase < $this->targetBulanan) {
+                        $color = 'ECFDF5'; // emerald-50
+                    }
+                    
+                    $event->sheet->getStyle("A{$rowNum}:F{$rowNum}")->applyFromArray([
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['argb' => $color]
+                        ]
+                    ]);
+                    
+                    $rowNum++;
+                }
+            }
         ];
     }
 }

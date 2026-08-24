@@ -73,9 +73,10 @@ const formatUserAgent = (ua) => {
                         </div>
                     </div>
 
-                    <!-- Table -->
+                    <!-- Content: Table (Desktop) & Cards (Mobile) -->
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                        <!-- Desktop View (Table) -->
+                        <table class="hidden md:table min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                             <thead class="bg-slate-50 dark:bg-slate-900/50">
                                 <tr>
                                     <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -147,26 +148,83 @@ const formatUserAgent = (ua) => {
                                 </tr>
                             </tbody>
                         </table>
+                        
+                        <!-- Mobile View (Cards) -->
+                        <div class="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+                            <div v-for="log in logs.data" :key="`mobile-${log.id}`" class="p-4 space-y-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                <!-- Header: User & Time -->
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center border border-emerald-200">
+                                            <span class="text-emerald-700 font-bold text-sm">{{ log.user?.name?.charAt(0) || '?' }}</span>
+                                        </div>
+                                        <div class="ml-3">
+                                            <div class="text-sm font-semibold text-slate-900 dark:text-white">
+                                                {{ log.user?.name || 'User Dihapus' }}
+                                            </div>
+                                            <div class="text-xs text-slate-500 dark:text-slate-400 truncate w-32 sm:w-48">
+                                                {{ log.user?.email || '-' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">Waktu</div>
+                                        <div class="text-xs text-slate-700 dark:text-slate-300">{{ formatDate(log.created_at) }}</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Body: Details -->
+                                <div class="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">IP Address</span>
+                                        <span class="font-mono text-slate-700 dark:text-slate-300 font-medium">{{ log.ip_address || 'N/A' }}</span>
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Lokasi</span>
+                                        <span class="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                            <svg v-if="log.location" class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            <span class="truncate">{{ log.location || 'Tidak Diketahui' }}</span>
+                                        </span>
+                                    </div>
+                                    <div class="flex flex-col gap-1 col-span-2 pt-1 border-t border-slate-200 dark:border-slate-700">
+                                        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Perangkat / Browser</span>
+                                        <span class="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                            {{ formatUserAgent(log.user_agent) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div v-if="logs.data.length === 0" class="p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+                                Belum ada riwayat login yang terekam.
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Pagination -->
                     <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700" v-if="logs.links && logs.data.length > 0">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-slate-500 dark:text-slate-400">
-                                Menampilkan {{ logs.from }} sampai {{ logs.to }} dari {{ logs.total }} log
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <span class="text-sm text-slate-500 dark:text-slate-400 text-center sm:text-left">
+                                Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ logs.from }}</span> sampai <span class="font-bold text-slate-700 dark:text-slate-300">{{ logs.to }}</span> dari <span class="font-bold text-slate-700 dark:text-slate-300">{{ logs.total }}</span> log
                             </span>
-                            <div class="flex gap-1">
+                            <div class="flex flex-wrap justify-center sm:justify-end gap-1.5">
                                 <template v-for="(link, i) in logs.links" :key="i">
                                     <component
                                         :is="link.url ? 'a' : 'span'"
                                         :href="link.url"
                                         @click.prevent="link.url ? router.get(link.url) : null"
                                         v-html="link.label"
-                                        class="px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer"
+                                        class="px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer border"
                                         :class="[
-                                            link.active ? 'bg-emerald-600 text-white font-medium' : 
-                                            !link.url ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 
-                                            'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                            link.active ? 'bg-emerald-600 text-white font-medium border-emerald-600 shadow-sm' : 
+                                            !link.url ? 'text-slate-400 bg-slate-50 border-slate-200 dark:border-slate-700 dark:bg-slate-800/50 cursor-not-allowed' : 
+                                            'text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
                                         ]"
                                     ></component>
                                 </template>

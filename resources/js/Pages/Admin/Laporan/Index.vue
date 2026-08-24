@@ -32,17 +32,19 @@ const selectedMonth = ref(props.filters.month)
 const selectedYear = ref(props.filters.year)
 const searchQuery = ref(props.filters.search || '')
 const perPage = ref(props.filters.per_page || 10)
+const kategoriSkor = ref(props.filters.kategori_skor || '')
+const showMobileFilters = ref(false)
 
 let searchTimeout = null
 watch(searchQuery, (newVal) => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
-        router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: newVal, per_page: perPage.value }, { preserveState: true, preserveScroll: true, replace: true })
+        router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: newVal, per_page: perPage.value, kategori_skor: kategoriSkor.value }, { preserveState: true, preserveScroll: true, replace: true })
     }, 300)
 })
 
-watch([selectedMonth, selectedYear, perPage], () => {
-    router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: searchQuery.value, per_page: perPage.value }, { preserveState: true, preserveScroll: true })
+watch([selectedMonth, selectedYear, perPage, kategoriSkor], () => {
+    router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: searchQuery.value, per_page: perPage.value, kategori_skor: kategoriSkor.value }, { preserveState: true, preserveScroll: true })
 })
 
 const saveTarget = () => {
@@ -88,11 +90,27 @@ const getBadgeClass = (persentase) => {
             </div>
                 
             <!-- Controls Card -->
-            <div class="bg-white rounded-3xl px-6 pt-6 pb-2 shadow-sm border border-slate-100">
+            
+            <!-- Mobile Filter Toggle Button -->
+            <div class="lg:hidden">
+                <button @click="showMobileFilters = !showMobileFilters" class="w-full flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <span class="flex items-center gap-2.5">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        Filter & Pencarian
+                    </span>
+                    <svg class="w-5 h-5 text-slate-400 transform transition-transform" :class="{ 'rotate-180': showMobileFilters }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-3xl lg:px-6 lg:pt-6 lg:pb-2 shadow-sm lg:border border-slate-100" :class="{ 'hidden lg:block': !showMobileFilters, 'p-5 border': showMobileFilters }">
                 <div class="flex flex-col lg:flex-row gap-6 items-start lg:items-end justify-between">
                     
                     <!-- Search & Filters -->
-                    <div class="flex-1 w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <div class="flex-1 w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
                         <div class="col-span-1 md:col-span-2 xl:col-span-1">
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pencarian</label>
                             <div class="relative">
@@ -114,6 +132,17 @@ const getBadgeClass = (persentase) => {
                             <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
                             <select v-model="selectedYear" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
                                 <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kategori</label>
+                            <select v-model="kategoriSkor" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
+                                <option value="">Semua Kategori</option>
+                                <option value="0-30">0% - 30%</option>
+                                <option value="30-50">30.1% - 50%</option>
+                                <option value="50-target">50.1% - &lt; Target</option>
+                                <option value="tercapai">&ge; Target</option>
                             </select>
                         </div>
                         
@@ -140,12 +169,20 @@ const getBadgeClass = (persentase) => {
                             </button>
                         </form>
                         
-                        <a :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery })" class="h-[52px] px-5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 shadow-sm self-end" title="Unduh Rekap Excel">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            <span class="hidden sm:inline">Export</span>
-                        </a>
+                        <div class="flex gap-2 self-end">
+                            <a :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'excel' })" class="h-[52px] px-4 bg-emerald-700 text-white text-sm font-bold rounded-xl hover:bg-emerald-800 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap Excel">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span class="hidden sm:inline">Excel</span>
+                            </a>
+                            <a :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'pdf' })" class="h-[52px] px-4 bg-rose-600 text-white text-sm font-bold rounded-xl hover:bg-rose-700 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap PDF">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span class="hidden sm:inline">PDF</span>
+                            </a>
+                        </div>
                     </div>
                     
                     
