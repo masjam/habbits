@@ -95,7 +95,7 @@ const toggleBoolean = (index) => {
     <AuthenticatedLayout>
         <Head title="Form Ibadah Harian" />
 
-        <div class="w-full max-w-[1920px] px-4 sm:px-6 lg:px-8 mx-auto space-y-6">
+        <div class="w-full space-y-6">
             
             <!-- Header Section -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-6 sm:p-8 relative overflow-hidden">
@@ -162,8 +162,8 @@ const toggleBoolean = (index) => {
                     </button>
                 </div>
 
-                <!-- Cards Layout -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 items-start">
+                <!-- Cards Layout (Masonry Columns) -->
+                <div class="columns-1 lg:columns-2 2xl:columns-3 gap-6">
                     <div 
                         v-for="habit in habits" 
                         :key="habit.id" 

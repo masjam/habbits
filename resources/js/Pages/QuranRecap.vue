@@ -47,7 +47,7 @@ const formatTanggal = (dateStr) => {
     <AuthenticatedLayout>
         <Head title="Rekap Al-Quran" />
 
-        <div class="w-full max-w-[1920px] px-4 sm:px-6 lg:px-8 mx-auto space-y-6 py-8">
+        <div class="w-full space-y-6 pb-8">
             
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-6 relative overflow-hidden">
                 <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">

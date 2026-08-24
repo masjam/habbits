@@ -118,8 +118,8 @@ onMounted(() => {
             />
 
             <!-- Main Content Area -->
-            <main class="flex-1 overflow-y-auto bg-transparent p-4 sm:p-6 lg:p-8">
-                <div class="mx-auto max-w-7xl">
+            <main class="flex-1 overflow-y-auto bg-transparent p-4 sm:p-6">
+                <div class="w-full">
                     <slot />
                 </div>
             </main>

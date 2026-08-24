@@ -191,10 +191,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <Head title="Al-Qur'an & Hadis" />
-
     <AuthenticatedLayout>
-        <div class="max-w-4xl mx-auto space-y-4">
+        <Head title="Al-Qur'an & Hadis" />
+
+        <div class="w-full space-y-6">
 
             <!-- ── Header ──────────────────────────────────────────────── -->
             <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">

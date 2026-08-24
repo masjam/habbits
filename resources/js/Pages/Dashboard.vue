@@ -199,7 +199,7 @@ const formatTanggal = (dateStr) => {
             </div>
         </div>
 
-        <div class="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="space-y-6 w-full pb-8">
             <!-- Page Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>

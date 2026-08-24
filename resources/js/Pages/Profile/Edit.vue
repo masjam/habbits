@@ -113,7 +113,7 @@ const updatePassword = () => {
     <AuthenticatedLayout>
         <Head title="Profil Saya" />
 
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="w-full space-y-6">
             <!-- Header -->
             <div>
                 <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Profil Saya</h2>

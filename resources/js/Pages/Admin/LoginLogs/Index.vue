@@ -51,8 +51,8 @@ const formatUserAgent = (ua) => {
             </h2>
         </template>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="space-y-6 w-full">
+            <div>
                 <!-- Wrapper Card -->
                 <div class="bg-white dark:bg-slate-800 shadow-sm sm:rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
                     
