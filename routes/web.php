@@ -31,6 +31,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/haid/toggle', [\App\Http\Controllers\MenstruationController::class, 'toggle'])->name('haid.toggle');
     
     Route::get('/kajian', [\App\Http\Controllers\KajianController::class, 'index'])->name('kajian.index');
+    Route::get('/quran-hadis', [\App\Http\Controllers\QuranHadisController::class, 'index'])->name('quran.hadis');
 
     Route::post('/push-subscriptions', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.store');
 
