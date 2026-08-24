@@ -47,6 +47,25 @@ watch(selectedDate, (newDate) => {
     }
 })
 
+// --- Tooltip Balon Deskripsi Habit ---
+const activeTooltipHabitId = ref(null)
+let tooltipTimeout = null
+
+const showHabitTooltip = (habit) => {
+    if (!habit || (!habit.deskripsi && !habit.nama_habit)) return
+    if (tooltipTimeout) clearTimeout(tooltipTimeout)
+    
+    if (activeTooltipHabitId.value === habit.id) {
+        activeTooltipHabitId.value = null
+        return
+    }
+
+    activeTooltipHabitId.value = habit.id
+    tooltipTimeout = setTimeout(() => {
+        activeTooltipHabitId.value = null
+    }, 2200) // Muncul selama 2 detik
+}
+
 // --- Form Initialization ---
 const activeTabId = ref(props.habits.length > 0 ? props.habits[0].id : null);
 
@@ -175,13 +194,52 @@ const toggleBoolean = (index) => {
                         ]"
                     >
                         
-                        <!-- Habit Header -->
-                        <div class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 px-4 py-2.5 flex justify-between items-center rounded-t-xl">
-                            <div class="flex-1 pr-2 truncate">
-                                <h3 class="font-bold text-slate-800 dark:text-slate-200 text-xs truncate" :title="habit.nama_habit">{{ habit.nama_habit }}</h3>
-                                <p v-if="habit.deskripsi" class="text-[9px] text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-0.5 truncate" :title="habit.deskripsi">{{ habit.deskripsi }}</p>
+                        <!-- Habit Header (Dengan Balon Pop-up Deskripsi) -->
+                        <div class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 px-4 py-2.5 flex justify-between items-center rounded-t-xl relative">
+                            <div 
+                                class="flex-1 pr-2 truncate cursor-pointer select-none group"
+                                @click="showHabitTooltip(habit)"
+                                title="Klik untuk melihat deskripsi lengkap"
+                            >
+                                <div class="flex items-center gap-1.5 truncate">
+                                    <h3 class="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">{{ habit.nama_habit }}</h3>
+                                    <span v-if="habit.deskripsi" class="text-slate-400 group-hover:text-emerald-600 transition-colors shrink-0">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </span>
+                                </div>
+                                <p v-if="habit.deskripsi" class="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{{ habit.deskripsi }}</p>
+
+                                <!-- Balon Pop-up Deskripsi (Muncul 2 detik saat diklik) -->
+                                <transition
+                                    enter-active-class="transition duration-200 ease-out"
+                                    enter-from-class="opacity-0 -translate-y-1 scale-95"
+                                    enter-to-class="opacity-100 translate-y-0 scale-100"
+                                    leave-active-class="transition duration-150 ease-in"
+                                    leave-from-class="opacity-100 translate-y-0 scale-100"
+                                    leave-to-class="opacity-0 -translate-y-1 scale-95"
+                                >
+                                    <div 
+                                        v-if="activeTooltipHabitId === habit.id" 
+                                        class="absolute left-3 right-3 top-full mt-1.5 z-40 p-3 bg-slate-900/95 text-white text-xs rounded-xl shadow-2xl backdrop-blur-md border border-slate-700/80 pointer-events-none"
+                                    >
+                                        <!-- Arrow Balon -->
+                                        <div class="absolute -top-1 left-6 w-2.5 h-2.5 bg-slate-900 rotate-45 border-l border-t border-slate-700/80"></div>
+                                        
+                                        <div class="font-bold text-xs text-emerald-400 mb-1 flex items-center justify-between">
+                                            <span>{{ habit.nama_habit }}</span>
+                                            <span class="text-[9px] text-emerald-300 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
+                                                Max {{ habit.skor_maksimal }}pt
+                                            </span>
+                                        </div>
+                                        <div class="text-[11px] text-slate-200 leading-relaxed font-normal whitespace-normal">
+                                            {{ habit.deskripsi || 'Tidak ada deskripsi tambahan.' }}
+                                        </div>
+                                    </div>
+                                </transition>
                             </div>
-                            <span class="text-[9px] font-bold px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 dark:text-slate-500 rounded whitespace-nowrap">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded whitespace-nowrap shrink-0">
                                 Max {{ habit.skor_maksimal }}pt
                             </span>
                         </div>
