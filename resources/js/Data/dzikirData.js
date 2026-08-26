@@ -414,7 +414,7 @@ export const DZIKIR_SHOLAT = [
         title: "Tasbih, 33x",
         note: "Tasbih 33x",
         target: 33,
-        arabic: "سُبْحَانَ اللَّهِ (33x)",
+        arabic: "سُبْحَانَ اللَّهِ (x٣٣)",
         latin: "Subhaanallaah (33x).",
         translation: "Maha Suci Allah (33x)",
         faedah: "Dibaca 33x setelah sholat fardhu menghapus dosa-dosa terdahulu. (HR. Muslim no. 597)"
@@ -424,7 +424,7 @@ export const DZIKIR_SHOLAT = [
         title: "Tahmid 33x",
         note: "Tahmid 33x",
         target: 33,
-        arabic: "الْحَمْدُ لِلَّهِ (33x)",
+        arabic: "الْحَمْدُ لِلَّهِ (x٣٣)",
         latin: "Alhamdulillaah (33x).",
         translation: "Segala puji bagi Allah (33x).",
         faedah: "Membaca masing-masing 33x setelah sholat fardhu menghapus dosa-dosa terdahulu. (HR. Muslim no. 597)"
@@ -432,9 +432,9 @@ export const DZIKIR_SHOLAT = [
     {
         id: 'sholat-5',
         title: "Takbir 33x",
-        note: "Takbir 33x (Total 99x)",
+        note: "Takbir 33x",
         target: 33,
-        arabic: "اللَّهُ أَكْبَرُ (33x)",
+        arabic: "اللَّهُ أَكْبَرُ (x٣٣)",
         latin: "Allaahu Akbar (33x).",
         translation: "Allah Maha Besar (33x).",
         faedah: "Membaca masing-masing 33x setelah sholat fardhu menghapus dosa-dosa terdahulu. (HR. Muslim no. 597)"

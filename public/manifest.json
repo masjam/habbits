@@ -1,6 +1,6 @@
 {
-    "name": "Sistem Pantauan Habit SDAM",
-    "short_name": "Gobit SDAM",
+    "name": "GobitSDAM",
+    "short_name": "GobitSDAM",
     "description": "Sistem Pantauan Kebiasaan Baik Guru dan Karyawan SD Al Mujahidin Wonosari",
     "start_url": "/",
     "display": "standalone",
