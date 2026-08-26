@@ -207,9 +207,9 @@ class DashboardController extends Controller
 
         // ─── 8. Habit Analytics (Sholat Wajib, Rawatib, Quran) ───────────────────
         $habitAnalytics = [
-            'sholat_wajib' => ['JM' => 0, 'JR' => 0, 'M' => 0],
-            'sholat_rawatib' => ['Qobliyah' => 0, 'Badiyah' => 0],
-            'quran' => ['durasi' => 0],
+            'sholat_wajib' => ['JM' => 0, 'JR' => 0, 'M' => 0, 'frekuensi' => 0],
+            'sholat_rawatib' => ['Qobliyah' => 0, 'Badiyah' => 0, 'frekuensi' => 0],
+            'quran' => ['durasi' => 0, 'frekuensi' => 0],
             'others' => []
         ];
 
@@ -220,10 +220,12 @@ class DashboardController extends Controller
         
         foreach ($monthlyLogs as $log) {
             $details = $log->details;
-            if (!$details || !is_array($details)) continue;
+            if (!is_array($details)) {
+                $details = [];
+            }
 
             if ($log->habit && $log->habit->template === 'sholat_wajib') {
-                if (is_array($details)) {
+                if (!empty($details)) {
                     $waktus = ['subuh', 'dhuhur', 'asar', 'maghrib', 'isya'];
                     foreach ($waktus as $w) {
                         if (isset($details[$w])) {
@@ -231,31 +233,74 @@ class DashboardController extends Controller
                             if ($val === 'JM') $habitAnalytics['sholat_wajib']['JM']++;
                             elseif ($val === 'JD' || $val === 'JR') $habitAnalytics['sholat_wajib']['JR']++;
                             elseif ($val === 'M') $habitAnalytics['sholat_wajib']['M']++;
+                            
+                            $habitAnalytics['sholat_wajib']['frekuensi']++;
                         }
                     }
                 }
             } elseif ($log->habit && $log->habit->template === 'sholat_rawatib') {
-                if (is_array($details)) {
+                if (!empty($details)) {
                     $qKeys = ['subuh_q', 'dhuhur_q', 'asar_q', 'maghrib_q', 'isya_q'];
                     $bKeys = ['dhuhur_b', 'maghrib_b', 'isya_b'];
                     foreach ($qKeys as $k) {
-                        if (!empty($details[$k])) $habitAnalytics['sholat_rawatib']['Qobliyah']++;
+                        if (!empty($details[$k])) {
+                            $habitAnalytics['sholat_rawatib']['Qobliyah']++;
+                            $habitAnalytics['sholat_rawatib']['frekuensi']++;
+                        }
                     }
                     foreach ($bKeys as $k) {
-                        if (!empty($details[$k])) $habitAnalytics['sholat_rawatib']['Badiyah']++;
+                        if (!empty($details[$k])) {
+                            $habitAnalytics['sholat_rawatib']['Badiyah']++;
+                            $habitAnalytics['sholat_rawatib']['frekuensi']++;
+                        }
                     }
                 }
             } elseif ($log->habit && $log->habit->template === 'quran') {
-                if (is_array($details) && isset($details['durasi']) && is_numeric($details['durasi'])) {
+                if ($log->nilai_input > 0) {
+                    $habitAnalytics['quran']['frekuensi']++;
+                }
+                if (!empty($details) && isset($details['durasi']) && is_numeric($details['durasi'])) {
                     $habitAnalytics['quran']['durasi'] += (int) $details['durasi'];
                 }
             } elseif ($log->habit) {
-                if ($log->nilai_input == 1) {
-                    $namaHabit = $log->habit->nama;
+                if ($log->nilai_input > 0) {
+                    $namaHabit = $log->habit->nama_habit;
                     if (!isset($habitAnalytics['others'][$namaHabit])) {
                         $habitAnalytics['others'][$namaHabit] = 0;
                     }
                     $habitAnalytics['others'][$namaHabit]++;
+                }
+            }
+        }
+
+        // --- Calculate Radar Chart Data (Days Target Achieved) ---
+        $radarChartDataBackend = [];
+        $dailySums = [];
+        foreach ($monthlyLogs as $log) {
+            if ($log->habit) {
+                $dateKey = Carbon::parse($log->tanggal)->format('Y-m-d');
+                $hid = $log->habit_id;
+                
+                if (!isset($dailySums[$dateKey])) $dailySums[$dateKey] = [];
+                if (!isset($dailySums[$dateKey][$hid])) $dailySums[$dateKey][$hid] = 0;
+                
+                $dailySums[$dateKey][$hid] += (float) $log->nilai_input;
+            }
+        }
+
+        $allHabits = \App\Models\Habit::all()->keyBy('id');
+        foreach ($dailySums as $date => $habitsLog) {
+            foreach ($habitsLog as $hid => $sum) {
+                if (!isset($allHabits[$hid])) continue;
+                $target = (float) $allHabits[$hid]->target_pencapaian;
+                $habitName = $allHabits[$hid]->nama_habit;
+                
+                if (!isset($radarChartDataBackend[$habitName])) {
+                    $radarChartDataBackend[$habitName] = 0;
+                }
+                
+                if ($target > 0 && $sum >= $target) {
+                    $radarChartDataBackend[$habitName]++;
                 }
             }
         }
@@ -290,6 +335,7 @@ class DashboardController extends Controller
             'missedDates'      => $missedDates,
             'announcement'     => $announcement,
             'habitAnalytics'   => $habitAnalytics,
+            'radarChartDataBackend' => $radarChartDataBackend,
         ]);
     }
 

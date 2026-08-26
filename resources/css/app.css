@@ -107,6 +107,7 @@
     /* Transition smooth untuk dark mode toggle */
     /* Font khusus teks Al-Quran & Arab */
     .font-arabic {
-        font-family: 'Scheherazade New', 'Amiri Quran', 'Traditional Arabic', serif;
+        font-family: 'Scheherazade New', 'Amiri Quran', 'Amiri', 'Traditional Arabic', serif;
+        line-height: 2.2;
     }
 }

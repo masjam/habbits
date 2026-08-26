@@ -50,7 +50,7 @@ self.addEventListener('fetch', (e) => {
     if (
         url.pathname.startsWith('/build/') ||
         url.pathname.startsWith('/img/') ||
-        url.pathname === '/logo.png' ||
+        url.pathname === '/img/gh.png' ||
         url.pathname === '/manifest.json' ||
         url.pathname.match(/\.(woff2?|png|jpg|jpeg|svg|ico|webp)$/)
     ) {
@@ -128,8 +128,8 @@ self.addEventListener('push', function (e) {
     const title = data.title || 'Pengingat Habit';
     const options = {
         body:   data.body  || 'Jangan lupa isi form ibadah Anda hari ini! 📿',
-        icon:   '/logo.png',
-        badge:  '/logo.png',
+        icon:   '/img/gh.png',
+        badge:  '/img/gh.png',
         vibrate: [200, 100, 200],
         tag:    'habit-reminder',
         renotify: true,

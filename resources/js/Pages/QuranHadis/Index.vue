@@ -62,11 +62,24 @@ const clearBookmark = () => {
     localStorage.removeItem('quran_last_read')
 }
 
+const targetHighlightedAyat = ref(null)
+const selectedAyatJump = ref('')
+
 const scrollToAyat = (nomorAyat) => {
     const el = document.getElementById(`ayat-${nomorAyat}`)
     if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        targetHighlightedAyat.value = Number(nomorAyat)
+        selectedAyatJump.value = String(nomorAyat)
+        setTimeout(() => {
+            targetHighlightedAyat.value = null
+        }, 2500)
     }
+}
+
+const handleJumpToAyat = (nomorAyat) => {
+    if (!nomorAyat) return
+    scrollToAyat(nomorAyat)
 }
 
 const goToBookmark = async () => {
@@ -136,11 +149,23 @@ const checkMobile = () => {
 }
 
 const quranCurrentPage = ref(1)
-const quranItemsPerPage = computed(() => isMobile.value ? 10 : 30)
+const quranItemsPerPage = computed(() => isMobile.value ? 10 : 50)
 
-// ─── Pengaturan Tampilan Al-Qur'an (Latin & Terjemahan) ──────────────────────
+// ─── Pengaturan Tampilan Al-Qur'an (Font Size, Latin & Terjemahan) ─────────
 const showLatin = ref(true)
 const showTranslation = ref(true)
+const fontSize = ref('normal') // 'sm' | 'normal' | 'lg' | 'xl'
+const showQuranOptions = ref(false) // Toggle sembunyikan/tampilkan pengaturan
+
+const arabicFontSizeClass = computed(() => {
+    switch (fontSize.value) {
+        case 'sm': return 'text-xl sm:text-2xl leading-loose'
+        case 'normal': return 'text-2xl sm:text-3xl md:text-4xl leading-loose'
+        case 'lg': return 'text-3xl sm:text-4xl md:text-5xl leading-loose'
+        case 'xl': return 'text-4xl sm:text-5xl md:text-6xl leading-loose'
+        default: return 'text-2xl sm:text-3xl md:text-4xl leading-loose'
+    }
+})
 
 const loadQuranSettings = () => {
     if (typeof window !== 'undefined') {
@@ -152,6 +177,28 @@ const loadQuranSettings = () => {
         if (savedTrans !== null) {
             showTranslation.value = savedTrans === 'true'
         }
+        const savedFontSize = localStorage.getItem('quran_font_size')
+        if (savedFontSize && ['sm', 'normal', 'lg', 'xl'].includes(savedFontSize)) {
+            fontSize.value = savedFontSize
+        }
+        const savedOptions = localStorage.getItem('quran_show_options')
+        if (savedOptions !== null) {
+            showQuranOptions.value = savedOptions === 'true'
+        }
+    }
+}
+
+const toggleQuranOptions = () => {
+    showQuranOptions.value = !showQuranOptions.value
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('quran_show_options', String(showQuranOptions.value))
+    }
+}
+
+const setFontSize = (size) => {
+    fontSize.value = size
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('quran_font_size', size)
     }
 }
 
@@ -429,53 +476,39 @@ const highlightKeyword = (text, keyword) => {
     return text.replace(regex, '<mark class="bg-amber-200 text-amber-950 px-1 py-0.5 rounded font-semibold">$1</mark>')
 }
 
-// ─── Fitur Bagikan ke Media Sosial ────────────────────────────────────────────
+
 const shareModalOpen = ref(false)
 const shareData = ref({
-    type: 'quran', // 'quran' | 'hadis'
+    type: 'quran',
     title: '',
     arab: '',
+    latin: '',
     translation: '',
     source: '',
     fullText: ''
 })
-const shareCopied = ref(false)
 
 const openShareQuran = (surah, ayat) => {
     const title = `QS. ${surah.namaLatin} : Ayat ${ayat.nomorAyat}`
     const arab = ayat.teksArab || ''
+    const latin = ayat.teksLatin || ''
     const translation = ayat.teksIndonesia || ''
     const source = `Al-Qur'an Surah ${surah.namaLatin} (${surah.arti}) [${surah.nomor}:${ayat.nomorAyat}]`
-    const fullText = `📖 *${title}*\n\n${arab}\n\n"${translation}"\n\n📌 _Sumber: ${source}_\n_Dibagikan melalui Habit Tracker SDAM_`
+    const fullText = `📖 *${title}*\n\n${arab}\n\n${latin ? '_' + latin + '_\n\n' : ''}"${translation}"\n\n📌 _Sumber: ${source}_\n_Dibagikan melalui Habit Tracker SDAM_`
 
-    shareData.value = {
-        type: 'quran',
-        title,
-        arab,
-        translation,
-        source,
-        fullText
-    }
-    shareCopied.value = false
+    shareData.value = { type: 'quran', title, arab, latin, translation, source, fullText }
     shareModalOpen.value = true
 }
 
 const openShareHadisPerawi = (perawiName, nomor, data) => {
     const title = `Hadis Riwayat ${perawiName} No. ${nomor}`
     const arab = data.arab || ''
+    const latin = ''
     const translation = data.id || ''
     const source = `HR. ${perawiName} (No. ${nomor})`
     const fullText = `📜 *${title}*\n\n${arab ? arab + '\n\n' : ''}"${translation}"\n\n📌 _Sumber: ${source}_\n_Dibagikan melalui Habit Tracker SDAM_`
 
-    shareData.value = {
-        type: 'hadis',
-        title,
-        arab,
-        translation,
-        source,
-        fullText
-    }
-    shareCopied.value = false
+    shareData.value = { type: 'hadis', title, arab, latin, translation, source, fullText }
     shareModalOpen.value = true
 }
 
@@ -484,71 +517,12 @@ const openShareHadisSearch = (item, extra) => {
     const grade = extra?.grade ? ` (Derajat: ${extra.grade})` : ''
     const title = `Hadis: ${source}`
     const arab = extra?.hadeeth_ar || ''
+    const latin = ''
     const translation = item.text || ''
     const fullText = `📜 *${title}${grade}*\n\n${arab ? arab + '\n\n' : ''}"${translation}"\n\n📌 _Sumber: ${source}_\n_Dibagikan melalui Habit Tracker SDAM_`
 
-    shareData.value = {
-        type: 'hadis',
-        title: `${source}${grade}`,
-        arab,
-        translation,
-        source,
-        fullText
-    }
-    shareCopied.value = false
+    shareData.value = { type: 'hadis', title: `${source}${grade}`, arab, latin, translation, source, fullText }
     shareModalOpen.value = true
-}
-
-const closeShareModal = () => {
-    shareModalOpen.value = false
-}
-
-const shareToWhatsApp = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareData.value.fullText)}`
-    window.open(url, '_blank')
-}
-
-const shareToTelegram = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const url = `https://t.me/share/url?url=${encodeURIComponent(origin)}&text=${encodeURIComponent(shareData.value.fullText)}`
-    window.open(url, '_blank')
-}
-
-const shareToTwitter = () => {
-    const maxLen = 200
-    const excerpt = shareData.value.translation.length > maxLen ? shareData.value.translation.slice(0, maxLen) + '...' : shareData.value.translation
-    const tweetText = `${shareData.value.title}\n\n"${excerpt}"\n\n${shareData.value.source}`
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
-    window.open(url, '_blank')
-}
-
-const shareToFacebook = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(origin)}&quote=${encodeURIComponent(shareData.value.fullText)}`
-    window.open(url, '_blank')
-}
-
-const shareNative = async () => {
-    if (typeof navigator !== 'undefined' && navigator.share) {
-        try {
-            await navigator.share({
-                title: shareData.value.title,
-                text: shareData.value.fullText
-            })
-        } catch (e) {
-            // User cancel / dismiss
-        }
-    }
-}
-
-const copyShareText = async () => {
-    const success = await copyToClipboard(shareData.value.fullText)
-    if (success) {
-        shareCopied.value = true
-        setTimeout(() => {
-            shareCopied.value = false
-        }, 2500)
-    }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -665,59 +639,152 @@ onUnmounted(() => {
                             <div class="text-sm text-slate-500 mt-0.5">{{ surahDetail.arti }} · {{ surahDetail.jumlahAyat }} Ayat · {{ surahDetail.tempatTurun }}</div>
                         </div>
 
-                        <!-- Bar Pengaturan Opsi Tampilan Ayat (Tepat di bawah Nama Surah) -->
-                        <div class="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100 mb-6">
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
-                                <div class="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                                    </svg>
-                                </div>
-                                <span>Pengaturan Tampilan:</span>
-                            </div>
-                            
-                            <div class="flex items-center gap-2">
-                                <!-- Switch Transliterasi Latin -->
-                                <button 
-                                    type="button" 
-                                    @click="toggleLatin"
-                                    :class="[
-                                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-xs',
-                                        showLatin 
-                                            ? 'bg-emerald-600 text-white border-emerald-600 ring-1 ring-emerald-600' 
-                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                                    ]"
-                                    title="Tampilkan / sembunyikan bacaan Latin (Transliterasi)"
+                        <!-- Bar Pengaturan Opsi Tampilan Ayat (Toggleable) -->
+                        <div class="p-3 sm:p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100 mb-6 transition-all duration-200 shadow-2xs">
+                            <div class="flex items-center justify-between gap-3">
+                                <!-- Tombol Toggle Pengaturan -->
+                                <button
+                                    type="button"
+                                    @click="toggleQuranOptions"
+                                    class="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-emerald-800 transition-colors cursor-pointer select-none py-0.5"
+                                    :title="showQuranOptions ? 'Sembunyikan Pengaturan Tampilan' : 'Tampilkan Pengaturan Tampilan'"
                                 >
-                                    <span class="w-2 h-2 rounded-full" :class="showLatin ? 'bg-white' : 'bg-slate-300'"></span>
-                                    <span>Latin</span>
+                                    <div :class="['w-7 h-7 rounded-xl flex items-center justify-center transition-all duration-150', showQuranOptions ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200']">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                        </svg>
+                                    </div>
+                                    <span>Pengaturan Tampilan</span>
+                                    <svg
+                                        :class="['w-3.5 h-3.5 text-slate-400 transition-transform duration-200', showQuranOptions ? 'rotate-180 text-emerald-600' : 'rotate-0']"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
+                                    >
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                    </svg>
                                 </button>
 
-                                <!-- Switch Terjemahan Bahasa Indonesia -->
-                                <button 
-                                    type="button" 
-                                    @click="toggleTranslation"
-                                    :class="[
-                                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-xs',
-                                        showTranslation 
-                                            ? 'bg-emerald-600 text-white border-emerald-600 ring-1 ring-emerald-600' 
-                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                                    ]"
-                                    title="Tampilkan / sembunyikan arti terjemahan bahasa Indonesia"
-                                >
-                                    <span class="w-2 h-2 rounded-full" :class="showTranslation ? 'bg-white' : 'bg-slate-300'"></span>
-                                    <span>Terjemahan</span>
-                                </button>
+                                <!-- Mini Badge Ringkasan Saat Tertutup -->
+                                <div v-if="!showQuranOptions" class="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                                    <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-emerald-700 uppercase">Font: {{ fontSize.toUpperCase() }}</span>
+                                    <span v-if="showLatin" class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-600">Latin</span>
+                                    <span v-if="showTranslation" class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-600">Terjemahan</span>
+                                </div>
                             </div>
+
+                            <!-- Panel Opsi Pengaturan (Dapat Disembunyikan/Ditampilkan) -->
+                            <Transition
+                                enter-active-class="transition duration-150 ease-out"
+                                enter-from-class="opacity-0 -translate-y-2 scale-98"
+                                enter-to-class="opacity-100 translate-y-0 scale-100"
+                                leave-active-class="transition duration-100 ease-in"
+                                leave-from-class="opacity-100 translate-y-0 scale-100"
+                                leave-to-class="opacity-0 -translate-y-2 scale-98"
+                            >
+                                <div v-if="showQuranOptions" class="mt-2.5 pt-2.5 border-t border-emerald-100/80 flex items-center justify-between gap-1 sm:gap-2.5 w-full min-w-0">
+                                    <!-- 1. Ukuran Font Arab A- / A / A+ / A++ -->
+                                    <div class="inline-flex rounded-xl bg-white border border-slate-200 p-0.5 text-[10px] sm:text-xs shadow-2xs flex-shrink-0">
+                                        <button
+                                            type="button"
+                                            @click="setFontSize('sm')"
+                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'sm' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
+                                            title="Ukuran Kecil (A-)"
+                                        >
+                                            A-
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="setFontSize('normal')"
+                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'normal' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
+                                            title="Ukuran Standar (A)"
+                                        >
+                                            A
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="setFontSize('lg')"
+                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'lg' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
+                                            title="Ukuran Besar (A+)"
+                                        >
+                                            A+
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="setFontSize('xl')"
+                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'xl' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
+                                            title="Ukuran Ekstra Besar (A++)"
+                                        >
+                                            A++
+                                        </button>
+                                    </div>
+
+                                    <!-- 2. Opsi Lompat ke Ayat Tertentu -->
+                                    <div class="relative flex-1 min-w-[65px] max-w-[110px]">
+                                        <select
+                                            v-model="selectedAyatJump"
+                                            @change="handleJumpToAyat($event.target.value)"
+                                            class="w-full bg-white border border-slate-200 text-slate-700 text-[11px] sm:text-xs font-bold rounded-xl py-1 pl-1.5 sm:pl-2 pr-5 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs appearance-none truncate"
+                                        >
+                                            <option value="" disabled>Ayat...</option>
+                                            <option
+                                                v-for="a in surahDetail.ayat"
+                                                :key="a.nomorAyat"
+                                                :value="String(a.nomorAyat)"
+                                            >
+                                                Ayat {{ a.nomorAyat }}
+                                            </option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-slate-400">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    <!-- 3. Switch Transliterasi Latin -->
+                                    <button 
+                                        type="button" 
+                                        @click="toggleLatin"
+                                        :class="[
+                                            'inline-flex items-center justify-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all border shadow-2xs flex-shrink-0 cursor-pointer',
+                                            showLatin 
+                                                ? 'bg-emerald-600 text-white border-emerald-600' 
+                                                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                        ]"
+                                        title="Tampilkan / sembunyikan bacaan Latin"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="showLatin ? 'bg-white' : 'bg-slate-300'"></span>
+                                        <span>Latin</span>
+                                    </button>
+
+                                    <!-- 4. Switch Terjemahan Bahasa Indonesia -->
+                                    <button 
+                                        type="button" 
+                                        @click="toggleTranslation"
+                                        :class="[
+                                            'inline-flex items-center justify-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all border shadow-2xs flex-shrink-0 cursor-pointer',
+                                            showTranslation 
+                                                ? 'bg-emerald-600 text-white border-emerald-600' 
+                                                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                        ]"
+                                        title="Tampilkan / sembunyikan arti terjemahan"
+                                    >
+                                        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="showTranslation ? 'bg-white' : 'bg-slate-300'"></span>
+                                        <span>Arti</span>
+                                    </button>
+                                </div>
+                            </Transition>
                         </div>
 
                         <!-- Basmalah (kecuali At-Taubah surah 9) -->
-                        <div v-if="surahDetail.nomor !== 9 && surahDetail.nomor !== 1" class="text-center text-2xl font-arabic text-slate-700 mb-6 py-2">
+                        <div 
+                            v-if="surahDetail.nomor !== 9 && surahDetail.nomor !== 1" 
+                            :class="['text-center font-arabic text-slate-700 mb-6 py-2', fontSize === 'sm' ? 'text-xl' : fontSize === 'lg' ? 'text-3xl' : fontSize === 'xl' ? 'text-4xl' : 'text-2xl']"
+                        >
                             بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ
                         </div>
 
                         <!-- Ayat-ayat -->
-                        <div class="space-y-5">
+                        <div class="space-y-3 sm:space-y-4">
                             <div 
                                 v-for="ayat in surahDetail.ayat" 
                                 :key="ayat.nomorAyat" 
@@ -726,38 +793,40 @@ onUnmounted(() => {
                             >
                                 <div 
                                     :class="[
-                                        'rounded-2xl p-4 sm:p-5 border transition-all duration-200',
-                                        isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) 
-                                            ? 'bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-200/70 shadow-sm' 
-                                            : 'bg-slate-50/60 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/20'
+                                        'rounded-2xl px-3.5 sm:px-5 py-2.5 sm:py-3.5 border transition-all duration-300',
+                                        targetHighlightedAyat === ayat.nomorAyat
+                                            ? 'bg-emerald-100/90 border-emerald-500 ring-4 ring-emerald-400/70 shadow-md scale-[1.01]'
+                                            : isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) 
+                                                ? 'bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-200/70 shadow-sm' 
+                                                : 'bg-slate-50/60 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/20'
                                     ]"
                                 >
-                                    <!-- Baris 1: Header Aksi Ayat (Baris Tersendiri - Nomor, Bookmark, Bagikan) -->
-                                    <div class="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100/90">
-                                        <div class="flex items-center gap-2">
-                                            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs sm:text-sm font-bold flex-shrink-0">
+                                    <!-- Baris 1: Header Aksi Ayat (Kompak - Tinggi Berkurang 50%) -->
+                                    <div class="flex items-center justify-between gap-2 pb-1.5 mb-2 sm:mb-2.5 border-b border-slate-100/90">
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[11px] font-bold flex-shrink-0">
                                                 {{ ayat.nomorAyat }}
                                             </div>
                                             <span class="text-xs font-semibold text-slate-400">Ayat {{ ayat.nomorAyat }}</span>
                                         </div>
 
-                                        <div class="flex items-center gap-1.5 sm:gap-2">
+                                        <div class="flex items-center gap-1.5">
                                             <!-- Tombol Bookmark -->
                                             <button
                                                 type="button"
                                                 @click="toggleBookmark(surahDetail, ayat)"
                                                 :title="isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'Hapus penanda terakhir dibaca' : 'Tandai sebagai terakhir dibaca'"
                                                 :class="[
-                                                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold transition-all shadow-xs',
+                                                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-all shadow-xs cursor-pointer',
                                                     isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat)
                                                         ? 'bg-emerald-600 text-white ring-1 ring-emerald-600'
                                                         : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 bg-white border border-slate-200'
                                                 ]"
                                             >
-                                                <svg class="w-3.5 h-3.5" :fill="isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <svg class="w-3 h-3" :fill="isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                                 </svg>
-                                                <span class="text-[11px] sm:text-xs">
+                                                <span>
                                                     {{ isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'Terakhir Baca' : 'Tandai' }}
                                                 </span>
                                             </button>
@@ -767,18 +836,18 @@ onUnmounted(() => {
                                                 type="button"
                                                 @click="openShareQuran(surahDetail, ayat)"
                                                 title="Bagikan ayat ini ke media sosial"
-                                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 bg-white border border-slate-200 transition-all shadow-xs"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 bg-white border border-slate-200 transition-all shadow-xs cursor-pointer"
                                             >
-                                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <svg class="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                                                 </svg>
-                                                <span class="text-[11px] sm:text-xs">Bagikan</span>
+                                                <span>Bagikan</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    <!-- Baris 2: Teks Arab Ayat (Lebar Penuh) -->
-                                    <div class="w-full text-right text-2xl sm:text-3xl md:text-4xl font-arabic leading-loose text-slate-800 mb-4 py-1" dir="rtl">
+                                    <!-- Baris 2: Teks Arab Ayat (Lebar Penuh dengan Ukuran Dinamis) -->
+                                    <div :class="['w-full text-right font-arabic leading-loose text-slate-800 mb-1 sm:mb-2 py-0.5 select-text', arabicFontSizeClass]" dir="rtl">
                                         {{ ayat.teksArab }}
                                     </div>
 
@@ -878,26 +947,26 @@ onUnmounted(() => {
                             <span class="text-sm">Memuat daftar surah...</span>
                         </div>
 
-                        <!-- Grid Surah split into columns of 10 rows -->
-                        <div v-else class="flex flex-col md:flex-row gap-4">
-                            <div v-for="(col, colIdx) in quranColumns" :key="colIdx" class="flex flex-col gap-2.5 flex-1">
+                        <!-- Grid Surah 5 kolom (desktop) / 1 kolom (mobile) x 10 per kolom -->
+                        <div v-else class="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3">
+                            <div v-for="(col, colIdx) in quranColumns" :key="colIdx" class="flex flex-col gap-1.5">
                                 <button
                                     v-for="surah in col"
                                     :key="surah.nomor"
                                     @click="fetchSurahDetail(surah.nomor)"
-                                    class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50/40 transition-all text-left group"
+                                    class="flex items-center gap-2 p-2 md:p-2.5 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50/40 transition-all text-left group"
                                 >
                                     <!-- Nomor -->
-                                    <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
+                                    <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">
                                         {{ surah.nomor }}
                                     </div>
                                     <!-- Info -->
                                     <div class="flex-1 min-w-0">
-                                        <div class="text-sm font-bold text-slate-800 leading-none">{{ surah.namaLatin }}</div>
-                                        <div class="text-[11px] text-slate-500 mt-0.5">{{ surah.arti }} · {{ surah.jumlahAyat }} ayat</div>
+                                        <div class="text-xs md:text-sm font-bold text-slate-800 leading-none truncate">{{ surah.namaLatin }}</div>
+                                        <div class="text-[10px] text-slate-500 mt-0.5 truncate">{{ surah.arti }} · {{ surah.jumlahAyat }} ayat</div>
                                     </div>
                                     <!-- Arab -->
-                                    <div class="text-lg font-arabic text-emerald-700 flex-shrink-0">{{ surah.nama }}</div>
+                                    <div class="text-base font-arabic text-emerald-700 flex-shrink-0">{{ surah.nama }}</div>
                                 </button>
                             </div>
                         </div>
@@ -1082,8 +1151,27 @@ onUnmounted(() => {
                     <div v-else>
                         <!-- Pilih Perawi -->
                         <div class="mb-5">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Kitab / Perawi</label>
-                            <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5 sm:gap-2">
+                            <!-- <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Kitab / Perawi</label> -->
+                            
+                            <!-- Mobile Dropdown Select -->
+                            <div class="sm:hidden relative">
+                                <select
+                                    v-model="selectedPerawi"
+                                    class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-xs appearance-none pr-10 cursor-pointer"
+                                >
+                                    <option v-for="p in perawiList" :key="p.slug" :value="p.slug">
+                                        Kitab {{ p.nama }} ({{ p.total?.toLocaleString('id-ID') }} Hadis)
+                                    </option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Desktop / Tablet Grid Buttons -->
+                            <div class="hidden sm:grid sm:grid-cols-5 md:grid-cols-9 gap-1.5 sm:gap-2">
                                 <button
                                     v-for="p in perawiList"
                                     :key="p.slug"
@@ -1229,6 +1317,7 @@ onUnmounted(() => {
                                 <button 
                                     @click="closeSearchHadisDetail" 
                                     class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                                    aria-label="Tutup modal detail hadis"
                                 >
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -1350,150 +1439,8 @@ onUnmounted(() => {
             </div>
 
             <!-- ══════════════════════════════════════════════════════ -->
-            <!-- MODAL BAGIKAN KE MEDIA SOSIAL (SHARE SHEET)           -->
-            <!-- ══════════════════════════════════════════════════════ -->
-            <div v-if="shareModalOpen" class="relative z-50" aria-labelledby="modal-share" role="dialog" aria-modal="true">
-                <!-- Backdrop -->
-                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeShareModal"></div>
-
-                <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
-                    <div class="flex min-h-full items-center justify-center p-3 sm:p-4 text-center">
-                        <div class="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all my-8 w-full max-w-lg border border-slate-100 dark:border-slate-700">
-                            
-                            <!-- Header Modal Share -->
-                            <div :class="['px-5 py-4 text-white flex items-center justify-between', shareData.type === 'quran' ? 'bg-gradient-to-r from-emerald-600 to-teal-600' : 'bg-gradient-to-r from-amber-500 to-orange-500']">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-bold text-sm sm:text-base leading-tight">Bagikan ke Media Sosial</h3>
-                                        <p class="text-[11px] opacity-90 truncate max-w-[220px] sm:max-w-[280px]">{{ shareData.title }}</p>
-                                    </div>
-                                </div>
-                                <button 
-                                    @click="closeShareModal" 
-                                    class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-                                >
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <!-- Preview Teks yang Dibagikan -->
-                            <div class="p-5 sm:p-6 space-y-4 max-h-[45vh] overflow-y-auto">
-                                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Preview Pesan:</div>
-                                <div class="bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700 space-y-2.5">
-                                    <div class="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">{{ shareData.title }}</div>
-                                    <div v-if="shareData.arab" class="text-right text-base sm:text-lg font-arabic leading-relaxed text-slate-700 dark:text-slate-300" dir="rtl">
-                                        {{ shareData.arab }}
-                                    </div>
-                                    <div class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
-                                        "{{ shareData.translation }}"
-                                    </div>
-                                    <div class="text-[11px] text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-700">
-                                        {{ shareData.source }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Pilihan Tombol Media Sosial -->
-                            <div class="bg-slate-50 dark:bg-slate-800/50 p-5 border-t border-slate-100 dark:border-slate-700 space-y-3">
-                                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Pilih Platform:</div>
-                                
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                                    <!-- WhatsApp -->
-                                    <button 
-                                        @click="shareToWhatsApp" 
-                                        class="flex flex-col items-center justify-center p-3 rounded-2xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] border border-[#25D366]/30 transition-all group"
-                                    >
-                                        <div class="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-105 transition-transform">
-                                            <!-- WhatsApp SVG Icon -->
-                                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-xs font-bold">WhatsApp</span>
-                                    </button>
-
-                                    <!-- Telegram -->
-                                    <button 
-                                        @click="shareToTelegram" 
-                                        class="flex flex-col items-center justify-center p-3 rounded-2xl bg-[#0088cc]/10 hover:bg-[#0088cc]/20 text-[#0088cc] border border-[#0088cc]/30 transition-all group"
-                                    >
-                                        <div class="w-9 h-9 rounded-full bg-[#0088cc] text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-105 transition-transform">
-                                            <!-- Telegram SVG Icon -->
-                                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                                                <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.34-.635.34l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.894z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-xs font-bold">Telegram</span>
-                                    </button>
-
-                                    <!-- Twitter / X -->
-                                    <button 
-                                        @click="shareToTwitter" 
-                                        class="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-900/10 hover:bg-slate-900/20 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-600 transition-all group"
-                                    >
-                                        <div class="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-105 transition-transform">
-                                            <!-- X / Twitter SVG Icon -->
-                                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-xs font-bold">X (Twitter)</span>
-                                    </button>
-
-                                    <!-- Facebook -->
-                                    <button 
-                                        @click="shareToFacebook" 
-                                        class="flex flex-col items-center justify-center p-3 rounded-2xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] border border-[#1877F2]/30 transition-all group"
-                                    >
-                                        <div class="w-9 h-9 rounded-full bg-[#1877F2] text-white flex items-center justify-center mb-1.5 shadow-sm group-hover:scale-105 transition-transform">
-                                            <!-- Facebook SVG Icon -->
-                                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                                                <path d="M9 8H6v4h3v12h5V12h3.642L18 8h-4V6.333C14 5.374 14.5 5 15.657 5H18V0h-3.808C10.597 0 9 1.582 9 4.615V8z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="text-xs font-bold">Facebook</span>
-                                    </button>
-                                </div>
-
-                                <!-- Baris Aksi Tambahan (Salin & Share Native) -->
-                                <div class="pt-2 flex gap-2">
-                                    <button 
-                                        @click="copyShareText" 
-                                        class="flex-1 py-2.5 px-4 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs"
-                                    >
-                                        <svg v-if="!shareCopied" class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10a2 2 0 01-2-2v-4a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2z" />
-                                        </svg>
-                                        <svg v-else class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        <span>{{ shareCopied ? 'Teks Lengkap Tersalin!' : 'Salin Teks Format Cantik' }}</span>
-                                    </button>
-
-                                    <button 
-                                        v-if="typeof navigator !== 'undefined' && !!navigator.share" 
-                                        @click="shareNative" 
-                                        class="py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs"
-                                        title="Buka menu berbagi bawaan perangkat/HP"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                        </svg>
-                                        <span>Lainnya...</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- Share Modal component -->
+<ShareImageModal v-model="shareModalOpen" :shareData="shareData" />
 
             <!-- Kredit -->
             <p class="text-center text-[11px] text-slate-400 pb-2">
@@ -1506,7 +1453,7 @@ onUnmounted(() => {
 
 <style scoped>
 .font-arabic {
-    font-family: 'Scheherazade New', 'Amiri Quran', 'Traditional Arabic', serif;
+    font-family: 'Scheherazade New', 'Amiri Quran', 'Amiri', 'Traditional Arabic', serif;
     line-height: 2.2;
 }
 </style>

@@ -12,14 +12,16 @@ import {
     PointElement,
     LineElement,
     BarElement,
+    RadialLinearScale,
+    RadarController,
     Title,
     Tooltip,
     Legend,
     Filler
 } from 'chart.js'
-import { Line as LineChart, Bar as BarChart } from 'vue-chartjs'
+import { Line as LineChart, Bar as BarChart, Radar as RadarChart } from 'vue-chartjs'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, RadialLinearScale, RadarController, Title, Tooltip, Legend, Filler)
 
 const props = defineProps({
     skorHariIni:      { type: Number,  default: 0 },
@@ -45,6 +47,7 @@ const props = defineProps({
     missedDates:      { type: Array,   default: () => [] },
     announcement:     { type: String,  default: null },
     habitAnalytics:   { type: Object,  default: () => ({}) },
+    radarChartDataBackend: { type: Object, default: () => ({}) },
 })
 
 // --- Modal State ---
@@ -58,46 +61,54 @@ onMounted(() => {
     }
 })
 
-// --- Daily Line Chart Configuration ---
-const lineChartData = computed(() => {
+// Get days in current month for max scale
+const daysInCurrentMonth = new Date(props.tahun, new Date().getMonth() + 1, 0).getDate();
+
+// --- Chart Configuration ---
+const dailyChartData = computed(() => {
     return {
         labels: props.dailyChartData.map(d => {
-            // format 'Y-m-d' ke 'd M'
-            const date = new Date(d.tanggal);
-            return `${date.getDate()} ${date.toLocaleString('id-ID', { month: 'short' })}`;
+            const dateStr = d.tanggal;
+            const dateObj = new Date(dateStr);
+            const day = dateObj.getDate();
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+            const month = monthNames[dateObj.getMonth()];
+            return `${day} ${month}`;
         }),
         datasets: [
             {
-                label: 'Poin Harian',
+                label: 'Skor Harian',
                 data: props.dailyChartData.map(d => d.skor),
                 borderColor: '#10b981', // emerald-500
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
                 borderWidth: 2,
-                pointBackgroundColor: '#059669', // emerald-600
+                pointBackgroundColor: '#10b981',
                 pointBorderColor: '#fff',
-                pointRadius: 3,
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#10b981',
                 fill: true,
-                tension: 0.3,
+                tension: 0.4
             }
         ]
     }
 })
 
-const lineChartOptions = {
+const dailyChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-        y: { beginAtZero: true, max: props.skorMaksimalHariIni },
-        x: { grid: { display: false } }
+        y: { beginAtZero: true },
+        x: { 
+            grid: { display: false },
+            ticks: { maxRotation: 45, minRotation: 45 }
+        }
     },
-    interaction: { intersect: false, mode: 'index' },
 }
 
-// --- Monthly Bar Chart Configuration ---
 const barChartData = computed(() => {
     return {
-        labels: props.monthlyChartData.map(d => d.nama_bulan),
+        labels: props.monthlyChartData.map(d => d.bulan),
         datasets: [
             {
                 label: 'Poin Bulanan',
@@ -118,6 +129,64 @@ const barChartOptions = {
         y: { beginAtZero: true },
         x: { grid: { display: false } }
     },
+}
+
+// --- Radar Chart Configuration ---
+const radarChartData = computed(() => {
+    const labels = [];
+    const data = [];
+
+    if (props.radarChartDataBackend) {
+        for (const [name, count] of Object.entries(props.radarChartDataBackend)) {
+            const shortName = name.length > 15 ? name.substring(0, 15) + '...' : name;
+            labels.push(shortName);
+            data.push(count);
+        }
+    }
+
+    return {
+        labels,
+        datasets: [
+            {
+                label: 'Hari Target Tercapai',
+                data,
+                backgroundColor: 'rgba(16, 185, 129, 0.2)', // emerald
+                borderColor: '#10b981',
+                pointBackgroundColor: '#10b981',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#10b981',
+            }
+        ]
+    }
+})
+
+const radarChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { 
+        legend: { display: false },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    return context.raw + ' Hari';
+                }
+            }
+        }
+    },
+    scales: {
+        r: {
+            angleLines: { display: true, color: 'rgba(0, 0, 0, 0.1)' },
+            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+            pointLabels: {
+                font: { size: 10, family: "'Instrument Sans', sans-serif", weight: 'bold' },
+                color: '#64748b' // slate-500
+            },
+            ticks: { display: false, stepSize: 5 },
+            suggestedMin: 0,
+            suggestedMax: daysInCurrentMonth
+        }
+    }
 }
 
 // Fungsi Helper untuk format tanggal
@@ -270,73 +339,6 @@ const formatTanggal = (dateStr) => {
                         </div>
                     </div>
 
-                    <!-- Charts Area -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Daily Trend Line Chart -->
-                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 h-72 flex flex-col">
-                            <div class="mb-3">
-                                <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Tren 30 Hari</p>
-                                <p class="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Poin Harian</p>
-                            </div>
-                            <div class="flex-1 relative min-h-0">
-                                <LineChart v-if="dailyChartData.length" :data="lineChartData" :options="lineChartOptions" />
-                                <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data</div>
-                            </div>
-                        </div>
-
-                        <!-- Monthly Bar Chart -->
-                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 h-72 flex flex-col">
-                            <div class="mb-3">
-                                <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Capaian {{ semester }}</p>
-                                <p class="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Akumulasi Bulanan</p>
-                            </div>
-                            <div class="flex-1 relative min-h-0">
-                                <BarChart v-if="monthlyChartData.length" :data="barChartData" :options="barChartOptions" />
-                                <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Middle Column (Stat Cards & Analysis) -->
-                <div class="lg:col-span-1 xl:col-span-1 space-y-6">
-                    
-                    <!-- Stat Cards -->
-                    <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
-                        <div class="border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
-                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
-                                Perolehan Skor
-                            </p>
-                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
-                                <div>
-                                    <span class="text-xl font-bold text-emerald-500">{{ skorHariIni }}</span>
-                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalHariIni }} (Harian)</span>
-                                </div>
-                                <div>
-                                    <span class="text-xl font-bold text-blue-500">{{ skorBulanIni }}</span>
-                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalBulanIni }} (Bulanan)</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
-                                    Target Minimal
-                                </p>
-                                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
-                                    <div v-if="isPersonalTarget">
-                                        <span class="text-xl font-bold text-emerald-500">{{ targetSkorMinimal }}</span>
-                                        <span class="text-[10px] text-emerald-600 font-bold ml-1 tracking-wide">(Pribadi: {{ targetBulanan }}%)</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-xl font-bold text-amber-500">{{ adminTargetSkorMinimal }}</span>
-                                        <span class="text-[10px] text-slate-400 ml-1 tracking-wide">(Instansi: {{ adminTargetBulanan }}%)</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Analisis Ibadah Widget -->
                     <div v-if="habitAnalytics && Object.keys(habitAnalytics).length > 0" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
                         <div class="border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
@@ -344,7 +346,14 @@ const formatTanggal = (dateStr) => {
                             <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide">Berdasarkan data yang Anda inputkan</p>
                         </div>
                         
-                        <div class="space-y-4">
+                        <!-- Mobile Only: Radar Chart -->
+                        <div class="block md:hidden mb-4 h-64 relative">
+                            <RadarChart v-if="radarChartData.labels.length > 0" :data="radarChartData" :options="radarChartOptions" />
+                            <div v-else class="h-full flex items-center justify-center text-slate-400 text-xs">Belum ada data ibadah</div>
+                        </div>
+
+                        <!-- Desktop Only: Detailed Grid -->
+                        <div class="hidden md:grid md:grid-cols-2 gap-4">
                             <!-- Sholat Wajib -->
                             <div v-if="habitAnalytics.sholat_wajib">
                                 <div class="flex items-center gap-2 mb-2">
@@ -404,20 +413,89 @@ const formatTanggal = (dateStr) => {
                                     </div>
                                 </div>
                             </div>
-                            <!-- Other Habits -->
-                            <div v-if="habitAnalytics.others && Object.keys(habitAnalytics.others).length > 0">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <div class="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            <!-- Other Habits (Separated) -->
+                            <template v-if="habitAnalytics.others && Object.keys(habitAnalytics.others).length > 0">
+                                <div v-for="(count, name) in habitAnalytics.others" :key="name">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                        </div>
+                                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 truncate w-full" :title="name">{{ name }}</h4>
                                     </div>
-                                    <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300">Habit Lainnya</h4>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div v-for="(count, name) in habitAnalytics.others" :key="name" class="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700">
-                                        <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate w-2/3" :title="name">{{ name }}</span>
-                                        <span class="text-sm font-bold text-slate-600 dark:text-slate-400">{{ count }}<span class="text-[10px] font-normal text-slate-400 ml-0.5">x</span></span>
+                                    <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-xl px-4 py-2.5 border border-slate-100 dark:border-slate-700">
+                                        <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Frekuensi</span>
+                                        <div class="text-sm font-bold text-slate-600 dark:text-slate-400">
+                                            {{ count }}<span class="text-[10px] font-normal text-slate-400 ml-0.5">x</span>
+                                        </div>
                                     </div>
                                 </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Column (Stat Cards & Analysis) -->
+                <div class="lg:col-span-1 xl:col-span-1 space-y-6">
+                    
+                    <!-- Stat Cards -->
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
+                        <div class="border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                                Perolehan Skor
+                            </p>
+                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
+                                <div>
+                                    <span class="text-xl font-bold text-emerald-500">{{ skorHariIni }}</span>
+                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalHariIni }} (Harian)</span>
+                                </div>
+                                <div>
+                                    <span class="text-xl font-bold text-blue-500">{{ skorBulanIni }}</span>
+                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalBulanIni }} (Bulanan)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                                    Target Minimal
+                                </p>
+                                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
+                                    <div v-if="isPersonalTarget">
+                                        <span class="text-xl font-bold text-emerald-500">{{ targetSkorMinimal }}</span>
+                                        <span class="text-[10px] text-emerald-600 font-bold ml-1 tracking-wide">(Pribadi: {{ targetBulanan }}%)</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-xl font-bold text-amber-500">{{ adminTargetSkorMinimal }}</span>
+                                        <span class="text-[10px] text-slate-400 ml-1 tracking-wide">(Sekolah : {{ adminTargetBulanan }}%)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Area -->
+                    <div class="flex flex-col gap-6">
+                        <!-- Daily Trend Line Chart -->
+                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 h-72 flex flex-col">
+                            <div class="mb-3">
+                                <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Tren 30 Hari</p>
+                                <p class="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Poin Harian</p>
+                            </div>
+                            <div class="flex-1 relative min-h-0">
+                                <LineChart v-if="dailyChartData.labels.length" :data="dailyChartData" :options="dailyChartOptions" />
+                                <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data</div>
+                            </div>
+                        </div>
+
+                        <!-- Monthly Bar Chart -->
+                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 h-72 flex flex-col">
+                            <div class="mb-3">
+                                <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Capaian {{ semester }}</p>
+                                <p class="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Akumulasi Bulanan</p>
+                            </div>
+                            <div class="flex-1 relative min-h-0">
+                                <BarChart v-if="barChartData.labels.length" :data="barChartData" :options="barChartOptions" />
+                                <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data</div>
                             </div>
                         </div>
                     </div>
