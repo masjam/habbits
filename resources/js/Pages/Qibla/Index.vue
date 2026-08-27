@@ -163,30 +163,46 @@ onUnmounted(() => {
                 <!-- Lingkaran Luar Kompas berputar menyesuaikan heading -->
                 <div class="absolute inset-0 rounded-full transition-transform duration-300 ease-out flex items-center justify-center"
                      :style="{ transform: `rotate(${-deviceHeading}deg)` }">
-                    <span class="absolute top-2 text-red-500 font-bold">U</span>
-                    <span class="absolute bottom-2 text-slate-400 font-bold">S</span>
-                    <span class="absolute right-2 text-slate-400 font-bold">T</span>
-                    <span class="absolute left-2 text-slate-400 font-bold">B</span>
+                    
+                    <!-- Grid Sudut (Ticks) -->
+                    <div v-for="i in 72" :key="i" 
+                         class="absolute w-full h-full flex justify-center"
+                         :style="{ transform: `rotate(${i * 5}deg)` }">
+                        <div :class="[
+                            'bg-slate-300 dark:bg-slate-500',
+                            i % 18 === 0 ? 'h-4 w-[2px] bg-emerald-500/70' : (i % 6 === 0 ? 'h-3 w-[1.5px]' : 'h-1.5 w-[1px] opacity-40')
+                        ]"></div>
+                    </div>
+
+                    <span class="absolute top-5 text-red-500 font-bold text-lg bg-white dark:bg-slate-800 px-1 rounded">U</span>
+                    <span class="absolute bottom-5 text-slate-400 font-bold text-lg bg-white dark:bg-slate-800 px-1 rounded">S</span>
+                    <span class="absolute right-5 text-slate-400 font-bold text-lg bg-white dark:bg-slate-800 px-1 rounded">T</span>
+                    <span class="absolute left-5 text-slate-400 font-bold text-lg bg-white dark:bg-slate-800 px-1 rounded">B</span>
                 </div>
 
                 <!-- Jarum Kiblat -->
                 <div v-if="qiblaAngle !== null" 
-                     class="absolute inset-4 transition-transform duration-300 ease-out z-10"
+                     class="absolute inset-0 transition-transform duration-300 ease-out z-10"
                      :style="{ transform: `rotate(${compassRotation}deg)` }">
                     
-                    <div class="w-full h-full flex flex-col items-center">
-                        <div class="w-0 h-0 
-                                    border-l-[15px] border-l-transparent
-                                    border-b-[100px] border-b-emerald-500
-                                    border-r-[15px] border-r-transparent">
-                        </div>
-                        <div class="w-8 h-8 rounded-full bg-emerald-600 border-4 border-white shadow-md -mt-4"></div>
-                        <div class="w-0 h-0 
-                                    border-l-[10px] border-l-transparent
-                                    border-t-[80px] border-t-slate-300 dark:border-t-slate-600
-                                    border-r-[10px] border-r-transparent">
-                        </div>
+                    <!-- Jarum Hijau (Atas) -->
+                    <div class="absolute left-1/2 bottom-1/2 -ml-[15px]
+                                w-0 h-0 
+                                border-l-[15px] border-l-transparent
+                                border-b-[100px] border-b-emerald-500
+                                border-r-[15px] border-r-transparent">
                     </div>
+                    
+                    <!-- Jarum Abu (Bawah) -->
+                    <div class="absolute left-1/2 top-1/2 -ml-[10px]
+                                w-0 h-0 
+                                border-l-[10px] border-l-transparent
+                                border-t-[80px] border-t-slate-300 dark:border-t-slate-600
+                                border-r-[10px] border-r-transparent">
+                    </div>
+
+                    <!-- Lingkaran Tengah Jarum -->
+                    <div class="absolute left-1/2 top-1/2 -ml-4 -mt-4 w-8 h-8 rounded-full bg-emerald-600 border-4 border-white shadow-md"></div>
                 </div>
 
                 <div v-else class="text-center z-10 text-slate-400 text-sm">
@@ -194,7 +210,7 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Titik Tengah -->
-                <div class="absolute w-3 h-3 bg-white rounded-full z-20 shadow-inner"></div>
+                <div class="absolute left-1/2 top-1/2 -ml-1.5 -mt-1.5 w-3 h-3 bg-white rounded-full z-20 shadow-inner"></div>
             </div>
 
             <!-- Info Lokasi & Tombol Izin -->
