@@ -139,6 +139,23 @@ const featureEnabled = (key) => {
                 <span>Dzikir Pagi &amp; Petang</span>
             </Link>
 
+            <!-- Arah Kiblat (Hanya Mobile) -->
+            <Link
+                :href="route('qibla.index')"
+                :class="[...navLinkClass('qibla.index'), 'md:hidden']"
+                @click="closeSidebar"
+            >
+                <svg 
+                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('qibla.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']" 
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L15 8H9L12 2Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 12L15 8" />
+                </svg>
+                <span>Arah Kiblat</span>
+            </Link>
+
             <!-- B. Menu Khusus Pegawai (role: user) -->
             <template v-if="hasRole('user')">
                 <div class="pt-3 pb-1">

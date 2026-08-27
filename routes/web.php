@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/kajian', [\App\Http\Controllers\KajianController::class, 'index'])->name('kajian.index');
     Route::get('/quran-hadis', [\App\Http\Controllers\QuranHadisController::class, 'index'])->name('quran.hadis');
     Route::get('/dzikir', [\App\Http\Controllers\DzikirController::class, 'index'])->name('dzikir.index');
+    Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qibla.index');
 
     Route::post('/push-subscriptions', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.store');
 
