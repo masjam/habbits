@@ -53,11 +53,31 @@ function getLocation() {
 }
 
 // Handler untuk sensor kompas (orientasi perangkat)
+let lastHeading = 0;
+
 function handleOrientation(event) {
-    let heading = event.webkitCompassHeading || Math.abs(event.alpha - 360);
+    let currentHeading = null;
     
-    if (heading != null) {
-        deviceHeading.value = heading;
+    // Perangkat iOS memberikan webkitCompassHeading
+    if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
+        currentHeading = event.webkitCompassHeading;
+    } 
+    // Android memberikan alpha pada deviceorientationabsolute
+    else if (event.alpha !== null) {
+        // Alpha adalah derajat berlawanan jarum jam dari Utara (0)
+        currentHeading = (360 - event.alpha) % 360;
+    }
+
+    if (currentHeading !== null) {
+        // Mencegah jarum berputar 360 derajat saat melewati titik Utara (359 -> 0 atau 0 -> 359)
+        let delta = currentHeading - lastHeading;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        
+        // Akumulasi heading agar CSS transition tidak berputar balik
+        deviceHeading.value = deviceHeading.value + delta;
+        lastHeading = currentHeading;
+        
         isCompassActive.value = true;
     }
 }
