@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import ShareImageModal from './Partials/ShareImageModal.vue'
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 const activeTab = ref('quran') // 'quran' | 'hadis'
