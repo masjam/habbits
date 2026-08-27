@@ -639,9 +639,9 @@ const copyShareText = async () => {
             />
 
             <!-- Modal Content -->
-            <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden relative z-10 flex flex-col md:flex-row border border-slate-200 dark:border-slate-700 max-h-[90vh] md:max-h-[85vh]">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl overflow-y-auto md:overflow-hidden relative z-10 flex flex-col md:flex-row border border-slate-200 dark:border-slate-700 max-h-[90vh] md:max-h-[85vh] custom-scrollbar">
                 <!-- Panel Kiri: Live Preview -->
-                <div class="w-full md:w-[55%] lg:w-[60%] bg-slate-100 dark:bg-slate-950 flex flex-col border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800">
+                <div class="w-full md:w-[55%] lg:w-[60%] bg-slate-100 dark:bg-slate-950 flex flex-col border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 shrink-0 md:h-full">
                     
                     <!-- Header Modal Share -->
                     <div class="p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-xs z-10 shrink-0">
@@ -686,7 +686,7 @@ const copyShareText = async () => {
                     <!-- ════════════════════════════════════════════════════ -->
                     <!-- TAB 1: MODE GAMBAR (IMAGE QUOTE CARD GENERATOR)     -->
                     <!-- ════════════════════════════════════════════════════ -->
-                    <div v-if="shareTab === 'image'" class="flex flex-col h-full overflow-hidden">
+                    <div v-if="shareTab === 'image'" class="flex flex-col md:h-full md:overflow-hidden">
                         <!-- Rasio Aspek (1:1, 9:16 Story, 4:5 Potret) -->
                         <div class="p-3 border-b border-slate-200 dark:border-slate-800 shrink-0 flex justify-center gap-2">
                             <button @click="cardRatio = '1:1'" :class="['px-3 py-1.5 text-xs font-bold rounded-lg border transition-all', cardRatio === '1:1' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800']">
@@ -701,7 +701,7 @@ const copyShareText = async () => {
                         </div>
 
                         <!-- LIVE VISUAL CARD PREVIEW -->
-                        <div class="flex-1 p-4 md:p-6 overflow-y-auto flex items-center justify-center min-h-[300px]">
+                        <div class="flex-1 p-4 md:p-6 md:overflow-y-auto flex items-center justify-center min-h-[300px]">
                             <!-- Container Skala Proporsional -->
                             <div 
                                 class="relative bg-slate-200 shadow-xl overflow-hidden rounded-md transition-all duration-300 ring-4 ring-white/50"
@@ -841,7 +841,7 @@ const copyShareText = async () => {
                 </div>
 
                 <!-- Panel Kanan: Customizer Controls (Hanya Tampil di Mode Gambar) -->
-                <div v-if="shareTab === 'image'" class="w-full md:w-[45%] lg:w-[40%] bg-white dark:bg-slate-900 flex flex-col h-[50vh] md:h-auto overflow-y-auto custom-scrollbar">
+                <div v-if="shareTab === 'image'" class="w-full md:w-[45%] lg:w-[40%] bg-white dark:bg-slate-900 flex flex-col h-auto md:h-full md:overflow-y-auto custom-scrollbar">
                     <div class="p-4 md:p-6 space-y-6">
                         
                         <!-- CUSTOMIZER CONTROLS: 10 BACKGROUND TEMPLATES + UPLOAD -->
