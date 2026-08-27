@@ -2,17 +2,19 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch, computed } from 'vue'
-import { Bar } from 'vue-chartjs'
-import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
+import { Line } from 'vue-chartjs'
+import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler } from 'chart.js'
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
+ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale, Filler)
 
 const props = defineProps({
     pegawai: Object,
     persentaseBulanIni: Number,
     persentaseSemester: Number,
     semesterName: String,
-    habitProgress: Array,
+    dailyHabitProgress: Array,
+    totalDailyScores: Array,
+    daysInMonth: Number,
     namaBulan: String,
     filters: Object,
 })
@@ -35,41 +37,70 @@ watch([selectedMonth, selectedYear], () => {
     router.get(route('admin.laporan.detail', props.pegawai.id), { month: selectedMonth.value, year: selectedYear.value }, { preserveState: true })
 })
 
+// Palette warna untuk membedakan tiap habit
+const colors = [
+    '#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', 
+    '#06b6d4', '#d946ef', '#14b8a6', '#f97316', '#64748b'
+]
+
 const chartData = computed(() => {
+    const labels = Array.from({ length: props.daysInMonth }, (_, i) => i + 1)
+    
+    const datasets = [
+        {
+            label: 'Total Skor Harian',
+            backgroundColor: 'rgba(249, 115, 22, 0.2)', // Orange transparan untuk shade
+            borderColor: '#f97316', // Orange solid untuk garis
+            pointBackgroundColor: '#f97316',
+            data: props.totalDailyScores,
+            fill: true,
+            tension: 0.3,
+            borderWidth: 2,
+        }
+    ]
+
     return {
-        labels: props.habitProgress.map(h => h.nama),
-        datasets: [
-            {
-                label: 'Capaian (%)',
-                backgroundColor: props.habitProgress.map(h => h.persentase >= 80 ? '#10b981' : (h.persentase >= 50 ? '#fbbf24' : '#fb7185')),
-                data: props.habitProgress.map(h => h.persentase)
-            }
-        ]
+        labels,
+        datasets
     }
 })
 
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+        mode: 'index',
+        intersect: false,
+    },
     scales: {
+        x: {
+            title: {
+                display: true,
+                text: 'Tanggal'
+            }
+        },
         y: {
+            stacked: false,
             beginAtZero: true,
-            max: 100,
-            ticks: {
-                callback: function(value) {
-                    return value + '%'
-                }
+            title: {
+                display: true,
+                text: 'Skor'
             }
         }
     },
     plugins: {
         legend: {
-            display: false
+            display: true,
+            position: 'bottom',
+            labels: {
+                usePointStyle: true,
+                boxWidth: 8
+            }
         },
         tooltip: {
             callbacks: {
                 label: function(context) {
-                    return context.parsed.y + '%'
+                    return context.dataset.label + ': ' + context.parsed.y
                 }
             }
         }
@@ -135,7 +166,7 @@ const chartOptions = {
                 </div>
                 <div class="p-6">
                     <div class="w-full h-[400px]">
-                        <Bar :data="chartData" :options="chartOptions" />
+                        <Line :data="chartData" :options="chartOptions" />
                     </div>
                 </div>
             </div>

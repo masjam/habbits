@@ -336,26 +336,33 @@ class LaporanController extends Controller
         $habits = $habitsQuery->get();
         $habitProgress = [];
 
-        // Ambil semua log habit bulan ini lalu kelompokkan berdasarkan habit_id
-        $habitLogSums = HabitLog::selectRaw('habit_id, SUM(skor_diperoleh) as total_skor')
+        // Ambil semua log habit bulan ini
+        $habitLogs = HabitLog::select('habit_id', 'tanggal', 'skor_diperoleh')
             ->where('user_id', $user->id)
             ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
-            ->groupBy('habit_id')
-            ->pluck('total_skor', 'habit_id');
+            ->get();
+
+        $dailyScores = [];
+        $totalDailyScores = array_fill(1, $daysInMonth, 0);
 
         foreach ($habits as $habit) {
-            $skorDiperolehHabit = $habitLogSums->get($habit->id) ?? 0;
+            $dailyScores[$habit->id] = array_fill(1, $daysInMonth, 0);
+        }
 
-            // Maksimal skor habit ini dalam sebulan = skor_maksimal * jumlah_hari
-            $skorMaksimalHabitSebulan = $habit->skor_maksimal * $daysInMonth;
-            
-            $persentase = ($skorMaksimalHabitSebulan > 0) ? ($skorDiperolehHabit / $skorMaksimalHabitSebulan) * 100 : 0;
+        foreach ($habitLogs as $log) {
+            $day = Carbon::parse($log->tanggal)->day;
+            if (isset($dailyScores[$log->habit_id])) {
+                $dailyScores[$log->habit_id][$day] += $log->skor_diperoleh;
+                $totalDailyScores[$day] += $log->skor_diperoleh;
+            }
+        }
 
-            $habitProgress[] = [
-                'id'         => $habit->id,
-                'nama'       => $habit->nama_habit,
-                'is_haid'    => $habit->is_pengganti_haid,
-                'persentase' => round($persentase, 1),
+        $dailyHabitProgress = [];
+        foreach ($habits as $habit) {
+            $dailyHabitProgress[] = [
+                'id' => $habit->id,
+                'nama' => $habit->nama_habit,
+                'data' => array_values($dailyScores[$habit->id]),
             ];
         }
 
@@ -364,7 +371,9 @@ class LaporanController extends Controller
             'persentaseBulanIni' => round($persentaseBulanIni, 1),
             'persentaseSemester' => round($persentaseSemesterIni, 1),
             'semesterName'       => $isSemester1 ? 'Semester 1' : 'Semester 2',
-            'habitProgress'      => $habitProgress, // urutan sudah dijaga dari query
+            'dailyHabitProgress' => $dailyHabitProgress,
+            'totalDailyScores'   => array_values($totalDailyScores),
+            'daysInMonth'        => $daysInMonth,
             'namaBulan'          => $date->translatedFormat('F Y'),
             'filters'            => [
                 'month' => (int) $month,
