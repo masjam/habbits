@@ -54,6 +54,7 @@ function getLocation() {
 
 // Handler untuk sensor kompas (orientasi perangkat)
 let lastHeading = 0;
+let isAbsoluteSupported = false;
 
 function handleOrientation(event) {
     let currentHeading = null;
@@ -62,10 +63,19 @@ function handleOrientation(event) {
     if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
         currentHeading = event.webkitCompassHeading;
     } 
-    // Android memberikan alpha pada deviceorientationabsolute
+    // Android: Gunakan alpha HANYA jika event bersifat absolute
+    // Event dari 'deviceorientationabsolute' selalu absolute.
+    // Event dari 'deviceorientation' bisa relative, jadi kita cek event.absolute.
     else if (event.alpha !== null) {
-        // Alpha adalah derajat berlawanan jarum jam dari Utara (0)
-        currentHeading = (360 - event.alpha) % 360;
+        if (event.type === 'deviceorientationabsolute' || event.absolute) {
+            isAbsoluteSupported = true;
+            // Alpha adalah derajat berlawanan jarum jam dari Utara (0)
+            currentHeading = (360 - event.alpha) % 360;
+        } else if (!isAbsoluteSupported) {
+            // Fallback jika device tidak mensupport absolute (sangat jarang)
+            // Akan menggunakan utara relatif saat web dibuka.
+            currentHeading = (360 - event.alpha) % 360;
+        }
     }
 
     if (currentHeading !== null) {
@@ -97,8 +107,12 @@ async function requestOrientationPermission() {
             errorMsg.value = "Gagal meminta akses sensor.";
         }
     } else {
-        // Untuk Android dan browser biasa yang tidak butuh requestPermission
-        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        // Untuk Android
+        // Listen ke absolute event (standar Chrome Android)
+        if ('ondeviceorientationabsolute' in window) {
+            window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        }
+        // Tetap listen ke deviceorientation sebagai fallback (untuk iOS lama atau browser lain)
         window.addEventListener('deviceorientation', handleOrientation, true);
         getLocation();
     }
@@ -115,7 +129,9 @@ const compassRotation = computed(() => {
 
 onUnmounted(() => {
     window.removeEventListener('deviceorientation', handleOrientation, true);
-    window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+    if ('ondeviceorientationabsolute' in window) {
+        window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+    }
 });
 
 </script>
