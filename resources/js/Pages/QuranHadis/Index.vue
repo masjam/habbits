@@ -109,6 +109,7 @@ const fetchSurahList = async () => {
 
 // Fetch detail surah + ayat
 const fetchSurahDetail = async (nomor) => {
+    stopAudio() // Hentikan audio jika pindah surah
     loadingDetail.value = true
     quranError.value = null
     surahDetail.value = null
@@ -125,6 +126,7 @@ const fetchSurahDetail = async (nomor) => {
 }
 
 const goBack = () => {
+    stopAudio() // Hentikan audio jika kembali ke daftar surah
     surahDetail.value = null
     selectedSurah.value = null
 }
@@ -158,6 +160,80 @@ const showTranslation = ref(true)
 const fontSize = ref('normal') // 'sm' | 'normal' | 'lg' | 'xl'
 const showQuranOptions = ref(false) // Toggle sembunyikan/tampilkan pengaturan
 
+// ─── Pengaturan Audio Al-Qur'an ─────────
+const audioQori = ref('05') // Default: Misyari Rasyid Al-Afasi
+const currentAudio = ref(null)
+const playingAyat = ref(null) // Format: 'surah_ayat' e.g. '1_1' or 'surah_1'
+const isAudioPlaying = ref(false)
+
+const qoriList = [
+    { id: '01', name: 'Abdullah Al-Juhany' },
+    { id: '02', name: 'Abdul Muhsin Al-Qasim' },
+    { id: '03', name: 'Abdurrahman as-Sudais' },
+    { id: '04', name: 'Ibrahim Al-Dossari' },
+    { id: '05', name: 'Misyari Rasyid Al-Afasi' },
+    { id: '06', name: 'Yasser Al-Dosari' },
+]
+
+const playAudio = (url, typeId) => {
+    if (currentAudio.value && playingAyat.value === typeId) {
+        if (isAudioPlaying.value) {
+            currentAudio.value.pause()
+            isAudioPlaying.value = false
+        } else {
+            currentAudio.value.play()
+            isAudioPlaying.value = true
+        }
+        return
+    }
+
+    if (currentAudio.value) {
+        currentAudio.value.pause()
+    }
+
+    currentAudio.value = new Audio(url)
+    playingAyat.value = typeId
+    isAudioPlaying.value = true
+    
+    currentAudio.value.play().catch(e => {
+        console.error("Audio playback failed", e)
+        isAudioPlaying.value = false
+        playingAyat.value = null
+    })
+    
+    currentAudio.value.onended = () => {
+        isAudioPlaying.value = false
+        playingAyat.value = null
+    }
+    currentAudio.value.onerror = () => {
+        console.error("Audio failed to load")
+        isAudioPlaying.value = false
+        playingAyat.value = null
+    }
+}
+
+const stopAudio = () => {
+    if (currentAudio.value) {
+        currentAudio.value.pause()
+        currentAudio.value.currentTime = 0
+    }
+    isAudioPlaying.value = false
+    playingAyat.value = null
+}
+
+const setAudioQori = (qoriId) => {
+    audioQori.value = qoriId
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('quran_audio_qori', qoriId)
+    }
+    // Stop currently playing audio if Qori changes
+    stopAudio()
+}
+
+onUnmounted(() => {
+    stopAudio()
+})
+
 const arabicFontSizeClass = computed(() => {
     switch (fontSize.value) {
         case 'sm': return 'text-xl sm:text-2xl leading-loose'
@@ -185,6 +261,10 @@ const loadQuranSettings = () => {
         const savedOptions = localStorage.getItem('quran_show_options')
         if (savedOptions !== null) {
             showQuranOptions.value = savedOptions === 'true'
+        }
+        const savedQori = localStorage.getItem('quran_audio_qori')
+        if (savedQori && qoriList.some(q => q.id === savedQori)) {
+            audioQori.value = savedQori
         }
     }
 }
@@ -529,7 +609,25 @@ const openShareHadisSearch = (item, extra) => {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 onMounted(() => {
     fetchSurahList()
-    fetchHadis(1)
+
+    // Cek URL params untuk direct link Hadis Harian
+    if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const tab = urlParams.get('tab')
+        if (tab === 'hadis') {
+            activeTab.value = 'hadis'
+            const perawi = urlParams.get('perawi')
+            const nomor = urlParams.get('nomor')
+            if (perawi) selectedPerawi.value = perawi
+            if (nomor) fetchHadis(parseInt(nomor))
+            else fetchHadis(1)
+        } else {
+            fetchHadis(1)
+        }
+    } else {
+        fetchHadis(1)
+    }
+
     loadBookmark()
     loadQuranSettings()
     checkMobile()
@@ -637,7 +735,24 @@ onUnmounted(() => {
                             <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm mb-2">{{ surahDetail.nomor }}</div>
                             <div class="text-3xl font-arabic text-slate-800 mb-1">{{ surahDetail.nama }}</div>
                             <div class="text-base font-bold text-slate-700">{{ surahDetail.namaLatin }}</div>
-                            <div class="text-sm text-slate-500 mt-0.5">{{ surahDetail.arti }} · {{ surahDetail.jumlahAyat }} Ayat · {{ surahDetail.tempatTurun }}</div>
+                            <div class="text-sm text-slate-500 mt-0.5 mb-3">{{ surahDetail.arti }} · {{ surahDetail.jumlahAyat }} Ayat · {{ surahDetail.tempatTurun }}</div>
+                            
+                            <!-- Tombol Putar Full Surah -->
+                            <button
+                                v-if="surahDetail.audioFull && surahDetail.audioFull[audioQori]"
+                                type="button"
+                                @click="playAudio(surahDetail.audioFull[audioQori], `surah_${surahDetail.nomor}`)"
+                                :class="[
+                                    'inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border cursor-pointer',
+                                    isAudioPlaying && playingAyat === `surah_${surahDetail.nomor}`
+                                        ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                                        : 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                                ]"
+                            >
+                                <svg v-if="isAudioPlaying && playingAyat === `surah_${surahDetail.nomor}`" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                <span>{{ isAudioPlaying && playingAyat === `surah_${surahDetail.nomor}` ? 'Jeda Murottal Surat' : 'Putar Murottal Surat' }}</span>
+                            </button>
                         </div>
 
                         <!-- Bar Pengaturan Opsi Tampilan Ayat (Toggleable) -->
@@ -741,6 +856,24 @@ onUnmounted(() => {
                                         </div>
                                     </div>
 
+                                    <!-- 2.5 Opsi Qori (Audio) -->
+                                    <div class="relative flex-1 min-w-[75px] max-w-[130px]">
+                                        <select
+                                            v-model="audioQori"
+                                            @change="setAudioQori($event.target.value)"
+                                            class="w-full bg-white border border-slate-200 text-slate-700 text-[11px] sm:text-xs font-bold rounded-xl py-1 pl-1.5 sm:pl-2 pr-5 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs appearance-none truncate"
+                                        >
+                                            <option v-for="qori in qoriList" :key="qori.id" :value="qori.id">
+                                                {{ qori.name }}
+                                            </option>
+                                        </select>
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-slate-400">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+
                                     <!-- 3. Switch Transliterasi Latin -->
                                     <button 
                                         type="button" 
@@ -830,6 +963,24 @@ onUnmounted(() => {
                                                 <span>
                                                     {{ isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'Terakhir Baca' : 'Tandai' }}
                                                 </span>
+                                            </button>
+
+                                            <!-- Tombol Putar Ayat -->
+                                            <button
+                                                v-if="ayat.audio && ayat.audio[audioQori]"
+                                                type="button"
+                                                @click="playAudio(ayat.audio[audioQori], `${surahDetail.nomor}_${ayat.nomorAyat}`)"
+                                                :title="isAudioPlaying && playingAyat === `${surahDetail.nomor}_${ayat.nomorAyat}` ? 'Jeda Audio' : 'Putar Audio'"
+                                                :class="[
+                                                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-all shadow-xs cursor-pointer',
+                                                    isAudioPlaying && playingAyat === `${surahDetail.nomor}_${ayat.nomorAyat}`
+                                                        ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                                                        : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 bg-white border border-slate-200'
+                                                ]"
+                                            >
+                                                <svg v-if="isAudioPlaying && playingAyat === `${surahDetail.nomor}_${ayat.nomorAyat}`" class="w-3 h-3 text-rose-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                                <svg v-else class="w-3 h-3 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                                <span>{{ isAudioPlaying && playingAyat === `${surahDetail.nomor}_${ayat.nomorAyat}` ? 'Jeda' : 'Putar' }}</span>
                                             </button>
 
                                             <!-- Tombol Bagikan Ayat -->

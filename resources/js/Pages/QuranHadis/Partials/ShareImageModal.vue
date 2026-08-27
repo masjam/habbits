@@ -943,14 +943,9 @@ const copyShareText = async () => {
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Spacer for sticky footer -->
-                    <div class="h-6"></div>
-                </div>
-            </div>
 
-            <!-- TOMBOL AKSI MODE GAMBAR (FOOTER) -->
-            <div v-if="shareTab === 'image'" class="fixed bottom-0 left-0 right-0 md:absolute md:bottom-0 md:right-0 md:left-auto md:w-[45%] lg:w-[40%] bg-slate-50 dark:bg-slate-800/95 backdrop-blur-md p-4 border-t border-slate-200 dark:border-slate-700 space-y-3 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] z-20 rounded-b-3xl md:rounded-br-3xl md:rounded-bl-none">
+                    <!-- TOMBOL AKSI MODE GAMBAR (DISATUKAN DALAM SCROLL) -->
+                    <div v-if="shareTab === 'image'" class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3 pb-6">
                 
                 <!-- Toast Panduan Berbagi Gambar -->
                 <transition
@@ -1026,6 +1021,8 @@ const copyShareText = async () => {
                         <svg v-else class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                         <span>{{ copyImageSuccess ? 'Tersalin!' : 'Salin' }}</span>
                     </button>
+                </div>
+                    </div>
                 </div>
             </div>
         </div>

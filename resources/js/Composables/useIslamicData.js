@@ -11,46 +11,66 @@ export function useIslamicData() {
     const countdownText = ref('')
     let timerInterval = null
 
-    // Daftar hadits harian (30 buah untuk dirotasi berdasarkan tanggal)
-    const dailyHadiths = [
-        { text: "Sesungguhnya amal itu tergantung niatnya, dan seseorang akan mendapatkan apa yang ia niatkan.", source: "HR. Bukhari & Muslim" },
-        { text: "Sebaik-baik kalian adalah orang yang belajar Al-Qur'an dan mengajarkannya.", source: "HR. Bukhari" },
-        { text: "Barangsiapa menempuh jalan untuk menuntut ilmu, maka Allah akan mudahkan baginya jalan menuju surga.", source: "HR. Muslim" },
-        { text: "Senyummu di hadapan saudaramu adalah sedekah.", source: "HR. Tirmidzi" },
-        { text: "Kebersihan itu sebagian dari iman.", source: "HR. Muslim" },
-        { text: "Tidaklah beriman seseorang dari kalian sehingga dia mencintai untuk saudaranya apa yang dia cintai untuk dirinya sendiri.", source: "HR. Bukhari & Muslim" },
-        { text: "Orang mukmin yang paling sempurna imannya adalah yang paling baik akhlaknya.", source: "HR. Tirmidzi" },
-        { text: "Barangsiapa beriman kepada Allah dan hari akhir, hendaklah ia berkata baik atau diam.", source: "HR. Bukhari & Muslim" },
-        { text: "Agama itu adalah nasihat.", source: "HR. Muslim" },
-        { text: "Tidak akan masuk surga orang yang memutus tali silaturahmi.", source: "HR. Bukhari & Muslim" },
-        { text: "Bertakwalah kepada Allah di mana saja kamu berada, dan iringilah keburukan dengan kebaikan niscaya ia akan menghapusnya.", source: "HR. Tirmidzi" },
-        { text: "Doa itu adalah senjata orang mukmin, tiang agama, dan cahaya langit dan bumi.", source: "HR. Hakim" },
-        { text: "Barangsiapa tidak menyayangi, maka ia tidak akan disayangi.", source: "HR. Bukhari" },
-        { text: "Dua kenikmatan yang sering dilupakan oleh kebanyakan manusia adalah kesehatan dan waktu luang.", source: "HR. Bukhari" },
-        { text: "Orang yang kuat bukanlah yang pandai bergulat, tapi orang yang kuat adalah yang mampu menahan amarahnya.", source: "HR. Bukhari" },
-        { text: "Tangan yang di atas (pemberi) lebih baik dari tangan yang di bawah (penerima).", source: "HR. Bukhari" },
-        { text: "Barangsiapa yang meringankan penderitaan seorang mukmin di dunia, niscaya Allah akan meringankan penderitaannya di hari kiamat.", source: "HR. Muslim" },
-        { text: "Malu itu sebagian dari iman.", source: "HR. Bukhari" },
-        { text: "Sabar itu berada pada pukulan (kejadian) pertama.", source: "HR. Bukhari" },
-        { text: "Jauhilah sifat hasad, karena hasad itu memakan kebaikan sebagaimana api memakan kayu bakar.", source: "HR. Abu Dawud" },
-        { text: "Barangsiapa menunjukkan suatu kebaikan, maka baginya pahala seperti pahala orang yang melakukannya.", source: "HR. Muslim" },
-        { text: "Perumpamaan teman yang baik dan buruk ibarat penjual minyak wangi dan pandai besi.", source: "HR. Bukhari & Muslim" },
-        { text: "Janganlah kalian saling membenci, saling mendengki, dan saling membelakangi. Jadilah hamba-hamba Allah yang bersaudara.", source: "HR. Bukhari" },
-        { text: "Doa yang paling cepat dikabulkan adalah doa seseorang untuk saudaranya tanpa sepengetahuannya.", source: "HR. Abu Dawud" },
-        { text: "Allah tidak melihat bentuk rupamu dan hartamu, tapi Allah melihat hati dan amalmu.", source: "HR. Muslim" },
-        { text: "Barangsiapa yang hari ini lebih baik dari kemarin, maka ia beruntung.", source: "HR. Al-Hakim" },
-        { text: "Sedekah itu menghapus dosa sebagaimana air memadamkan api.", source: "HR. Tirmidzi" },
-        { text: "Hak seorang muslim terhadap muslim lainnya ada enam: menjawab salam, menjenguk yang sakit, mengantar jenazah...", source: "HR. Muslim" },
-        { text: "Ridha Allah terletak pada ridha orang tua, dan murka Allah terletak pada murka orang tua.", source: "HR. Tirmidzi" },
-        { text: "Setiap amal anak Adam dilipatgandakan pahalanya. 10 hingga 700 kali lipat. Kecuali puasa, karena ia untuk-Ku.", source: "HR. Bukhari & Muslim" },
-        { text: "Bertaubat dari dosa seperti orang yang tidak berdosa.", source: "HR. Ibnu Majah" }
-    ]
+    const dailyHadith = ref(null)
+    const isLoadingHadith = ref(false)
 
-    const getDailyHadith = () => {
-        const today = new Date().getDate() // 1 - 31
-        // Gunakan (today - 1) sebagai index agar selalu berulang tiap bulan
-        const index = (today - 1) % dailyHadiths.length
-        return dailyHadiths[index]
+    const fetchDailyHadith = async () => {
+        isLoadingHadith.value = true
+        
+        const perawiList = [
+            { slug: 'bukhari', nama: 'Bukhari', total: 6638 },
+            { slug: 'muslim', nama: 'Muslim', total: 3033 },
+            { slug: 'tirmidzi', nama: 'Tirmidzi', total: 3956 },
+            { slug: 'ibnumajah', nama: 'Ibnu Majah', total: 4341 },
+            { slug: 'nasai', nama: "Nasa'i", total: 5758 },
+            { slug: 'ahmad', nama: 'Ahmad', total: 26363 },
+            { slug: 'darimi', nama: 'Darimi', total: 3367 },
+            { slug: 'malik', nama: 'Malik', total: 1587 },
+            { slug: 'abudaud', nama: 'Abu Daud', total: 5274 },
+        ]
+
+        // Create a daily seed
+        const today = new Date()
+        const seedStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+        
+        // Simple hash function for string
+        let hash = 0;
+        for (let i = 0; i < seedStr.length; i++) {
+            const char = seedStr.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        hash = Math.abs(hash)
+        
+        // Pick perawi
+        const perawiIndex = hash % perawiList.length
+        const selectedPerawi = perawiList[perawiIndex]
+        
+        // Pick nomor
+        const nomor = (Math.floor(hash / perawiList.length) % selectedPerawi.total) + 1
+
+        try {
+            const res = await fetch(`https://api.myquran.com/v2/hadits/${selectedPerawi.slug}/${nomor}`)
+            const json = await res.json()
+            if (json.status && json.data) {
+                dailyHadith.value = {
+                    text: json.data.contents.id,
+                    source: `HR. ${json.data.name} No. ${json.data.number}`,
+                    url: `/quran-hadis?tab=hadis&perawi=${selectedPerawi.slug}&nomor=${nomor}`
+                }
+            } else {
+                throw new Error("Invalid response")
+            }
+        } catch (e) {
+            console.error("Failed to fetch daily hadith", e)
+            dailyHadith.value = {
+                text: "Barangsiapa menempuh jalan untuk menuntut ilmu, maka Allah akan mudahkan baginya jalan menuju surga.",
+                source: "HR. Muslim",
+                url: null
+            }
+        } finally {
+            isLoadingHadith.value = false
+        }
     }
 
     const fetchPrayerTimes = async () => {
@@ -229,6 +249,7 @@ export function useIslamicData() {
                 timerInterval = setInterval(calculateCountdown, 1000)
             }
         })
+        fetchDailyHadith()
     })
 
     onUnmounted(() => {
@@ -241,7 +262,8 @@ export function useIslamicData() {
         isLoading,
         error,
         locationName,
-        getDailyHadith,
+        dailyHadith,
+        isLoadingHadith,
         nextPrayerName,
         countdownText
     }
