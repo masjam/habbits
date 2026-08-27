@@ -31,6 +31,8 @@ const cardIncludeLatin = ref(false)
 const cardIncludeTranslation = ref(true)
 const cardIncludeSource = ref(true)
 const cardOverlayDarkness = ref(50) // percentage
+const cardFontSizeScale = ref(100) // percentage
+const cardLatinFont = ref('sans') // 'sans' | 'serif' | 'mono'
 const customUploadedImage = ref(null)
 const isGeneratingImage = ref(false)
 const customFileInput = ref(null)
@@ -292,42 +294,58 @@ const generateCardBlob = async () => {
     const maxContentWidth = width - margin * 2 - 80
     let totalContentHeight = 0
     const sections = []
+    const fScale = cardFontSizeScale.value / 100
 
     // Header Title
-    sections.push({ type: 'header', text: props.shareData.title, height: 45 })
-    totalContentHeight += 55
+    const headerHeight = Math.round(45 * fScale)
+    sections.push({ type: 'header', text: props.shareData.title, height: headerHeight })
+    totalContentHeight += headerHeight + 10
 
     // Teks Arab
     if (cardIncludeArab.value && props.shareData.arab) {
-        const arabFont = 'bold 44px "Scheherazade New", "Amiri Quran", "Amiri", serif'
-        const arabLines = wrapText(props.shareData.arab, maxContentWidth, arabFont, 75)
-        const h = arabLines.length * 75
-        sections.push({ type: 'arab', lines: arabLines, font: arabFont, lineHeight: 75, height: h })
-        totalContentHeight += h + 30
+        const arabFontSize = Math.round(44 * fScale)
+        const arabLineHeight = Math.round(75 * fScale)
+        const arabFont = `bold ${arabFontSize}px "Scheherazade New", "Amiri Quran", "Amiri", serif`
+        const arabLines = wrapText(props.shareData.arab, maxContentWidth, arabFont, arabLineHeight)
+        const h = arabLines.length * arabLineHeight
+        sections.push({ type: 'arab', lines: arabLines, font: arabFont, lineHeight: arabLineHeight, height: h })
+        totalContentHeight += h + Math.round(30 * fScale)
     }
+
+    const getLatinFontFamily = () => {
+        if (cardLatinFont.value === 'serif') return '"Merriweather", "Playfair Display", serif'
+        if (cardLatinFont.value === 'mono') return '"Fira Code", "Courier New", monospace'
+        return '"Instrument Sans", sans-serif'
+    }
+    const latinFontFamily = getLatinFontFamily()
 
     // Transliterasi Latin
     if (cardIncludeLatin.value && props.shareData.latin) {
-        const latinFont = 'italic 24px "Instrument Sans", sans-serif'
-        const latinLines = wrapText(props.shareData.latin, maxContentWidth, latinFont, 36)
-        const h = latinLines.length * 36
-        sections.push({ type: 'latin', lines: latinLines, font: latinFont, lineHeight: 36, height: h })
-        totalContentHeight += h + 25
+        const latinFontSize = Math.round(24 * fScale)
+        const latinLineHeight = Math.round(36 * fScale)
+        const latinFont = `italic ${latinFontSize}px ${latinFontFamily}`
+        const latinLines = wrapText(props.shareData.latin, maxContentWidth, latinFont, latinLineHeight)
+        const h = latinLines.length * latinLineHeight
+        sections.push({ type: 'latin', lines: latinLines, font: latinFont, lineHeight: latinLineHeight, height: h })
+        totalContentHeight += h + Math.round(25 * fScale)
     }
 
     // Terjemahan
     if (cardIncludeTranslation.value && props.shareData.translation) {
-        const transFont = '26px "Instrument Sans", sans-serif'
-        const transLines = wrapText(`"${props.shareData.translation}"`, maxContentWidth, transFont, 42)
-        const h = transLines.length * 42
-        sections.push({ type: 'trans', lines: transLines, font: transFont, lineHeight: 42, height: h })
-        totalContentHeight += h + 30
+        const transFontSize = Math.round(26 * fScale)
+        const transLineHeight = Math.round(42 * fScale)
+        const transFont = `${transFontSize}px ${latinFontFamily}`
+        const transLines = wrapText(`"${props.shareData.translation}"`, maxContentWidth, transFont, transLineHeight)
+        const h = transLines.length * transLineHeight
+        sections.push({ type: 'trans', lines: transLines, font: transFont, lineHeight: transLineHeight, height: h })
+        totalContentHeight += h + Math.round(30 * fScale)
     }
 
     // Sumber / Referensi
     if (cardIncludeSource.value && props.shareData.source) {
-        sections.push({ type: 'source', text: props.shareData.source, height: 40 })
-        totalContentHeight += 50
+        const sourceFontSize = Math.round(18 * fScale)
+        sections.push({ type: 'source', text: props.shareData.source, height: Math.round(40 * fScale), fontSize: sourceFontSize })
+        totalContentHeight += Math.round(50 * fScale)
     }
 
     // Mulai menggambar di titik Y
@@ -336,10 +354,10 @@ const generateCardBlob = async () => {
     for (const sec of sections) {
         if (sec.type === 'header') {
             ctx.fillStyle = tpl.accentColor || '#34d399'
-            ctx.font = 'bold 22px "Instrument Sans", sans-serif'
+            ctx.font = `bold ${Math.round(22 * fScale)}px "Instrument Sans", sans-serif`
             ctx.textAlign = 'center'
             ctx.fillText(sec.text.toUpperCase(), width / 2, currentY)
-            currentY += 45
+            currentY += sec.height
         } else if (sec.type === 'arab') {
             ctx.fillStyle = tpl.textColor || '#ffffff'
             ctx.font = sec.font
@@ -348,7 +366,7 @@ const generateCardBlob = async () => {
                 ctx.fillText(line, width / 2, currentY)
                 currentY += sec.lineHeight
             }
-            currentY += 25
+            currentY += Math.round(25 * fScale)
         } else if (sec.type === 'latin') {
             ctx.fillStyle = tpl.accentColor || '#34d399'
             ctx.font = sec.font
@@ -357,7 +375,7 @@ const generateCardBlob = async () => {
                 ctx.fillText(line, width / 2, currentY)
                 currentY += sec.lineHeight
             }
-            currentY += 20
+            currentY += Math.round(20 * fScale)
         } else if (sec.type === 'trans') {
             ctx.fillStyle = tpl.textColor || '#ffffff'
             ctx.font = sec.font
@@ -366,7 +384,7 @@ const generateCardBlob = async () => {
                 ctx.fillText(line, width / 2, currentY)
                 currentY += sec.lineHeight
             }
-            currentY += 25
+            currentY += Math.round(25 * fScale)
         } else if (sec.type === 'source') {
             ctx.strokeStyle = tpl.accentColor || '#34d399'
             ctx.globalAlpha = 0.3
@@ -378,11 +396,11 @@ const generateCardBlob = async () => {
 
             ctx.fillStyle = tpl.textColor || '#ffffff'
             ctx.globalAlpha = 0.75
-            ctx.font = '18px "Instrument Sans", sans-serif'
+            ctx.font = `${sec.fontSize}px ${latinFontFamily}`
             ctx.textAlign = 'center'
-            ctx.fillText(sec.text, width / 2, currentY + 15)
+            ctx.fillText(sec.text, width / 2, currentY + Math.round(15 * fScale))
             ctx.globalAlpha = 1.0
-            currentY += 40
+            currentY += sec.height
         }
     }
 
@@ -737,23 +755,23 @@ const copyShareText = async () => {
                                 <!-- Konten Utama: Arab, Latin, Terjemahan -->
                                 <div class="absolute inset-0 flex flex-col items-center justify-center z-10 px-8 py-16 gap-3">
                                     <!-- Teks Arab -->
-                                    <p v-if="cardIncludeArab && shareData.arab" class="font-arabic text-[18px] leading-loose text-center drop-shadow-lg" :style="{ color: currentBgTemplate.textColor }">
+                                    <p v-if="cardIncludeArab && shareData.arab" class="font-arabic leading-loose text-center drop-shadow-lg" :style="{ color: currentBgTemplate.textColor, fontSize: (18 * (cardFontSizeScale / 100)) + 'px' }">
                                         {{ shareData.arab }}
                                     </p>
                                     
                                     <!-- Transliterasi Latin -->
-                                    <p v-if="cardIncludeLatin && shareData.latin" class="text-[10px] italic text-center drop-shadow-md opacity-90 font-medium" :style="{ color: currentBgTemplate.accentColor }">
+                                    <p v-if="cardIncludeLatin && shareData.latin" class="italic text-center drop-shadow-md opacity-90 font-medium" :style="{ color: currentBgTemplate.accentColor, fontSize: (10 * (cardFontSizeScale / 100)) + 'px', fontFamily: cardLatinFont === 'serif' ? 'serif' : (cardLatinFont === 'mono' ? 'monospace' : 'sans-serif') }">
                                         {{ shareData.latin }}
                                     </p>
 
                                     <!-- Terjemahan Bahasa Indonesia -->
-                                    <p v-if="cardIncludeTranslation && shareData.translation" class="text-[11px] text-center drop-shadow-md line-clamp-5 leading-relaxed font-medium" :style="{ color: currentBgTemplate.textColor }">
+                                    <p v-if="cardIncludeTranslation && shareData.translation" class="text-center drop-shadow-md line-clamp-5 leading-relaxed font-medium" :style="{ color: currentBgTemplate.textColor, fontSize: (11 * (cardFontSizeScale / 100)) + 'px', fontFamily: cardLatinFont === 'serif' ? 'serif' : (cardLatinFont === 'mono' ? 'monospace' : 'sans-serif') }">
                                         "{{ shareData.translation }}"
                                     </p>
 
                                     <!-- Pemisah Sumber -->
                                     <div v-if="cardIncludeSource && shareData.source" class="w-16 border-t my-1 opacity-30 drop-shadow-md" :style="{ borderColor: currentBgTemplate.accentColor }"></div>
-                                    <p v-if="cardIncludeSource && shareData.source" class="text-[9px] text-center opacity-75 drop-shadow-md font-bold" :style="{ color: currentBgTemplate.textColor }">
+                                    <p v-if="cardIncludeSource && shareData.source" class="text-center opacity-75 drop-shadow-md font-bold" :style="{ color: currentBgTemplate.textColor, fontSize: (9 * (cardFontSizeScale / 100)) + 'px', fontFamily: cardLatinFont === 'serif' ? 'serif' : (cardLatinFont === 'mono' ? 'monospace' : 'sans-serif') }">
                                         {{ shareData.source }}
                                     </p>
                                 </div>
@@ -782,38 +800,26 @@ const copyShareText = async () => {
 
                         <!-- Pilihan Tombol Media Sosial -->
                         <div class="mt-6">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Bagikan Langsung Ke:</label>
-                            <div class="grid grid-cols-2 gap-3">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 text-center">Bagikan Langsung Ke:</label>
+                            <div class="flex items-center justify-center flex-wrap gap-4">
                                 <!-- WhatsApp -->
-                                <button @click="shareToWhatsApp" class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#25D366] hover:bg-[#25D366]/5 rounded-xl transition-all group">
-                                    <div class="w-10 h-10 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0">
-                                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-                                    </div>
-                                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-[#25D366]">WhatsApp</span>
+                                <button @click="shareToWhatsApp" class="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke WhatsApp">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                                 </button>
                                 
                                 <!-- Telegram -->
-                                <button @click="shareToTelegram" class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#0088cc] hover:bg-[#0088cc]/5 rounded-xl transition-all group">
-                                    <div class="w-10 h-10 rounded-full bg-[#0088cc] text-white flex items-center justify-center shrink-0">
-                                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.34-.635.34l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.894z"/></svg>
-                                    </div>
-                                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-[#0088cc]">Telegram</span>
+                                <button @click="shareToTelegram" class="w-9 h-9 rounded-full bg-[#0088cc] text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke Telegram">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.34-.635.34l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.894z"/></svg>
                                 </button>
 
                                 <!-- Twitter / X -->
-                                <button @click="shareToTwitter" class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-900 hover:bg-slate-900/5 dark:hover:border-slate-400 rounded-xl transition-all group">
-                                    <div class="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center shrink-0">
-                                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                                    </div>
-                                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-black dark:group-hover:text-white">X / Twitter</span>
+                                <button @click="shareToTwitter" class="w-9 h-9 rounded-full bg-black text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke X / Twitter">
+                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                                 </button>
 
                                 <!-- Facebook -->
-                                <button @click="shareToFacebook" class="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#1877F2] hover:bg-[#1877F2]/5 rounded-xl transition-all group">
-                                    <div class="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center shrink-0">
-                                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M9 8H6v4h3v12h5V12h3.642L18 8h-4V6.333C14 5.374 14.5 5 15.657 5H18V0h-3.808C10.597 0 9 1.582 9 4.615V8z"/></svg>
-                                    </div>
-                                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-[#1877F2]">Facebook</span>
+                                <button @click="shareToFacebook" class="w-9 h-9 rounded-full bg-[#1877F2] text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke Facebook">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M9 8H6v4h3v12h5V12h3.642L18 8h-4V6.333C14 5.374 14.5 5 15.657 5H18V0h-3.808C10.597 0 9 1.582 9 4.615V8z"/></svg>
                                 </button>
                             </div>
 
@@ -908,6 +914,51 @@ const copyShareText = async () => {
                             </div>
                         </div>
 
+                        <!-- JENIS FONT LATIN -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Jenis Font Latin</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button @click="cardLatinFont = 'sans'" :class="['py-2 px-1 text-xs rounded-xl border transition-all font-sans', cardLatinFont === 'sans' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800']">Modern</button>
+                                <button @click="cardLatinFont = 'serif'" :class="['py-2 px-1 text-xs rounded-xl border transition-all font-serif', cardLatinFont === 'serif' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800']">Klasik</button>
+                                <button @click="cardLatinFont = 'mono'" :class="['py-2 px-1 text-xs rounded-xl border transition-all font-mono', cardLatinFont === 'mono' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800']">Mesin Tik</button>
+                            </div>
+                        </div>
+
+                        <!-- KONTROL UKURAN FONT (SLIDER) -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ukuran Teks</label>
+                                <span class="text-xs font-bold text-emerald-600">{{ cardFontSizeScale }}%</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                v-model="cardFontSizeScale" 
+                                min="70" 
+                                max="130" 
+                                step="5"
+                                class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                            >
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1 px-1 font-medium">
+                                <span>Kecil</span>
+                                <span>Besar</span>
+                            </div>
+                            
+                            <!-- Presets Ukuran Font -->
+                            <div class="flex gap-2 mt-3">
+                                <button 
+                                    v-for="val in [85, 100, 115]" 
+                                    :key="val"
+                                    @click="cardFontSizeScale = val"
+                                    :class="[
+                                        'px-2 py-0.5 rounded-lg text-xs font-bold transition-colors cursor-pointer',
+                                        cardFontSizeScale === val ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                                    ]"
+                                >
+                                    {{ val === 100 ? 'Normal' : val + '%' }}
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- KONTROL KEGELAPAN OVERLAY (SLIDER) -->
                         <div>
                             <div class="flex items-center justify-between mb-2">
@@ -974,52 +1025,42 @@ const copyShareText = async () => {
                     Pilih Media Sosial untuk Membagikan:
                 </div>
 
-                <!-- 4 Tombol Cepat Medsos -->
-                <div class="grid grid-cols-4 gap-2">
-                    <button @click="shareImageToApp('whatsapp')" class="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] border border-[#25D366]/30 transition-all group" aria-label="Bagikan ke WhatsApp">
-                        <div class="w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center mb-1 shadow-sm group-hover:scale-105 transition-transform">
-                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-                        </div>
-                        <span class="text-[10px] font-bold">WhatsApp</span>
+                <!-- Tombol Cepat Medsos & Aksi -->
+                <div class="flex items-center justify-center flex-wrap gap-3">
+                    <button @click="shareImageToApp('whatsapp')" class="w-9 h-9 shrink-0 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke WhatsApp">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
                     </button>
-                    <button @click="shareImageToApp('telegram')" class="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#0088cc]/10 hover:bg-[#0088cc]/20 text-[#0088cc] border border-[#0088cc]/30 transition-all group" aria-label="Bagikan ke Telegram">
-                        <div class="w-8 h-8 rounded-full bg-[#0088cc] text-white flex items-center justify-center mb-1 shadow-sm group-hover:scale-105 transition-transform">
-                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.34-.635.34l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.894z"/></svg>
-                        </div>
-                        <span class="text-[10px] font-bold">Telegram</span>
+                    <button @click="shareImageToApp('telegram')" class="w-9 h-9 shrink-0 rounded-full bg-[#0088cc] text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke Telegram">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.34-.635.34l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.458c.538-.196 1.006.128.832.894z"/></svg>
                     </button>
-                    <button @click="shareImageToApp('twitter')" class="flex flex-col items-center justify-center p-2 rounded-2xl bg-slate-900/10 hover:bg-slate-900/20 text-slate-900 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition-all group" aria-label="Bagikan ke X / Twitter">
-                        <div class="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center mb-1 shadow-sm group-hover:scale-105 transition-transform">
-                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                        </div>
-                        <span class="text-[10px] font-bold">X (Twitter)</span>
+                    <button @click="shareImageToApp('twitter')" class="w-9 h-9 shrink-0 rounded-full bg-black text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke X / Twitter">
+                        <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                     </button>
-                    <button @click="shareImageToApp('facebook')" class="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] border border-[#1877F2]/30 transition-all group" aria-label="Bagikan ke Facebook">
-                        <div class="w-8 h-8 rounded-full bg-[#1877F2] text-white flex items-center justify-center mb-1 shadow-sm group-hover:scale-105 transition-transform">
-                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M9 8H6v4h3v12h5V12h3.642L18 8h-4V6.333C14 5.374 14.5 5 15.657 5H18V0h-3.808C10.597 0 9 1.582 9 4.615V8z"/></svg>
-                        </div>
-                        <span class="text-[10px] font-bold">Facebook</span>
+                    <button @click="shareImageToApp('facebook')" class="w-9 h-9 shrink-0 rounded-full bg-[#1877F2] text-white flex items-center justify-center hover:scale-110 shadow-sm transition-transform" aria-label="Bagikan ke Facebook">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M9 8H6v4h3v12h5V12h3.642L18 8h-4V6.333C14 5.374 14.5 5 15.657 5H18V0h-3.808C10.597 0 9 1.582 9 4.615V8z"/></svg>
                     </button>
-                </div>
 
-                <!-- Baris Aksi Unduh Gambar & Salin -->
-                <div class="pt-1 flex gap-2">
+                    <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
                     <button 
                         @click="downloadQuoteImage"
                         :disabled="isGeneratingImage"
-                        class="flex-1 py-2 px-2 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+                        title="Unduh PNG"
+                        class="w-9 h-9 shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 hover:scale-110 shadow-sm transition-all disabled:opacity-50"
                     >
-                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        <span>Unduh PNG</span>
+                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                     </button>
                     <button 
                         @click="copyQuoteImageToClipboard"
                         :disabled="isGeneratingImage"
-                        class="flex-1 py-2 px-2 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+                        :title="copyImageSuccess ? 'Tersalin!' : 'Salin Gambar'"
+                        :class="[
+                            'w-9 h-9 shrink-0 rounded-full flex items-center justify-center hover:scale-110 shadow-sm transition-all disabled:opacity-50',
+                            copyImageSuccess ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        ]"
                     >
-                        <svg v-if="!copyImageSuccess" class="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10a2 2 0 01-2-2v-4a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2z" /></svg>
-                        <svg v-else class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        <span>{{ copyImageSuccess ? 'Tersalin!' : 'Salin' }}</span>
+                        <svg v-if="!copyImageSuccess" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10a2 2 0 01-2-2v-4a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2z" /></svg>
+                        <svg v-else class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                     </button>
                 </div>
                     </div>
