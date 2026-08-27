@@ -1,7 +1,6 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
 import IslamicWidget from '@/Components/IslamicWidget.vue'
-import { useIslamicData } from '@/Composables/useIslamicData'
 import { ref, computed, onMounted } from 'vue'
 
 const props = defineProps({
@@ -17,9 +16,6 @@ const props = defineProps({
         default: () => ({ logs: 0, skor: 0 })
     }
 })
-
-const { getDailyHadith } = useIslamicData()
-const hadith = getDailyHadith()
 
 // --- Pop-up Logic ---
 const showPopup = ref(false)

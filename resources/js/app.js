@@ -25,6 +25,14 @@ createInertiaApp({
             });
         }
 
+        app.config.errorHandler = (err, vm, info) => {
+            console.error('VUE ERROR HANDLER:', err, info);
+            const errDiv = document.createElement('div');
+            errDiv.style = "position:fixed;top:0;left:0;right:0;background:red;color:white;z-index:99999;padding:20px;font-size:16px;font-family:monospace;white-space:pre-wrap;max-height:100vh;overflow:auto;";
+            errDiv.innerText = "VUE ERROR: " + err.message + "\n\n" + err.stack;
+            document.body.appendChild(errDiv);
+        };
+
         return app
             .use(plugin)
             .use(ZiggyVue)
@@ -45,3 +53,10 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
+
+window.addEventListener('error', (event) => {
+    const errDiv = document.createElement('div');
+    errDiv.style = "position:fixed;top:0;left:0;right:0;background:orange;color:white;z-index:99999;padding:20px;font-size:16px;font-family:monospace;white-space:pre-wrap;max-height:100vh;overflow:auto;";
+    errDiv.innerText = "Global Error: " + event.message + "\n\n" + (event.error ? event.error.stack : '');
+    document.body.appendChild(errDiv);
+});
