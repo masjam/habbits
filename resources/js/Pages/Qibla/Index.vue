@@ -1,4 +1,4 @@
-<script setup>
+<!-- <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -132,6 +132,155 @@ onUnmounted(() => {
     }
 });
 
+</script> -->
+<script setup>
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { Head } from '@inertiajs/vue3';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+
+// Koordinat Ka'bah (Masjidil Haram)
+const KAABA_LAT = 21.422487;
+const KAABA_LNG = 39.826206;
+
+const errorMsg = ref('');
+const userLat = ref(null);
+const userLng = ref(null);
+const qiblaAngle = ref(null);
+const deviceHeading = ref(0);
+const isCompassActive = ref(false);
+
+let lastHeading = 0;
+let absoluteTimer = null;
+let isAbsoluteActive = false;
+
+// Menghitung arah kiblat (bearing)
+function calculateQibla(lat1, lon1) {
+    const toRad = (val) => (val * Math.PI) / 180;
+    const toDeg = (val) => (val * 180) / Math.PI;
+
+    const phi1 = toRad(lat1);
+    const phi2 = toRad(KAABA_LAT);
+    const deltaLambda = toRad(KAABA_LNG - lon1);
+
+    const y = Math.sin(deltaLambda) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) -
+              Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+
+    let bearing = toDeg(Math.atan2(y, x));
+    return (bearing + 360) % 360;
+}
+
+// Mendapatkan lokasi GPS
+function getLocation() {
+    if (!navigator.geolocation) {
+        errorMsg.value = "Geolokasi tidak didukung oleh browser Anda.";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userLat.value = position.coords.latitude;
+            userLng.value = position.coords.longitude;
+            qiblaAngle.value = calculateQibla(userLat.value, userLng.value);
+            errorMsg.value = '';
+        },
+        (error) => {
+            errorMsg.value = "Gagal mendapatkan lokasi. Pastikan GPS aktif.";
+        },
+        { enableHighAccuracy: true }
+    );
+}
+
+// Mengambil orientasi layar HP (Portrait/Landscape)
+function getScreenAngle() {
+    if (screen.orientation && screen.orientation.angle !== undefined) {
+        return screen.orientation.angle;
+    }
+    return window.orientation || 0;
+}
+
+// Fungsi utama pembaruan posisi jarum kompas
+function updateHeading(rawHeading) {
+    const screenAngle = getScreenAngle();
+    let currentHeading = (rawHeading + screenAngle) % 360;
+    if (currentHeading < 0) currentHeading += 360;
+
+    // Menghindari animasi berputar balik 360 derajat saat melewati titik Utara (359 -> 0)
+    let delta = currentHeading - lastHeading;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+
+    deviceHeading.value = deviceHeading.value + delta;
+    lastHeading = currentHeading;
+    isCompassActive.value = true;
+}
+
+// Handler Khusus Android Absolute (Utara Magnetis Bumi)
+function handleAbsoluteOrientation(event) {
+    if (event.alpha !== null) {
+        isAbsoluteActive = true;
+        let heading = (360 - event.alpha) % 360;
+        updateHeading(heading);
+    }
+}
+
+// Handler Khusus iOS & Fallback
+function handleStandardOrientation(event) {
+    // Perangkat iOS (Safari/Chrome iPhone)
+    if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
+        updateHeading(event.webkitCompassHeading);
+        return;
+    }
+
+    // Hanya berjalan jika mode Absolute Android tidak merespons
+    if (!isAbsoluteActive && event.alpha !== null) {
+        let heading = (360 - event.alpha) % 360;
+        updateHeading(heading);
+    }
+}
+
+async function requestOrientationPermission() {
+    errorMsg.value = '';
+    getLocation();
+
+    // 1. Penanganan khusus iOS 13+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+            const permission = await DeviceOrientationEvent.requestPermission();
+            if (permission === 'granted') {
+                window.addEventListener('deviceorientation', handleStandardOrientation, true);
+            } else {
+                errorMsg.value = "Akses sensor kompas ditolak.";
+            }
+        } catch (e) {
+            errorMsg.value = "Gagal meminta akses sensor.";
+        }
+        return;
+    }
+
+    // 2. Penanganan khusus Android Chrome / HyperOS
+    // Daftarkan 'deviceorientationabsolute' SAJA terlebih dahulu
+    window.addEventListener('deviceorientationabsolute', handleAbsoluteOrientation, true);
+
+    // Beri jeda 1.5 detik: Jika sensor absolut tidak memberikan data, baru pasang fallback
+    absoluteTimer = setTimeout(() => {
+        if (!isAbsoluteActive) {
+            window.addEventListener('deviceorientation', handleStandardOrientation, true);
+        }
+    }, 1500);
+}
+
+// Rotasi akhir jarum menuju Kiblat
+const compassRotation = computed(() => {
+    if (qiblaAngle.value === null) return 0;
+    return qiblaAngle.value - deviceHeading.value;
+});
+
+onUnmounted(() => {
+    if (absoluteTimer) clearTimeout(absoluteTimer);
+    window.removeEventListener('deviceorientationabsolute', handleAbsoluteOrientation, true);
+    window.removeEventListener('deviceorientation', handleStandardOrientation, true);
+});
 </script>
 
 <template>
