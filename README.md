@@ -1,58 +1,96 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Habbits App
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Habbits adalah aplikasi manajemen dan pelacakan kebiasaan (habit tracker) yang dibangun menggunakan Laravel dan Vue.js. Aplikasi ini dirancang dengan antarmuka yang dinamis menggunakan Inertia.js dan dilengkapi dengan berbagai fitur analitik dan ekspor data.
 
-## About Laravel
+## 🚀 Tech Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Backend:** [Laravel 13](https://laravel.com) (PHP 8.3)
+- **Frontend:** [Vue 3](https://vuejs.org/) & [Inertia.js](https://inertiajs.com/)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
+- **Role & Permission:** [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission)
+- **Data Export:** [Laravel Excel](https://laravel-excel.com/) & [DOMPDF](https://github.com/barryvdh/laravel-dompdf)
+- **Charts:** [Chart.js](https://www.chartjs.org/) & Vue-chartjs
+- **Error Tracking:** [Sentry](https://sentry.io/)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## ✨ Fitur Utama
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Autentikasi dan Manajemen Pengguna (Role & Permissions)
+- Visualisasi data statistik (Chart)
+- Editor teks kaya (Rich Text Editor - TinyMCE)
+- Drag and drop antarmuka pengguna
+- Ekspor data laporan ke dalam format PDF dan Excel
+- Pemantauan error secara real-time via Sentry
 
-## Learning Laravel
+## 🛠️ Prasyarat (Requirements)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Sebelum memulai, pastikan Anda telah menginstal aplikasi berikut di sistem Anda:
+- PHP >= 8.3
+- Composer
+- Node.js & NPM
+- Database (SQLite/MySQL/PostgreSQL)
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 💻 Panduan Instalasi (Instalasi Lokal)
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi di lingkungan pengembangan lokal Anda:
 
-## Agentic Development
+1. **Clone repositori ini:**
+   ```bash
+   git clone <url-repo-anda>
+   cd habit
+   ```
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+2. **Instal dependensi PHP (Composer):**
+   ```bash
+   composer install
+   ```
 
-```bash
-composer require laravel/boost --dev
+3. **Salin file konfigurasi lingkungan dan hasilkan application key:**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
 
-php artisan boost:install
+4. **Konfigurasi Database:**
+   Buka file `.env` dan sesuaikan kredensial database Anda (misalnya menggunakan SQLite atau MySQL).
+
+5. **Jalankan Migrasi Database (dan Seeder jika ada):**
+   ```bash
+   php artisan migrate --seed
+   ```
+
+6. **Instal dependensi Node.js (Frontend):**
+   ```bash
+   npm install
+   ```
+
+7. **Jalankan Development Server:**
+   Buka dua terminal terpisah dan jalankan perintah berikut:
+   
+   Terminal 1 (Menjalankan server PHP & Queue):
+   ```bash
+   php artisan serve
+   ```
+   
+   Terminal 2 (Menjalankan Vite untuk frontend):
+   ```bash
+   npm run dev
+   ```
+   Atau cukup jalankan perintah tunggal ini (jika didukung):
+   ```bash
+   composer dev
+   ```
+
+8. **Akses Aplikasi:**
+   Buka browser Anda dan kunjungi: `http://localhost:8000`
+
+## 🔒 Konfigurasi Sentry (Opsional)
+
+Untuk mengaktifkan tracking error, pastikan Anda menambahkan DSN Sentry di file `.env` Anda:
+```env
+SENTRY_LARAVEL_DSN="your-sentry-dsn-here"
+VITE_SENTRY_DSN_PUBLIC="your-sentry-dsn-public-here"
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## 📜 Lisensi
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Aplikasi ini adalah perangkat lunak open-source di bawah lisensi [MIT license](https://opensource.org/licenses/MIT).
