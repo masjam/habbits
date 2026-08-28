@@ -53,29 +53,21 @@ function getLocation() {
 }
 
 // Handler untuk sensor kompas (orientasi perangkat)
+// Handler untuk sensor kompas (orientasi perangkat)
 let lastHeading = 0;
-let isAbsoluteSupported = false;
 
 function handleOrientation(event) {
     let currentHeading = null;
     
-    // Perangkat iOS memberikan webkitCompassHeading
+    // Perangkat iOS memberikan webkitCompassHeading (Selalu Absolut/Magnetik)
     if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
         currentHeading = event.webkitCompassHeading;
     } 
-    // Android: Gunakan alpha HANYA jika event bersifat absolute
-    // Event dari 'deviceorientationabsolute' selalu absolute.
-    // Event dari 'deviceorientation' bisa relative, jadi kita cek event.absolute.
+    // Android: Baca alpha dari event
     else if (event.alpha !== null) {
-        if (event.type === 'deviceorientationabsolute' || event.absolute) {
-            isAbsoluteSupported = true;
-            // Alpha adalah derajat berlawanan jarum jam dari Utara (0)
-            currentHeading = (360 - event.alpha) % 360;
-        } else if (!isAbsoluteSupported) {
-            // Fallback jika device tidak mensupport absolute (sangat jarang)
-            // Akan menggunakan utara relatif saat web dibuka.
-            currentHeading = (360 - event.alpha) % 360;
-        }
+        // Karena kita nanti HANYA mendaftarkan 'deviceorientationabsolute' di Android modern, 
+        // kita asumsikan alpha ini adalah Utara Magnetis (0 = Utara).
+        currentHeading = (360 - event.alpha) % 360;
     }
 
     if (currentHeading !== null) {
@@ -84,7 +76,6 @@ function handleOrientation(event) {
         if (delta > 180) delta -= 360;
         if (delta < -180) delta += 360;
         
-        // Akumulasi heading agar CSS transition tidak berputar balik
         deviceHeading.value = deviceHeading.value + delta;
         lastHeading = currentHeading;
         
@@ -92,14 +83,17 @@ function handleOrientation(event) {
     }
 }
 
-// Meminta izin sensor orientasi (khususnya untuk iOS)
+// Meminta izin sensor orientasi
 async function requestOrientationPermission() {
+    errorMsg.value = ''; // Reset error
+
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // Khusus iOS 13+
         try {
             const permission = await DeviceOrientationEvent.requestPermission();
             if (permission === 'granted') {
                 window.addEventListener('deviceorientation', handleOrientation, true);
-                getLocation(); // Mulai cari lokasi
+                getLocation();
             } else {
                 errorMsg.value = "Akses sensor kompas ditolak.";
             }
@@ -107,13 +101,15 @@ async function requestOrientationPermission() {
             errorMsg.value = "Gagal meminta akses sensor.";
         }
     } else {
-        // Untuk Android
-        // Listen ke absolute event (standar Chrome Android)
+        // Khusus Android (Chrome, Firefox, dll)
+        // PENYELESAIAN MASALAH: Kita HANYA mendaftarkan salah satu, tidak boleh dua-duanya.
         if ('ondeviceorientationabsolute' in window) {
+            // Jika browser mendukung absolute (Chrome modern), panggil HANYA ini.
             window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        } else {
+            // Fallback (Sangat jarang, hanya untuk browser kuno)
+            window.addEventListener('deviceorientation', handleOrientation, true);
         }
-        // Tetap listen ke deviceorientation sebagai fallback (untuk iOS lama atau browser lain)
-        window.addEventListener('deviceorientation', handleOrientation, true);
         getLocation();
     }
 }
