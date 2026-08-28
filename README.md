@@ -35,7 +35,7 @@ Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi di lingkungan peng
 
 1. **Clone repositori ini:**
    ```bash
-   git clone <url-repo-anda>
+   git clone https://github.com/masjam/habbits
    cd habit
    ```
 
