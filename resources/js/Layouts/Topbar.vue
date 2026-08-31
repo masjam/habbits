@@ -130,7 +130,7 @@ const userAvatarUrl = computed(() => {
                 >
                     <div
                         v-if="isDropdownOpen"
-                        class="absolute right-0 top-full mt-2 w-52 origin-top-right bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-20"
+                        class="absolute right-0 top-full mt-2 w-64 origin-top-right bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-20"
                         role="menu"
                     >
                         <div class="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
@@ -142,6 +142,48 @@ const userAvatarUrl = computed(() => {
                                 <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{{ user?.name }}</p>
                                 <p class="text-xs text-emerald-500 font-medium">{{ roleLabel }}</p>
                             </div>
+                        </div>
+
+                        <!-- ─── MULTI ACCOUNT SECTION ─── -->
+                        <div v-if="$page.props.auth.multi_accounts && $page.props.auth.multi_accounts.length > 1" class="py-2 border-b border-slate-100 dark:border-slate-700">
+                            <p class="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Beralih Akun</p>
+                            <div v-for="acc in $page.props.auth.multi_accounts" :key="acc.id">
+                                <div v-if="acc.id !== user.id" class="flex items-center justify-between px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 group transition-colors">
+                                    <Link
+                                        :href="route('multi-account.switch', acc.id)"
+                                        method="post"
+                                        as="button"
+                                        class="flex items-center gap-2 flex-1 text-left"
+                                        @click="closeDropdown"
+                                    >
+                                        <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                            {{ acc.name.charAt(0).toUpperCase() }}
+                                        </div>
+                                        <span class="text-sm text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{{ acc.name }}</span>
+                                    </Link>
+                                    <Link
+                                        :href="route('multi-account.remove', acc.id)"
+                                        method="post"
+                                        as="button"
+                                        title="Hapus dari sesi"
+                                        class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                        @click="closeDropdown"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="$page.props.auth.user.can_multi_login || ($page.props.auth.multi_accounts && $page.props.auth.multi_accounts.length > 0 && $page.props.auth.multi_accounts.some(a => a.can_multi_login))" class="py-1 border-b border-slate-100 dark:border-slate-700">
+                            <a
+                                :href="route('multi-account.add')"
+                                class="flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors w-full"
+                                @click="closeDropdown"
+                            >
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                <span class="font-medium">Tambah Akun Lain</span>
+                            </a>
                         </div>
 
                         <div class="py-1.5">
@@ -170,7 +212,7 @@ const userAvatarUrl = computed(() => {
                                 <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                                <span>Keluar</span>
+                                <span>Logout {{ ($page.props.auth.multi_accounts && $page.props.auth.multi_accounts.length > 1) ? 'Semua Akun' : '' }}</span>
                             </Link>
                         </div>
                     </div>

@@ -55,6 +55,7 @@ class UserController extends Controller
                 'divisi'           => $user->divisi,
                 'status_kehadiran' => $user->status_kehadiran,
                 'catatan_pimpinan' => $user->catatan_pimpinan,
+                'can_multi_login'  => (bool) $user->can_multi_login,
                 'created_at'       => $user->created_at->format('Y-m-d H:i:s'),
                 'badges'           => $user->badges,
             ];
@@ -90,9 +91,10 @@ class UserController extends Controller
             'status_kehadiran' => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
         ];
 
-        // Jika superadmin, validasi pilihan role
+        // Jika superadmin, validasi pilihan role & multi login
         if ($isSuperadmin) {
             $rules['role'] = 'required|in:user,admin,superadmin';
+            $rules['can_multi_login'] = 'nullable|boolean';
         }
 
         $validated = $request->validate($rules);
@@ -105,6 +107,7 @@ class UserController extends Controller
             'nip'              => $validated['nip'] ?? null,
             'divisi'           => $validated['divisi'] ?? null,
             'status_kehadiran' => $validated['status_kehadiran'] ?? 'Aktif',
+            'can_multi_login'  => $isSuperadmin ? ($validated['can_multi_login'] ?? false) : false,
         ]);
 
         // Tetapkan role
@@ -148,6 +151,7 @@ class UserController extends Controller
 
         if ($isSuperadmin) {
             $rules['role'] = 'required|in:user,admin,superadmin';
+            $rules['can_multi_login'] = 'nullable|boolean';
         }
 
         // Admin & Superadmin sama-sama bisa isi catatan jika fitur Notes aktif
@@ -168,6 +172,10 @@ class UserController extends Controller
             'status_kehadiran'   => $validated['status_kehadiran'] ?? 'Aktif',
             'target_tidak_aktif' => $validated['target_tidak_aktif'] ?? null,
         ];
+
+        if ($isSuperadmin && array_key_exists('can_multi_login', $validated)) {
+            $updateData['can_multi_login'] = $validated['can_multi_login'];
+        }
 
         if (($isSuperadmin || $notesEnabled) && isset($validated['catatan_pimpinan'])) {
             $updateData['catatan_pimpinan'] = $validated['catatan_pimpinan'];

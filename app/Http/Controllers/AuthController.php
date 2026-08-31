@@ -13,8 +13,12 @@ class AuthController extends Controller
     /**
      * Tampilkan halaman login.
      */
-    public function showLogin()
+    public function showLogin(Request $request)
     {
+        if (Auth::check() && !$request->session()->get('is_adding_account')) {
+            return redirect()->route('dashboard');
+        }
+        
         return Inertia::render('Auth/Login');
     }
 
@@ -32,6 +36,34 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
+
+            $user = Auth::user();
+            $accounts = $request->session()->get('multi_accounts', []);
+            $isAdding = $request->session()->get('is_adding_account', false);
+
+            $accountData = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar' => $user->avatar ?? null,
+                'can_multi_login' => $user->can_multi_login,
+            ];
+
+            if ($isAdding) {
+                $exists = false;
+                foreach($accounts as $acc) {
+                    if ($acc['id'] == $user->id) {
+                        $exists = true; break;
+                    }
+                }
+                if (!$exists) {
+                    $accounts[] = $accountData;
+                }
+                $request->session()->forget('is_adding_account');
+                $request->session()->put('multi_accounts', $accounts);
+            } else {
+                $request->session()->put('multi_accounts', [$accountData]);
+            }
 
             // Record login log
             $ip = $request->ip();

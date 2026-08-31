@@ -457,7 +457,7 @@ const toggleBoolean = (index) => {
                                         <div class="font-bold text-xs text-emerald-400 mb-1 flex items-center justify-between">
                                             <span>{{ habit.nama_habit }}</span>
                                             <span class="text-[9px] text-emerald-300 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
-                                                Max {{ habit.skor_maksimal }}pt
+                                                Nilai {{ habit.skor_maksimal }}pt
                                             </span>
                                         </div>
                                         <div class="text-[11px] text-slate-200 leading-relaxed font-normal whitespace-normal">
@@ -467,7 +467,7 @@ const toggleBoolean = (index) => {
                                 </transition>
                             </div>
                             <span class="text-[9px] font-bold px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded whitespace-nowrap shrink-0">
-                                Max {{ habit.skor_maksimal }}pt
+                               Nilai {{ habit.skor_maksimal }}pt
                             </span>
                         </div>
 

@@ -41,6 +41,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user'  => $request->user(),
                 'roles' => $request->user() ? $request->user()->getRoleNames() : [],
+                'multi_accounts' => $request->session()->get('multi_accounts', []),
+                'is_adding_account' => $request->session()->get('is_adding_account', false),
             ],
             'global_settings' => $settings,
         ];

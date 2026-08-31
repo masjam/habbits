@@ -31,6 +31,7 @@ class User extends Authenticatable
         'status_kehadiran',
         'catatan_pimpinan',
         'target_tidak_aktif',
+        'can_multi_login',
     ];
 
     protected $hidden = [
@@ -48,6 +49,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
+            'can_multi_login'   => 'boolean',
         ];
     }
 

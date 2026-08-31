@@ -6,16 +6,20 @@ use Inertia\Inertia;
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('welcome');
 
 // Authentication Routes
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])
-        ->middleware('throttle:10,1')
-        ->name('login.attempt');
-});
+Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])
+    ->middleware('throttle:10,1')
+    ->name('login.attempt');
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
     
+    // Multi Account Routes
+    Route::get('/multi-account/add', [\App\Http\Controllers\MultiAccountController::class, 'addAccount'])->name('multi-account.add');
+    Route::get('/multi-account/cancel', [\App\Http\Controllers\MultiAccountController::class, 'cancelAddAccount'])->name('multi-account.cancel');
+    Route::post('/multi-account/switch/{id}', [\App\Http\Controllers\MultiAccountController::class, 'switchAccount'])->name('multi-account.switch');
+    Route::post('/multi-account/remove/{id}', [\App\Http\Controllers\MultiAccountController::class, 'removeAccount'])->name('multi-account.remove');
+
     // ─── Route Pegawai (semua role auth) ───────────────────────────────────────
     Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');

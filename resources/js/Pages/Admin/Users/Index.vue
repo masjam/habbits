@@ -45,6 +45,7 @@ const form = useForm({
     status_kehadiran: 'Aktif',
     catatan_pimpinan: '',
     target_tidak_aktif: '',
+    can_multi_login: false,
 })
 
 const resetForm = useForm({
@@ -100,6 +101,7 @@ const openEditModal = (user) => {
     form.status_kehadiran = user.status_kehadiran || 'Aktif'
     form.catatan_pimpinan = user.catatan_pimpinan || ''
     form.target_tidak_aktif = user.target_tidak_aktif || ''
+    form.can_multi_login = !!user.can_multi_login
     
     isModalOpen.value = true
 }
@@ -509,6 +511,10 @@ const canEditUser = (user) => {
                                             <option value="superadmin">Superadmin</option>
                                         </select>
                                         <p v-if="form.errors.role" class="text-xs text-rose-500 mt-1">{{ form.errors.role }}</p>
+                                    </div>
+                                    <div v-if="isSuperadmin" class="flex items-center gap-2 mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                        <input type="checkbox" id="can_multi_login" v-model="form.can_multi_login" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+                                        <label for="can_multi_login" class="text-xs font-bold text-slate-700">Izinkan Multi-Login (Beralih Akun)</label>
                                     </div>
                                     <div v-else-if="!isEditing" class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                                         <p class="text-xs text-slate-500 font-medium">Pengguna baru akan otomatis didaftarkan sebagai <strong>Pegawai</strong>.</p>
