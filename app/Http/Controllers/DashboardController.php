@@ -143,7 +143,7 @@ class DashboardController extends Controller
         $yesterday = Carbon::yesterday();
         $userCreatedAt = Carbon::parse($user->created_at)->startOfDay();
         
-        $startAllowed = Carbon::today()->day <= 4 
+        $startAllowed = Carbon::today()->day < 4 
             ? Carbon::today()->subMonth()->startOfMonth() 
             : Carbon::today()->startOfMonth();
 

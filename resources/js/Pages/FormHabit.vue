@@ -355,11 +355,7 @@ const toggleBoolean = (index) => {
                         </svg>
                     </div>
                 </div> -->
-                <!-- Pengganti Mobile Dropdown: Horizontal Scrollable Chips -->
-                
-                <!-- Pengganti Dropdown: Grid Icon Cards -->
-                <!-- Pengganti Dropdown: Grid Icon Cards (Versi Mungil & Hemat Tempat) -->
-                            <!-- Grid Icon Cards (Versi SUPER Mungil) -->
+                <!-- Grid Icon Cards (Versi SUPER Mungil) -->
                 <div class="md:hidden mb-2 grid grid-cols-4 gap-1">
                     <button 
                         v-for="habit in habits" 
