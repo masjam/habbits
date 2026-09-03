@@ -18,36 +18,29 @@ export function useIslamicData() {
         isLoadingHadith.value = true
         
         const perawiList = [
-            { slug: 'bukhari', nama: 'Bukhari', total: 6638 },
-            { slug: 'muslim', nama: 'Muslim', total: 3033 },
-            { slug: 'tirmidzi', nama: 'Tirmidzi', total: 3956 },
+            { slug: 'bukhari',   nama: 'Bukhari',    total: 6638 },
+            { slug: 'muslim',    nama: 'Muslim',      total: 3033 },
+            { slug: 'tirmidzi', nama: 'Tirmidzi',    total: 3956 },
             { slug: 'ibnumajah', nama: 'Ibnu Majah', total: 4341 },
-            { slug: 'nasai', nama: "Nasa'i", total: 5758 },
-            { slug: 'ahmad', nama: 'Ahmad', total: 26363 },
-            { slug: 'darimi', nama: 'Darimi', total: 3367 },
-            { slug: 'malik', nama: 'Malik', total: 1587 },
-            { slug: 'abudaud', nama: 'Abu Daud', total: 5274 },
+            { slug: 'nasai',     nama: "Nasa'i",      total: 5758 },
+            { slug: 'ahmad',     nama: 'Ahmad',       total: 26363 },
+            { slug: 'darimi',    nama: 'Darimi',      total: 3367 },
+            { slug: 'malik',     nama: 'Malik',       total: 1587 },
+            { slug: 'abudaud',   nama: 'Abu Daud',    total: 5274 },
         ]
 
-        // Create a daily seed
+        // Hitung hari ke-N sejak epoch (selalu berubah setiap hari)
         const today = new Date()
-        const seedStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
-        
-        // Simple hash function for string
-        let hash = 0;
-        for (let i = 0; i < seedStr.length; i++) {
-            const char = seedStr.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
-        }
-        hash = Math.abs(hash)
-        
-        // Pick perawi
-        const perawiIndex = hash % perawiList.length
+        const msPerDay = 86400000
+        // Gunakan timezone offset agar seed berbasis hari lokal, bukan UTC
+        const dayIndex = Math.floor((today.getTime() - today.getTimezoneOffset() * 60000) / msPerDay)
+
+        // Pilih perawi berdasarkan dayIndex
+        const perawiIndex = dayIndex % perawiList.length
         const selectedPerawi = perawiList[perawiIndex]
-        
-        // Pick nomor
-        const nomor = (Math.floor(hash / perawiList.length) % selectedPerawi.total) + 1
+
+        // Pilih nomor hadits – gunakan kombinasi dayIndex dan rotasi perawi agar tidak mengulang
+        const nomor = (Math.floor(dayIndex / perawiList.length) % selectedPerawi.total) + 1
 
         try {
             const res = await fetch(`https://api.myquran.com/v2/hadits/${selectedPerawi.slug}/${nomor}`)

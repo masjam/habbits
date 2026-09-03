@@ -78,7 +78,8 @@
     @endphp
 
     <div class="header">
-        <h2>Laporan Capaian Ibadah Pegawai</h2>
+        <h2>Laporan Capaian Golden Habbits Guru-Karyawan</h2>
+        <h3>SD Muhammadiyah Al Mujahidin Wonosari</h3>
         <p>Periode: {{ $namaBulan }}</p>
     </div>
 

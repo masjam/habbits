@@ -69,13 +69,35 @@ class MenstruationController extends Controller
                 'waktu_mulai' => Carbon::now(),
             ]);
 
-            // Set skor menjadi 0 untuk habit yang disembunyikan saat haid pada hari ini,
-            // agar skor total tidak melebihi skor maksimal harian saat mode haid aktif.
-            $hiddenHabits = \App\Models\Habit::where('hide_saat_haid', true)->pluck('id');
-            \App\Models\HabitLog::where('user_id', $user->id)
+            // Saat mode haid diaktifkan: skor habit utama (hide_saat_haid) TIDAK dihapus.
+            // Namun, total skor harian tidak boleh melebihi skor maksimal normal (non-haid).
+            // Jika ada kelebihan, kurangi dari skor habit pengganti haid (jika ada).
+            $skorMaksimalNormal = \App\Models\Habit::where('status_aktif', true)
+                ->where('is_pengganti_haid', false)
+                ->sum('skor_maksimal');
+
+            $allLogsToday = \App\Models\HabitLog::where('user_id', $user->id)
                 ->whereDate('tanggal', Carbon::today())
-                ->whereIn('habit_id', $hiddenHabits)
-                ->update(['skor_diperoleh' => 0]);
+                ->get();
+
+            $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');
+
+            if ($totalSkorHariIni > $skorMaksimalNormal) {
+                $kelebihan = $totalSkorHariIni - $skorMaksimalNormal;
+
+                // Kurangi dari habit pengganti haid (skor terbesar dulu)
+                $logsHabitPengganti = $allLogsToday
+                    ->filter(fn($log) => \App\Models\Habit::find($log->habit_id)?->is_pengganti_haid)
+                    ->sortByDesc('skor_diperoleh');
+
+                foreach ($logsHabitPengganti as $log) {
+                    if ($kelebihan <= 0) break;
+                    $potong = min($log->skor_diperoleh, $kelebihan);
+                    $log->skor_diperoleh -= $potong;
+                    $log->save();
+                    $kelebihan -= $potong;
+                }
+            }
 
             $msg = 'Mode Haid berhasil diaktifkan.';
         }

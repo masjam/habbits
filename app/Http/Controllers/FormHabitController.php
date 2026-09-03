@@ -214,7 +214,9 @@ class FormHabitController extends Controller
                     break;
             }
 
-            // Jika sedang haid, habit normal yang disembunyikan (seperti sholat dan baca alquran) nilainya tidak dihitung
+            // Saat haid: habit yang disembunyikan (hide_saat_haid) TIDAK ditampilkan di form,
+            // sehingga tidak ada input dari user. Kita biarkan nilainya 0 di sini (tidak diisi).
+            // Skor habit ini diatur melalui mekanisme cap harian di bawah (setelah semua log tersimpan).
             if ($isSedangHaid && $habit->hide_saat_haid) {
                 $skorDiperoleh = 0;
             }
@@ -233,11 +235,47 @@ class FormHabitController extends Controller
             );
         }
 
+        // ─── Cap Skor Harian Saat Haid ──────────────────────────────────────────────
+        // Skor habit utama (hide_saat_haid) TIDAK hangus, tapi total akhir harian
+        // tidak boleh melebihi skor maksimal normal (non-haid / semua habit utama).
+        if ($isSedangHaid) {
+            // Hitung skor maksimal harian normal (tanpa habit pengganti haid)
+            $skorMaksimalNormal = Habit::where('status_aktif', true)
+                ->where('is_pengganti_haid', false)
+                ->sum('skor_maksimal');
+
+            // Ambil semua log hari ini (sudah tersimpan), hitung total
+            $allLogsToday = \App\Models\HabitLog::where('user_id', $user->id)
+                ->whereDate('tanggal', $selectedDate->toDateString())
+                ->get();
+
+            $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');
+
+            // Jika total melebihi skor maksimal normal, kurangi skor habit pengganti
+            if ($totalSkorHariIni > $skorMaksimalNormal) {
+                $kelebihan = $totalSkorHariIni - $skorMaksimalNormal;
+
+                // Kurangi dari habit pengganti haid terlebih dahulu (skor terbesar dulu)
+                $logsHabitPengganti = $allLogsToday
+                    ->filter(fn($log) => \App\Models\Habit::find($log->habit_id)?->is_pengganti_haid)
+                    ->sortByDesc('skor_diperoleh');
+
+                foreach ($logsHabitPengganti as $log) {
+                    if ($kelebihan <= 0) break;
+                    $potong = min($log->skor_diperoleh, $kelebihan);
+                    $log->skor_diperoleh -= $potong;
+                    $log->save();
+                    $kelebihan -= $potong;
+                }
+            }
+        }
+
         // Recalculate streak & unlock badges
         $this->recalculateAndUnlockBadges($user);
 
         return redirect()->back()->with('success', 'Log habit berhasil disimpan!');
     }
+
 
     private function recalculateAndUnlockBadges($user)
     {
