@@ -154,10 +154,10 @@ const checkMobile = () => {
 const quranCurrentPage = ref(1)
 const quranItemsPerPage = computed(() => isMobile.value ? 10 : 50)
 
-// ─── Pengaturan Tampilan Al-Qur'an (Font Size, Latin & Terjemahan) ─────────
+// ─── Pengaturan Tampilan Al-Qur'an (Font Scale, Latin & Terjemahan) ───────
 const showLatin = ref(true)
 const showTranslation = ref(true)
-const fontSize = ref('normal') // 'sm' | 'normal' | 'lg' | 'xl'
+const fontScale = ref(100) // Persentase ukuran font arab: 70% s/d 180%, default 100%
 const showQuranOptions = ref(false) // Toggle sembunyikan/tampilkan pengaturan
 
 // ─── Pengaturan Audio Al-Qur'an ─────────
@@ -234,15 +234,10 @@ onUnmounted(() => {
     stopAudio()
 })
 
-const arabicFontSizeClass = computed(() => {
-    switch (fontSize.value) {
-        case 'sm': return 'text-xl sm:text-2xl leading-loose'
-        case 'normal': return 'text-2xl sm:text-3xl md:text-4xl leading-loose'
-        case 'lg': return 'text-3xl sm:text-4xl md:text-5xl leading-loose'
-        case 'xl': return 'text-4xl sm:text-5xl md:text-6xl leading-loose'
-        default: return 'text-2xl sm:text-3xl md:text-4xl leading-loose'
-    }
-})
+const arabicFontSizeStyle = computed(() => ({
+    fontSize: `calc(${fontScale.value / 100} * clamp(1.5rem, 3.5vw + 0.5rem, 2.25rem))`,
+    lineHeight: '2.4'
+}))
 
 const loadQuranSettings = () => {
     if (typeof window !== 'undefined') {
@@ -254,9 +249,16 @@ const loadQuranSettings = () => {
         if (savedTrans !== null) {
             showTranslation.value = savedTrans === 'true'
         }
-        const savedFontSize = localStorage.getItem('quran_font_size')
-        if (savedFontSize && ['sm', 'normal', 'lg', 'xl'].includes(savedFontSize)) {
-            fontSize.value = savedFontSize
+        const savedScale = localStorage.getItem('quran_font_scale')
+        if (savedScale && !isNaN(Number(savedScale))) {
+            fontScale.value = Math.min(180, Math.max(70, Number(savedScale)))
+        } else {
+            // Migrasi dari format lama jika ada
+            const savedFontSize = localStorage.getItem('quran_font_size')
+            if (savedFontSize === 'sm') fontScale.value = 85
+            else if (savedFontSize === 'normal') fontScale.value = 100
+            else if (savedFontSize === 'lg') fontScale.value = 115
+            else if (savedFontSize === 'xl') fontScale.value = 135
         }
         const savedOptions = localStorage.getItem('quran_show_options')
         if (savedOptions !== null) {
@@ -276,10 +278,24 @@ const toggleQuranOptions = () => {
     }
 }
 
-const setFontSize = (size) => {
-    fontSize.value = size
+const decreaseFontSize = () => {
+    fontScale.value = Math.max(70, fontScale.value - 5)
     if (typeof window !== 'undefined') {
-        localStorage.setItem('quran_font_size', size)
+        localStorage.setItem('quran_font_scale', String(fontScale.value))
+    }
+}
+
+const increaseFontSize = () => {
+    fontScale.value = Math.min(180, fontScale.value + 5)
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('quran_font_scale', String(fontScale.value))
+    }
+}
+
+const resetFontSize = () => {
+    fontScale.value = 100
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('quran_font_scale', '100')
     }
 }
 
@@ -781,7 +797,7 @@ onUnmounted(() => {
 
                                 <!-- Mini Badge Ringkasan Saat Tertutup -->
                                 <div v-if="!showQuranOptions" class="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                    <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-emerald-700 uppercase">Font: {{ fontSize.toUpperCase() }}</span>
+                                    <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-emerald-700 uppercase">Font: {{ fontScale }}%</span>
                                     <span v-if="showLatin" class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-600">Latin</span>
                                     <span v-if="showTranslation" class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-600">Terjemahan</span>
                                 </div>
@@ -796,79 +812,80 @@ onUnmounted(() => {
                                 leave-from-class="opacity-100 translate-y-0 scale-100"
                                 leave-to-class="opacity-0 -translate-y-2 scale-98"
                             >
-                                <div v-if="showQuranOptions" class="mt-2.5 pt-2.5 border-t border-emerald-100/80 flex items-center justify-between gap-1 sm:gap-2.5 w-full min-w-0">
-                                    <!-- 1. Ukuran Font Arab A- / A / A+ / A++ -->
-                                    <div class="inline-flex rounded-xl bg-white border border-slate-200 p-0.5 text-[10px] sm:text-xs shadow-2xs flex-shrink-0">
+                                <div 
+                                    v-if="showQuranOptions" 
+                                    class="mt-2.5 pt-2 border-t border-emerald-100/80 flex items-center justify-between gap-1 sm:gap-2 w-full min-w-0 overflow-x-auto pb-0.5"
+                                    style="scrollbar-width: none; -ms-overflow-style: none;"
+                                >
+                                    <!-- 1. Ukuran Font Arab: - A + (-5%, Reset 100%, +5%) -->
+                                    <div class="inline-flex items-center rounded-lg bg-white border border-slate-200 p-0.5 text-xs shadow-2xs flex-shrink-0">
                                         <button
                                             type="button"
-                                            @click="setFontSize('sm')"
-                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'sm' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
-                                            title="Ukuran Kecil (A-)"
+                                            @click="decreaseFontSize"
+                                            class="w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 active:scale-90 transition-all cursor-pointer select-none"
+                                            title="Perkecil Ukuran Font (-5%)"
                                         >
-                                            A-
+                                            <span class="text-sm leading-none font-bold">−</span>
                                         </button>
                                         <button
                                             type="button"
-                                            @click="setFontSize('normal')"
-                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'normal' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
-                                            title="Ukuran Standar (A)"
+                                            @click="resetFontSize"
+                                            :class="[
+                                                'px-1.5 sm:px-2 h-5 sm:h-6 flex items-center justify-center rounded-md text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer select-none',
+                                                fontScale === 100
+                                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                                    : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+                                            ]"
+                                            :title="`Ukuran Font: ${fontScale}% (Klik untuk reset ke normal 100%)`"
                                         >
                                             A
                                         </button>
                                         <button
                                             type="button"
-                                            @click="setFontSize('lg')"
-                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'lg' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
-                                            title="Ukuran Besar (A+)"
+                                            @click="increaseFontSize"
+                                            class="w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 active:scale-90 transition-all cursor-pointer select-none"
+                                            title="Perbesar Ukuran Font (+5%)"
                                         >
-                                            A+
-                                        </button>
-                                        <button
-                                            type="button"
-                                            @click="setFontSize('xl')"
-                                            :class="['px-1 sm:px-1.5 py-0.5 rounded-lg font-bold transition-colors cursor-pointer', fontSize === 'xl' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800']"
-                                            title="Ukuran Ekstra Besar (A++)"
-                                        >
-                                            A++
+                                            <span class="text-sm leading-none font-bold">+</span>
                                         </button>
                                     </div>
 
                                     <!-- 2. Opsi Lompat ke Ayat Tertentu -->
-                                    <div class="relative flex-1 min-w-[65px] max-w-[110px]">
+                                    <div class="relative flex-1 min-w-[50px] sm:min-w-[60px] max-w-[80px]">
                                         <select
                                             v-model="selectedAyatJump"
                                             @change="handleJumpToAyat($event.target.value)"
-                                            class="w-full bg-white border border-slate-200 text-slate-700 text-[11px] sm:text-xs font-bold rounded-xl py-1 pl-1.5 sm:pl-2 pr-5 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs appearance-none truncate"
+                                            class="w-full bg-white border border-slate-200 text-slate-700 text-[10px] sm:text-[11px] font-bold rounded-lg py-0.5 pl-1.5 pr-4 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs appearance-none truncate"
                                         >
-                                            <option value="" disabled>Ayat...</option>
+                                            <option value="" disabled>Ayat</option>
                                             <option
                                                 v-for="a in surahDetail.ayat"
                                                 :key="a.nomorAyat"
                                                 :value="String(a.nomorAyat)"
                                             >
-                                                Ayat {{ a.nomorAyat }}
+                                                {{ a.nomorAyat }}
                                             </option>
                                         </select>
-                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-slate-400">
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1 text-slate-400">
+                                            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </div>
                                     </div>
 
                                     <!-- 2.5 Opsi Qori (Audio) -->
-                                    <div class="relative flex-1 min-w-[75px] max-w-[130px]">
+                                    <div class="relative flex-1 min-w-[60px] sm:min-w-[70px] max-w-[100px]">
                                         <select
                                             v-model="audioQori"
                                             @change="setAudioQori($event.target.value)"
-                                            class="w-full bg-white border border-slate-200 text-slate-700 text-[11px] sm:text-xs font-bold rounded-xl py-1 pl-1.5 sm:pl-2 pr-5 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs appearance-none truncate"
+                                            class="w-full bg-white border border-slate-200 text-slate-700 text-[10px] sm:text-[11px] font-bold rounded-lg py-0.5 pl-1.5 pr-4 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-2xs appearance-none truncate"
                                         >
                                             <option v-for="qori in qoriList" :key="qori.id" :value="qori.id">
                                                 {{ qori.name }}
                                             </option>
                                         </select>
-                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1 text-slate-400">
-                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1 text-slate-400">
+                                            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </div>
@@ -879,7 +896,7 @@ onUnmounted(() => {
                                         type="button" 
                                         @click="toggleLatin"
                                         :class="[
-                                            'inline-flex items-center justify-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all border shadow-2xs flex-shrink-0 cursor-pointer',
+                                            'inline-flex items-center justify-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all border shadow-2xs flex-shrink-0 cursor-pointer',
                                             showLatin 
                                                 ? 'bg-emerald-600 text-white border-emerald-600' 
                                                 : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
@@ -895,7 +912,7 @@ onUnmounted(() => {
                                         type="button" 
                                         @click="toggleTranslation"
                                         :class="[
-                                            'inline-flex items-center justify-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all border shadow-2xs flex-shrink-0 cursor-pointer',
+                                            'inline-flex items-center justify-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all border shadow-2xs flex-shrink-0 cursor-pointer',
                                             showTranslation 
                                                 ? 'bg-emerald-600 text-white border-emerald-600' 
                                                 : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
@@ -912,7 +929,11 @@ onUnmounted(() => {
                         <!-- Basmalah (kecuali At-Taubah surah 9) -->
                         <div 
                             v-if="surahDetail.nomor !== 9 && surahDetail.nomor !== 1" 
-                            :class="['text-center font-arabic text-slate-700 mb-6 py-2', fontSize === 'sm' ? 'text-xl' : fontSize === 'lg' ? 'text-3xl' : fontSize === 'xl' ? 'text-4xl' : 'text-2xl']"
+                            class="text-center font-arabic text-slate-700 mb-6 py-2"
+                            :style="{ 
+                                fontSize: `calc(${fontScale / 100} * clamp(1.35rem, 3vw + 0.5rem, 1.875rem))`,
+                                lineHeight: '2.2'
+                            }"
                         >
                             بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ
                         </div>
@@ -999,7 +1020,11 @@ onUnmounted(() => {
                                     </div>
 
                                     <!-- Baris 2: Teks Arab Ayat (Lebar Penuh dengan Ukuran Dinamis) -->
-                                    <div :class="['w-full text-right font-arabic leading-loose text-slate-800 mb-1 sm:mb-2 py-0.5 select-text', arabicFontSizeClass]" dir="rtl">
+                                    <div 
+                                        class="w-full text-right font-arabic leading-loose text-slate-800 mb-1 sm:mb-2 py-0.5 select-text"
+                                        :style="arabicFontSizeStyle"
+                                        dir="rtl"
+                                    >
                                         {{ ayat.teksArab }}
                                     </div>
 
