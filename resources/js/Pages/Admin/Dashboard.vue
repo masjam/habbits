@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import IslamicWidget from '@/Components/IslamicWidget.vue'
 import { Head } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Line, Doughnut } from 'vue-chartjs'
 import {
     Chart as ChartJS,
@@ -34,6 +34,8 @@ const persentaseHariIni = computed(() => {
     if (props.skorMaksimalHariIni === 0) return 0
     return ((props.skorHariIni / props.skorMaksimalHariIni) * 100).toFixed(1)
 })
+
+const showMobileWidget = ref(false)
 
 // ─── DAILY CHART (BULAN INI) ────────────────────────────────────────────────
 const dailyChartOptions = {
@@ -256,9 +258,56 @@ const ratioChartConfig = computed(() => ({
                         </div>
                     </div>
 
-                    <IslamicWidget class="h-full" />
+                    <!-- Islamic Widget — hanya tampil di desktop (lg ke atas) -->
+                    <div class="hidden lg:block">
+                        <IslamicWidget class="h-full" />
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Floating Action Button — hanya tampil di mobile/tablet (< lg) -->
+        <button
+            @click="showMobileWidget = true"
+            class="lg:hidden fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-[0_8px_30px_rgb(52,211,153,0.3)] transition-all hover:-translate-y-1"
+            title="Jadwal Sholat & Waktu"
+        >
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
+
+        <!-- Mobile Islamic Widget Modal -->
+        <Transition
+            enter-active-class="transition-opacity ease-linear duration-300"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition-opacity ease-linear duration-300"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="showMobileWidget" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:hidden">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showMobileWidget = false"></div>
+                <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative z-10 overflow-hidden transform transition-all flex flex-col max-h-full">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Waktu &amp; Jadwal Sholat
+                        </h3>
+                        <button @click="showMobileWidget = false" class="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1.5 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="overflow-y-auto flex-1">
+                        <IslamicWidget class="border-none shadow-none" />
+                    </div>
+                </div>
+            </div>
+        </Transition>
     </AuthenticatedLayout>
 </template>
+
