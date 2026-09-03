@@ -343,12 +343,12 @@ const perawiList = [
     { slug: 'bukhari',  nama: 'Bukhari',   total: 6638 },
     { slug: 'muslim',   nama: 'Muslim',    total: 3033 },
     { slug: 'tirmidzi', nama: 'Tirmidzi',  total: 3956 },
-    { slug: 'ibnumajah', nama: 'Ibnu Majah', total: 4341 },
+    { slug: 'ibnu-majah', nama: 'Ibnu Majah', total: 4341 },
     { slug: 'nasai',    nama: "Nasa'i",    total: 5758 },
     { slug: 'ahmad',    nama: 'Ahmad',     total: 26363 },
     { slug: 'darimi',   nama: 'Darimi',    total: 3367 },
     { slug: 'malik',    nama: 'Malik',     total: 1587 },
-    { slug: 'abudaud',  nama: 'Abu Daud',  total: 5274 },
+    { slug: 'abu-dawud',  nama: 'Abu Dawud',  total: 5274 },
 ]
 
 const selectedPerawi = ref('bukhari')
