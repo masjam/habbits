@@ -16,6 +16,14 @@ class AuthController extends Controller
     public function showLogin(Request $request)
     {
         if (Auth::check() && !$request->session()->get('is_adding_account')) {
+            $user = Auth::user();
+            $maintenanceMode = \App\Models\Setting::where('key', 'maintenance_mode')->value('value');
+            $isMaintenanceActive = ($maintenanceMode === '1' || $maintenanceMode === 'true');
+
+            if ($isMaintenanceActive && !$user->isActualSuperadmin()) {
+                return redirect()->route('maintenance');
+            }
+
             return redirect()->route('dashboard');
         }
         
@@ -35,9 +43,23 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
-            $request->session()->regenerate();
-
             $user = Auth::user();
+
+            // Pengecekan status mode pemeliharaan
+            $maintenanceMode = \App\Models\Setting::where('key', 'maintenance_mode')->value('value');
+            $isMaintenanceActive = ($maintenanceMode === '1' || $maintenanceMode === 'true');
+
+            if ($isMaintenanceActive && !$user->isActualSuperadmin()) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors([
+                    'email' => 'Sistem sedang dalam mode pemeliharaan (Maintenance). Saat ini akses dibatasi hanya untuk tim IT (namaHarusUnik)',
+                ])->onlyInput('email');
+            }
+
+            $request->session()->regenerate();
             $accounts = $request->session()->get('multi_accounts', []);
             $isAdding = $request->session()->get('is_adding_account', false);
 

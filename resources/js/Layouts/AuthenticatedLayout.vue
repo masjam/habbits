@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, Link } from '@inertiajs/vue3'
 import { usePWA } from '@/Composables/usePWA'
 import Sidebar from '@/Layouts/Sidebar.vue'
 import Topbar from '@/Layouts/Topbar.vue'
+import RoleSimulatorBar from '@/Components/RoleSimulatorBar.vue'
 
 // ─── Inertia Page Props ─────────────────────────────────────────────────────
 const page    = usePage()
@@ -117,6 +118,30 @@ onMounted(() => {
                 @toggleSidebar="toggleSidebar"
             />
 
+            <!-- ═══ BANNER MAINTENANCE MODE AKTIF (KHUSUS SUPERADMIN) ═══ -->
+            <div
+                v-if="page.props.auth?.is_actual_superadmin && (page.props.global_settings?.maintenance_mode === '1' || page.props.global_settings?.maintenance_mode === 'true' || page.props.global_settings?.maintenance_mode === true)"
+                class="bg-amber-600 text-white px-4 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-sm font-semibold shadow-inner z-10"
+            >
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="relative flex h-2.5 w-2.5 flex-shrink-0">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-200 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-100"></span>
+                    </span>
+                    <span class="truncate">
+                        Mode Maintenance sedang <strong class="uppercase font-black">AKTIF</strong>. Akses dibatasi khusus tim IT (namaHarusUnik).
+                    </span>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-3">
+                    <a :href="route('maintenance')" target="_blank" class="underline hover:text-amber-100 text-xs font-bold hidden md:inline">
+                        Pratinjau Hal. Maintenance
+                    </a>
+                    <Link :href="route('admin.settings.hr')" class="px-2.5 py-1 bg-amber-800/90 hover:bg-amber-900 rounded-lg text-xs font-black text-white transition-colors">
+                        Kelola
+                    </Link>
+                </div>
+            </div>
+
             <!-- Main Content Area -->
             <main class="flex-1 overflow-y-auto bg-transparent p-4 sm:p-6">
                 <div class="w-full">
@@ -124,5 +149,8 @@ onMounted(() => {
                 </div>
             </main>
         </div>
+
+        <!-- ═══ FLOATING ROLE SIMULATOR BAR (KHUSUS SUPERADMIN DI MODE MAINTENANCE) ═══ -->
+        <RoleSimulatorBar />
     </div>
 </template>

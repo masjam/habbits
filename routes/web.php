@@ -80,4 +80,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:superadmin')->prefix('admin')->group(function () {
         Route::get('/login-logs', [\App\Http\Controllers\Admin\LoginLogController::class, 'index'])->name('admin.login-logs');
     });
+
+    // ─── Maintenance Mode Controls (Khusus Super Admin) ─────────────────────
+    Route::post('/admin/maintenance/switch-role', [\App\Http\Controllers\MaintenanceController::class, 'switchRole'])->name('admin.maintenance.switch-role');
+    Route::post('/admin/maintenance/toggle', [\App\Http\Controllers\MaintenanceController::class, 'toggle'])->name('admin.maintenance.toggle');
 });
+
+// ─── Halaman Maintenance Publik ─────────────────────────────────────────────
+Route::get('/maintenance', [\App\Http\Controllers\MaintenanceController::class, 'index'])->name('maintenance');

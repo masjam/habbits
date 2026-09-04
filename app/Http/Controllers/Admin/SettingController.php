@@ -20,7 +20,7 @@ class SettingController extends Controller
 
     public function hrIndex()
     {
-        if (!auth()->user()->hasRole('superadmin')) {
+        if (!auth()->user()->isActualSuperadmin()) {
             abort(403, 'Hanya Superadmin yang dapat mengakses halaman ini.');
         }
 
@@ -41,7 +41,7 @@ class SettingController extends Controller
             'running_text' => 'nullable|string',
         ];
 
-        if (auth()->user()->hasRole('superadmin')) {
+        if (auth()->user()->isActualSuperadmin()) {
             $rules['gamification_active'] = 'boolean';
             $rules['push_notifications_active'] = 'boolean';
             $rules['dark_mode_active'] = 'boolean';
@@ -52,6 +52,10 @@ class SettingController extends Controller
             $rules['feature_cuti'] = 'boolean';
             $rules['feature_idcard'] = 'boolean';
             $rules['feature_notes'] = 'boolean';
+            $rules['maintenance_mode'] = 'boolean';
+            $rules['maintenance_title'] = 'nullable|string|max:255';
+            $rules['maintenance_message'] = 'nullable|string';
+            $rules['maintenance_end_time'] = 'nullable|string|max:100';
         }
 
         $data = $request->validate($rules);

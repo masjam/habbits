@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Head, useForm } from '@inertiajs/vue3'
+import { Head, useForm, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
@@ -9,6 +9,8 @@ const props = defineProps({
         default: () => ({})
     }
 })
+
+const isTogglingInstant = ref(false)
 
 const form = useForm({
     gamification_active: props.settings.gamification_active === '1' || props.settings.gamification_active === 'true',
@@ -21,7 +23,26 @@ const form = useForm({
     feature_cuti: props.settings.feature_cuti === '1' || props.settings.feature_cuti === 'true',
     feature_idcard: props.settings.feature_idcard === '1' || props.settings.feature_idcard === 'true',
     feature_notes: props.settings.feature_notes === '1' || props.settings.feature_notes === 'true',
+    maintenance_mode: props.settings.maintenance_mode === '1' || props.settings.maintenance_mode === 'true',
+    maintenance_title: props.settings.maintenance_title || 'Sistem Sedang Dalam Pemeliharaan',
+    maintenance_message: props.settings.maintenance_message || 'Kami sedang melakukan pemeliharaan rutin dan peningkatan performa sistem habit tracker. Mohon maaf atas ketidaknyamanan Anda. Sistem akan segera kembali normal.',
+    maintenance_end_time: props.settings.maintenance_end_time || '',
 })
+
+const handleInstantToggle = () => {
+    isTogglingInstant.value = true
+    router.post(route('admin.maintenance.toggle'), {
+        target_mode: form.maintenance_mode,
+        maintenance_title: form.maintenance_title,
+        maintenance_message: form.maintenance_message,
+        maintenance_end_time: form.maintenance_end_time,
+    }, {
+        preserveScroll: true,
+        onFinish: () => {
+            isTogglingInstant.value = false
+        }
+    })
+}
 
 const submit = () => {
     form.post(route('admin.settings.update'), {
@@ -51,6 +72,146 @@ const submit = () => {
             </div>
 
             <form @submit.prevent="submit" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6 xl:gap-8">
+
+                <!-- ═══ SECTION KHUSUS: MODE PEMELIHARAAN (MAINTENANCE) ═══ -->
+                <div class="col-span-1 lg:col-span-2 xl:col-span-2">
+                    <div
+                        :class="[
+                            'overflow-hidden rounded-3xl border transition-all duration-300 p-6 sm:p-7 shadow-sm',
+                            form.maintenance_mode
+                                ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700/60 ring-2 ring-amber-400/20'
+                                : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700'
+                        ]"
+                    >
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200/70 dark:border-slate-700">
+                            <div>
+                                <div class="flex items-center gap-2.5">
+                                    <div :class="['w-9 h-9 rounded-xl flex items-center justify-center', form.maintenance_mode ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'bg-slate-100 dark:bg-slate-700 text-slate-500']">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                            <span>Mode Pemeliharaan (Maintenance Mode)</span>
+                                            <span
+                                                :class="[
+                                                    'text-[10px] font-black uppercase px-2 py-0.5 rounded-full border',
+                                                    form.maintenance_mode
+                                                        ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-700'
+                                                        : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'
+                                                ]"
+                                            >
+                                                {{ form.maintenance_mode ? '● Aktif' : '○ Nonaktif' }}
+                                            </span>
+                                        </h2>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                            Alihkan pengunjung &amp; user biasa ke halaman pemeliharaan. Super Admin tetap memiliki akses penuh untuk uji coba.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Switch Toggle -->
+                            <div class="flex items-center gap-3 self-start sm:self-center">
+                                <a
+                                    :href="route('maintenance')"
+                                    target="_blank"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-bold transition-all shadow-sm"
+                                >
+                                    <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <span>Pratinjau Halaman</span>
+                                </a>
+
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        v-model="form.maintenance_mode"
+                                        @change="handleInstantToggle"
+                                        :disabled="isTogglingInstant"
+                                        class="sr-only peer"
+                                    />
+                                    <div class="w-13 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[3px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-slate-600 peer-checked:bg-amber-500"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Maintenance Settings Body -->
+                        <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                            <!-- Judul Pemeliharaan -->
+                            <div>
+                                <label for="maintenance_title" class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                    Judul Halaman Pemeliharaan
+                                </label>
+                                <input
+                                    id="maintenance_title"
+                                    type="text"
+                                    v-model="form.maintenance_title"
+                                    class="w-full px-4 py-2.5 rounded-xl border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-200"
+                                    placeholder="Contoh: Sistem Sedang Dalam Pemeliharaan"
+                                />
+                                <div v-if="form.errors.maintenance_title" class="text-xs text-red-500 mt-1">{{ form.errors.maintenance_title }}</div>
+                            </div>
+
+                            <!-- Estimasi Waktu Selesai -->
+                            <div>
+                                <label for="maintenance_end_time" class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                    Estimasi Selesai (Countdown / Keterangan Waktu)
+                                </label>
+                                <input
+                                    id="maintenance_end_time"
+                                    type="text"
+                                    v-model="form.maintenance_end_time"
+                                    class="w-full px-4 py-2.5 rounded-xl border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-200"
+                                    placeholder="Contoh: 2026-09-04 15:00 atau 14:00 WIB"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">Gunakan format tanggal (YYYY-MM-DD HH:mm) jika ingin mengaktifkan timer hitung mundur otomatis.</p>
+                                <div v-if="form.errors.maintenance_end_time" class="text-xs text-red-500 mt-1">{{ form.errors.maintenance_end_time }}</div>
+                            </div>
+
+                            <!-- Pesan / Deskripsi -->
+                            <div class="col-span-1 md:col-span-2">
+                                <label for="maintenance_message" class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                    Pesan / Penjelasan Pemeliharaan
+                                </label>
+                                <textarea
+                                    id="maintenance_message"
+                                    v-model="form.maintenance_message"
+                                    rows="3"
+                                    class="w-full px-4 py-2.5 rounded-xl border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm shadow-sm focus:border-amber-500 focus:ring focus:ring-amber-200"
+                                    placeholder="Tuliskan pesan penjelasan kepada pengguna..."
+                                ></textarea>
+                                <div v-if="form.errors.maintenance_message" class="text-xs text-red-500 mt-1">{{ form.errors.maintenance_message }}</div>
+                            </div>
+
+                            <!-- Footer Aksi Cepat Kartu Maintenance -->
+                            <div class="col-span-1 md:col-span-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    💡 <em>Sakelar di atas menyimpan status pemeliharaan secara instan. Klik tombol di kanan jika ingin menyimpan perubahan teks judul &amp; pesan.</em>
+                                </p>
+                                <button
+                                    type="button"
+                                    @click="handleInstantToggle"
+                                    :disabled="isTogglingInstant"
+                                    class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer self-end sm:self-center"
+                                >
+                                    <svg v-if="isTogglingInstant" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span>{{ isTogglingInstant ? 'Menyimpan...' : 'Simpan Perubahan Teks Pemeliharaan' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- Kolom 1: Fitur HR -->
                 <div class="space-y-6">

@@ -36,15 +36,23 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user'  => $request->user(),
-                'roles' => $request->user() ? $request->user()->getRoleNames() : [],
+                'user'  => $user,
+                'roles' => $user ? $user->getRoleNames() : [],
+                'is_actual_superadmin' => $user ? $user->isActualSuperadmin() : false,
+                'simulated_role' => $user ? $user->getSimulatedRole() : null,
                 'multi_accounts' => $request->session()->get('multi_accounts', []),
                 'is_adding_account' => $request->session()->get('is_adding_account', false),
             ],
             'global_settings' => $settings,
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error'   => $request->session()->get('error'),
+            ],
         ];
     }
 }

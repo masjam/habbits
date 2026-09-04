@@ -47,7 +47,7 @@ defineProps({
                 <tr class="text-[8px]">
                     <th class="p-0.5 border-r border-t border-slate-200 dark:border-slate-700" title="Jamaah Masjid">JM</th>
                     <th class="p-0.5 border-r border-t border-slate-200 dark:border-slate-700" title="Jamaah di Rumah">JR</th>
-                    <th class="p-0.5 border-r border-t border-slate-200 dark:border-slate-700" title="Munfarid (Sendiri)">M</th>
+                    <th class="p-0.5 border-r border-t border-slate-200 dark:border-slate-700" title="Munfarid">M</th>
                     <th class="p-0.5 border-r border-t border-slate-200 dark:border-slate-700">JM</th>
                     <th class="p-0.5 border-r border-t border-slate-200 dark:border-slate-700">JR</th>
                     <th class="p-0.5 border-r border-t border-slate-200 dark:border-slate-700">M</th>
