@@ -74,7 +74,7 @@ onMounted(() => {
                 class="fixed bottom-4 inset-x-4 z-[100] md:left-auto md:right-4 md:max-w-sm"
             >
                 <div class="bg-slate-800 text-white rounded-2xl shadow-2xl p-4 flex items-center gap-3">
-                    <img src="/logo.png" class="w-10 h-10 rounded-xl object-contain bg-emerald-600 p-1 flex-shrink-0" alt="Logo" />
+                    <img src="/img/icon-192.png" class="w-10 h-10 rounded-xl object-contain bg-white dark:bg-slate-900 p-0.5 shadow-sm flex-shrink-0" alt="GobitSDAM Logo" />
                     <div class="flex-1 min-w-0">
                         <p class="font-bold text-sm">Install Aplikasi</p>
                         <p class="text-xs text-slate-300 dark:text-slate-600 mt-0.5">Tambahkan ke layar utama untuk akses lebih cepat</p>

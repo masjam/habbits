@@ -7,10 +7,17 @@
 
         <title inertia>{{ config('app.name', 'Sistem Pantauan Habit') }}</title>
 
-        <!-- PWA Meta Tags -->
+        <!-- PWA & Favicon Meta Tags -->
         <link rel="manifest" href="/manifest.json">
         <meta name="theme-color" content="#059669">
-        <link rel="apple-touch-icon" href="/img/gh.png">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="GobitSDAM">
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
+        <link rel="icon" type="image/png" sizes="512x512" href="/img/icon-512.png">
+        <link rel="apple-touch-icon" sizes="192x192" href="/img/icon-192.png">
+        <link rel="apple-touch-icon" sizes="512x512" href="/img/icon-512.png">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">

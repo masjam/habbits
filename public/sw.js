@@ -3,7 +3,7 @@
 //  Strategi: Cache-first (aset), Network-first (halaman)
 // ============================================================
 
-const CACHE_VERSION   = 'v2';
+const CACHE_VERSION   = 'v3';
 const STATIC_CACHE    = `habit-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE   = `habit-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL     = '/offline.html';
@@ -11,6 +11,10 @@ const OFFLINE_URL     = '/offline.html';
 // Aset statis yang di-precache saat install
 const PRECACHE_ASSETS = [
     '/offline.html',
+    '/favicon.ico',
+    '/img/icon-192.png',
+    '/img/icon-512.png',
+    '/img/gh.png',
     '/logo.png',
     '/manifest.json',
 ];

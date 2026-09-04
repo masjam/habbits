@@ -1,22 +1,32 @@
 {
+    "id": "/",
     "name": "GobitSDAM",
     "short_name": "GobitSDAM",
     "description": "Sistem Pantauan Kebiasaan Baik Guru dan Karyawan SD Al Mujahidin Wonosari",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#f8fafc",
     "theme_color": "#059669",
     "orientation": "portrait-primary",
     "icons": [
         {
-            "src": "/img/gh.png",
+            "src": "/img/icon-192.png",
             "type": "image/png",
-            "sizes": "192x192"
+            "sizes": "192x192",
+            "purpose": "any"
         },
         {
-            "src": "/img/gh.png",
+            "src": "/img/icon-512.png",
             "type": "image/png",
-            "sizes": "512x512"
+            "sizes": "512x512",
+            "purpose": "any"
+        },
+        {
+            "src": "/img/icon-512.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "maskable"
         }
     ]
 }
