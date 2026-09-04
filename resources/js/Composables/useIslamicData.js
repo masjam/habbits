@@ -16,17 +16,17 @@ export function useIslamicData() {
 
     const fetchDailyHadith = async () => {
         isLoadingHadith.value = true
-        
+
         const perawiList = [
-            { slug: 'bukhari',   nama: 'Bukhari',    total: 6638 },
-            { slug: 'muslim',    nama: 'Muslim',      total: 3033 },
-            { slug: 'tirmidzi', nama: 'Tirmidzi',    total: 3956 },
+            { slug: 'bukhari', nama: 'Bukhari', total: 6638 },
+            { slug: 'muslim', nama: 'Muslim', total: 3033 },
+            { slug: 'tirmidzi', nama: 'Tirmidzi', total: 3956 },
             { slug: 'ibnu-majah', nama: 'Ibnu Majah', total: 4341 },
-            { slug: 'nasai',     nama: "Nasa'i",      total: 5758 },
-            { slug: 'ahmad',     nama: 'Ahmad',       total: 26363 },
-            { slug: 'darimi',    nama: 'Darimi',      total: 3367 },
-            { slug: 'malik',     nama: 'Malik',       total: 1587 },
-            { slug: 'abu-dawud',   nama: 'Abu Dawud',    total: 5274 },
+            { slug: 'nasai', nama: "Nasa'i", total: 5758 },
+            { slug: 'ahmad', nama: 'Ahmad', total: 26363 },
+            { slug: 'darimi', nama: 'Darimi', total: 3367 },
+            { slug: 'malik', nama: 'Malik', total: 1587 },
+            { slug: 'abu-dawud', nama: 'Abu Dawud', total: 5274 },
         ]
 
         // Hitung hari ke-N sejak epoch (selalu berubah setiap hari)
@@ -34,6 +34,22 @@ export function useIslamicData() {
         const msPerDay = 86400000
         // Gunakan timezone offset agar seed berbasis hari lokal, bukan UTC
         const dayIndex = Math.floor((today.getTime() - today.getTimezoneOffset() * 60000) / msPerDay)
+        const cacheKey = `hadith_daily_v2_${dayIndex}`
+
+        // Coba baca dari cache localStorage untuk hari ini
+        try {
+            const cached = localStorage.getItem(cacheKey)
+            if (cached) {
+                const parsed = JSON.parse(cached)
+                if (parsed && parsed.text) {
+                    dailyHadith.value = parsed
+                    isLoadingHadith.value = false
+                    return
+                }
+            }
+        } catch (e) {
+            // Abaikan error baca cache
+        }
 
         // Pilih perawi berdasarkan dayIndex
         const perawiIndex = dayIndex % perawiList.length
@@ -43,13 +59,32 @@ export function useIslamicData() {
         const nomor = (Math.floor(dayIndex / perawiList.length) % selectedPerawi.total) + 1
 
         try {
-            const res = await fetch(`https://api.myquran.com/v2/hadits/${selectedPerawi.slug}/${nomor}`)
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 6000)
+
+            const res = await fetch(`https://api.myquran.com/v2/hadits/${selectedPerawi.slug}/${nomor}`, {
+                signal: controller.signal
+            })
+            clearTimeout(timeoutId)
+
             const json = await res.json()
             if (json.status && json.data) {
-                dailyHadith.value = {
-                    text: json.data.contents.id,
-                    source: `HR. ${json.data.name} No. ${json.data.number}`,
-                    url: `/quran-hadis?tab=hadis&perawi=${selectedPerawi.slug}&nomor=${nomor}`
+                const hadithText = json.data.id || json.data.contents?.id || ''
+                const perawiName = json.info?.perawi?.name || selectedPerawi.nama
+                const hadithNumber = json.data.number || nomor
+
+                const result = {
+                    text: hadithText,
+                    source: `HR. ${perawiName} No. ${hadithNumber}`,
+                    url: `/quran-hadis?tab=hadis&perawi=${selectedPerawi.slug}&nomor=${hadithNumber}`
+                }
+
+                dailyHadith.value = result
+
+                try {
+                    localStorage.setItem(cacheKey, JSON.stringify(result))
+                } catch (e) {
+                    // Abaikan error simpan cache
                 }
             } else {
                 throw new Error("Invalid response")
@@ -58,8 +93,8 @@ export function useIslamicData() {
             console.error("Failed to fetch daily hadith", e)
             dailyHadith.value = {
                 text: "Barangsiapa menempuh jalan untuk menuntut ilmu, maka Allah akan mudahkan baginya jalan menuju surga.",
-                source: "HR. Muslim",
-                url: null
+                source: "HR. Muslim No. 2699",
+                url: `/quran-hadis?tab=hadis&perawi=muslim&nomor=2699`
             }
         } finally {
             isLoadingHadith.value = false
@@ -82,7 +117,7 @@ export function useIslamicData() {
             const fetchFromAladhan = async (url) => {
                 const response = await fetch(url)
                 if (!response.ok) throw new Error('Network response was not ok')
-                
+
                 const result = await response.json()
                 if (result.code === 200) {
                     const timings = result.data.timings
@@ -104,7 +139,7 @@ export function useIslamicData() {
                     // Gunakan ipinfo.io sebagai fallback jika akses GPS ditolak / HTTP
                     const ipRes = await fetch('https://ipinfo.io/json')
                     const ipData = await ipRes.json()
-                    
+
                     if (ipData && ipData.loc) {
                         const [lat, lng] = ipData.loc.split(',')
                         locationName.value = ipData.city ? `${ipData.city} (via IP)` : 'Lokasi Saat Ini'
@@ -128,12 +163,12 @@ export function useIslamicData() {
                         async (position) => {
                             const lat = position.coords.latitude
                             const lng = position.coords.longitude
-                            
+
                             // Coba dapatkan nama kota dari koordinat GPS
                             try {
                                 const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`);
                                 const geoData = await geoRes.json();
-                                
+
                                 let kecamatan = '';
                                 let kabupaten = '';
 
@@ -142,7 +177,7 @@ export function useIslamicData() {
                                     const admin = geoData.localityInfo.administrative;
                                     const level6 = admin.find(a => a.adminLevel === 6);
                                     const level5 = admin.find(a => a.adminLevel === 5);
-                                    
+
                                     if (level6) kecamatan = level6.name;
                                     if (level5) kabupaten = level5.name;
                                 }
@@ -162,9 +197,9 @@ export function useIslamicData() {
                                     displayName = geoData.principalSubdivision || 'Lokasi Saat Ini';
                                 }
 
-                                locationName.value = displayName ? `${displayName} (GPS)` : 'Lokasi Saat Ini (GPS)';
+                                locationName.value = displayName ? `${displayName} ` : 'Lokasi Saat Ini ';
                             } catch (geoErr) {
-                                locationName.value = 'Lokasi Saat Ini (GPS)';
+                                locationName.value = 'Lokasi Saat Ini';
                             }
 
                             await fetchFromAladhan(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=20`)
@@ -195,7 +230,7 @@ export function useIslamicData() {
 
         const now = new Date()
         let nextPrayer = null
-        
+
         const prayers = [
             { name: 'Subuh', time: prayerTimes.value.Subuh },
             { name: 'Dzuhur', time: prayerTimes.value.Dzuhur },

@@ -87,11 +87,20 @@ const masehiDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'lo
             
             <!-- Hadits Harian (To fill empty space) -->
             <div :class="{'mt-auto pt-6 border-t border-emerald-500/50': !horizontal, 'mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 md:border-l md:pl-8 border-emerald-500/50 md:w-1/4 shrink-0': horizontal}">
-                <h4 class="text-xs font-bold text-emerald-200 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    Hadits Harian
+                <h4 class="text-xs font-bold text-emerald-200 uppercase tracking-widest mb-3 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        <span>Hadits Harian</span>
+                    </span>
+                    <Link
+                        v-if="dailyHadith?.url"
+                        :href="dailyHadith.url"
+                        class="text-[10px] lowercase text-emerald-300 hover:text-white font-semibold underline"
+                    >
+                        buka
+                    </Link>
                 </h4>
                 <div v-if="isLoadingHadith" class="space-y-2">
                     <div class="h-3 bg-emerald-500/50 rounded animate-pulse w-full"></div>
@@ -102,16 +111,20 @@ const masehiDate = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'lo
                     <component 
                         :is="dailyHadith.url ? Link : 'div'" 
                         :href="dailyHadith.url"
-                        class="block group"
+                        class="block group cursor-pointer"
+                        title="Klik untuk membuka hadis lengkap"
                     >
-                        <p class="text-sm font-medium text-white italic leading-relaxed group-hover:text-emerald-100 transition-colors">
+                        <p class="text-sm font-medium text-white italic leading-relaxed group-hover:text-emerald-100 transition-colors line-clamp-3">
                             "{{ dailyHadith.text }}"
                         </p>
-                        <p class="text-xs font-bold text-emerald-200 mt-2 flex items-center gap-1 group-hover:text-emerald-100 transition-colors">
-                            — {{ dailyHadith.source }}
-                            <svg v-if="dailyHadith.url" class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
+                        <p class="text-xs font-bold text-emerald-200 mt-2 flex items-center justify-between group-hover:text-emerald-100 transition-colors">
+                            <span>— {{ dailyHadith.source }}</span>
+                            <span v-if="dailyHadith.url" class="text-[10px] text-emerald-300 group-hover:text-white flex items-center gap-1 font-semibold">
+                                <span>Buka</span>
+                                <svg class="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </span>
                         </p>
                     </component>
                 </div>

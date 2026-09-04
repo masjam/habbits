@@ -1,10 +1,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { usePage, Link } from '@inertiajs/vue3'
+import { usePage, Link, router } from '@inertiajs/vue3'
 import { usePWA } from '@/Composables/usePWA'
 import Sidebar from '@/Layouts/Sidebar.vue'
 import Topbar from '@/Layouts/Topbar.vue'
 import RoleSimulatorBar from '@/Components/RoleSimulatorBar.vue'
+
+const resetRole = () => {
+    router.post(route('admin.maintenance.switch-role'), {
+        role: 'superadmin'
+    })
+}
 
 // ─── Inertia Page Props ─────────────────────────────────────────────────────
 const page    = usePage()
@@ -129,16 +135,31 @@ onMounted(() => {
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-100"></span>
                     </span>
                     <span class="truncate">
-                        Mode Maintenance sedang <strong class="uppercase font-black">AKTIF</strong>. Akses dibatasi khusus tim IT (namaHarusUnik).
+                        Mode Maintenance sedang <strong class="uppercase font-black">AKTIF</strong>.
+                        <template v-if="page.props.auth?.simulated_role">
+                            (Simulasi Peran: <span class="uppercase underline font-black">{{ page.props.auth.simulated_role }}</span>)
+                        </template>
                     </span>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-3">
                     <a :href="route('maintenance')" target="_blank" class="underline hover:text-amber-100 text-xs font-bold hidden md:inline">
                         Pratinjau Hal. Maintenance
                     </a>
-                    <Link :href="route('admin.settings.hr')" class="px-2.5 py-1 bg-amber-800/90 hover:bg-amber-900 rounded-lg text-xs font-black text-white transition-colors">
+                    <Link
+                        v-if="page.props.auth?.simulated_role !== 'user'"
+                        :href="route('admin.settings.hr')"
+                        class="px-2.5 py-1 bg-amber-800/90 hover:bg-amber-900 rounded-lg text-xs font-black text-white transition-colors"
+                    >
                         Kelola
                     </Link>
+                    <button
+                        v-else
+                        @click="resetRole"
+                        type="button"
+                        class="px-2.5 py-1 bg-slate-900/90 hover:bg-slate-950 rounded-lg text-xs font-black text-amber-300 border border-amber-400/40 transition-colors shadow-sm"
+                    >
+                        Kembali ke Super Admin
+                    </button>
                 </div>
             </div>
 

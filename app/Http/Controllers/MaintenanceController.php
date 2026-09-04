@@ -55,6 +55,7 @@ class MaintenanceController extends Controller
         ]);
 
         $role = $validated['role'];
+        $previousUrl = url()->previous();
 
         if ($role === 'superadmin') {
             $request->session()->forget('maintenance_simulated_role');
@@ -67,6 +68,18 @@ class MaintenanceController extends Controller
             'admin' => 'Admin',
             'user'  => 'Pegawai (User Biasa)',
         ];
+
+        // Jika beralih ke peran 'user' dan sebelumnya berada di halaman admin,
+        // arahkan dengan aman ke dashboard agar tidak terkena larangan akses (403)
+        $isAdminUrl = str_contains($previousUrl, '/admin') && !str_contains($previousUrl, '/admin/maintenance');
+        if ($role === 'user' && $isAdminUrl) {
+            return redirect()->route('dashboard')->with('success', 'Simulasi peran aktif: Pegawai (User). Dialihkan ke Dashboard.');
+        }
+
+        // Jika beralih ke peran 'admin' dan sebelumnya berada di halaman superadmin-only (login-logs)
+        if ($role === 'admin' && str_contains($previousUrl, '/admin/login-logs')) {
+            return redirect()->route('admin.laporan')->with('success', 'Simulasi peran aktif: Admin.');
+        }
 
         return redirect()->back()->with('success', 'Simulasi peran aktif: ' . ($roleLabels[$role] ?? $role));
     }

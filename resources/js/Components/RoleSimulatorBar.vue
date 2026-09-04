@@ -21,7 +21,7 @@ const switchRole = (targetRole) => {
     router.post(route('admin.maintenance.switch-role'), {
         role: targetRole
     }, {
-        preserveScroll: true,
+        preserveScroll: false,
         onFinish: () => {
             isSwitching.value = false
         }

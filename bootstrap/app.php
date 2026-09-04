@@ -28,6 +28,28 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         \Sentry\Laravel\Integration::handles($exceptions);
 
+        // Tangani UnauthorizedException dari Spatie secara bersahabat (hindari popup 403 mentah di Inertia)
+        $exceptions->render(function (\Spatie\Permission\Exceptions\UnauthorizedException $e, Request $request) {
+            if ($request->user()) {
+                $simulatedRole = method_exists($request->user(), 'getSimulatedRole') ? $request->user()->getSimulatedRole() : null;
+                $message = $simulatedRole
+                    ? 'Akses Dibatasi: Anda sedang dalam simulasi peran "' . ucfirst($simulatedRole) . '". Halaman tersebut khusus Admin / Super Admin.'
+                    : 'Akses Dibatasi: Anda tidak memiliki hak akses untuk halaman tersebut.';
+
+                return redirect()->route('dashboard')->with('error', $message);
+            }
+        });
+
+        // Tangani abort(403) atau HttpException 403 saat simulasi peran aktif
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, Request $request) {
+            if ($e->getStatusCode() === 403 && $request->user()) {
+                $simulatedRole = method_exists($request->user(), 'getSimulatedRole') ? $request->user()->getSimulatedRole() : null;
+                if ($simulatedRole) {
+                    return redirect()->route('dashboard')->with('error', 'Akses Dibatasi: Anda sedang dalam simulasi peran "' . ucfirst($simulatedRole) . '". Halaman tersebut memerlukan peran yang lebih tinggi.');
+                }
+            }
+        });
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
