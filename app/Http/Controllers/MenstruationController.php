@@ -104,4 +104,28 @@ class MenstruationController extends Controller
 
         return redirect()->route('haid.index')->with('success', $msg);
     }
+
+    /**
+     * Mengubah manual waktu mulai dan selesai.
+     */
+    public function update(Request $request, MenstruationLog $log)
+    {
+        $user = Auth::user();
+
+        if ($user->gender !== 'P' || $log->user_id !== $user->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'waktu_mulai' => 'required|date',
+            'waktu_selesai' => 'nullable|date|after_or_equal:waktu_mulai',
+        ]);
+
+        $log->update([
+            'waktu_mulai' => Carbon::parse($request->waktu_mulai),
+            'waktu_selesai' => $request->waktu_selesai ? Carbon::parse($request->waktu_selesai) : null,
+        ]);
+
+        return redirect()->route('haid.index')->with('success', 'Catatan Haid berhasil diperbarui.');
+    }
 }

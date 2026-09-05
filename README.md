@@ -29,7 +29,7 @@ Sebelum memulai, pastikan Anda telah menginstal aplikasi berikut di sistem Anda:
 - Node.js & NPM
 - Database (SQLite/MySQL/PostgreSQL)
 
-## 💻 Panduan Instalasi (Instalasi Lokal)
+<!-- ## 💻 Panduan Instalasi (Instalasi Lokal)
 
 Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi di lingkungan pengembangan lokal Anda:
 
@@ -81,7 +81,7 @@ Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi di lingkungan peng
    ```
 
 8. **Akses Aplikasi:**
-   Buka browser Anda dan kunjungi: `http://localhost:8000`
+   Buka browser Anda dan kunjungi: `http://localhost:8000` -->
 
 ## 🔒 Konfigurasi Sentry (Opsional)
 
@@ -91,6 +91,6 @@ SENTRY_LARAVEL_DSN="your-sentry-dsn-here"
 VITE_SENTRY_DSN_PUBLIC="your-sentry-dsn-public-here"
 ```
 
-## 📜 Lisensi
+<!-- ## 📜 Lisensi
 
-Aplikasi ini adalah perangkat lunak open-source di bawah lisensi [MIT license](https://opensource.org/licenses/MIT).
+Aplikasi ini adalah perangkat lunak open-source di bawah lisensi [MIT license](https://opensource.org/licenses/MIT). -->

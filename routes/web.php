@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function () {
     
     Route::get('/haid', [\App\Http\Controllers\MenstruationController::class, 'index'])->name('haid.index');
     Route::post('/haid/toggle', [\App\Http\Controllers\MenstruationController::class, 'toggle'])->name('haid.toggle');
+    Route::put('/haid/{log}', [\App\Http\Controllers\MenstruationController::class, 'update'])->name('haid.update');
     
     Route::get('/kajian', [\App\Http\Controllers\KajianController::class, 'index'])->name('kajian.index');
     Route::get('/quran-hadis', [\App\Http\Controllers\QuranHadisController::class, 'index'])->name('quran.hadis');
