@@ -27,7 +27,7 @@ const todayM = parseInt(todaySplit[1]) - 1; // 0-indexed
 const todayD = parseInt(todaySplit[2]);
 
 let minDateObj = new Date(todayY, todayM, 1);
-if (todayD <= 4) {
+if (todayD <= 5) {
     minDateObj = new Date(todayY, todayM - 1, 1);
 }
 const toYMD = (date) => {

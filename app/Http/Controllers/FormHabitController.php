@@ -37,8 +37,8 @@ class FormHabitController extends Controller
 
         // Validasi: hanya bisa mengisi bulan lalu jika tanggal saat ini < 4 (maksimal tgl 3)
         if ($selectedDate->month !== $today->month || $selectedDate->year !== $today->year) {
-            if ($today->day >= 4) {
-                return redirect()->route('habit.form')->withErrors(['date' => 'Batas waktu pengisian bulan lalu telah berakhir (maksimal tgl 3).']);
+            if ($today->day >= 6) {
+                return redirect()->route('habit.form')->withErrors(['date' => 'Batas waktu pengisian bulan lalu telah berakhir (maksimal tgl 5).']);
             }
         }
 
@@ -103,8 +103,8 @@ class FormHabitController extends Controller
             return redirect()->back()->withErrors(['date' => 'Tidak bisa mengisi tanggal di masa depan.']);
         }
         if ($selectedDate->month !== $today->month || $selectedDate->year !== $today->year) {
-            if ($today->day >= 4) {
-                return redirect()->back()->withErrors(['date' => 'Batas waktu pengisian bulan lalu telah berakhir.']);
+            if ($today->day >= 6) {
+                return redirect()->back()->withErrors(['date' => 'Batas waktu pengisian bulan lalu telah berakhir (maksimal tgl 5).']);
             }
         }
 
