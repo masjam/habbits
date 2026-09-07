@@ -205,9 +205,8 @@ const youtubeEmbedUrl = computed(() => {
                                 <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
                                     <h3 class="text-xl font-bold leading-6 text-slate-900" id="modal-title">Pengumuman</h3>
                                     <div class="mt-4">
-                                        <p class="text-slate-600 whitespace-pre-wrap text-base leading-relaxed">
-                                            {{ settings?.popup_text }}
-                                        </p>
+                                        <div class="text-slate-600 whitespace-pre-wrap text-base leading-relaxed" v-html="settings?.popup_text">
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -359,6 +359,19 @@ const loadingHadis   = ref(false)
 const hadisError     = ref(null)
 const inputNomor     = ref('')
 
+// ─── Format Hadis (Remove Sanad) ──────────────────────────────────────────────
+const formatHadisText = (text) => {
+    if (!text) return ''
+    const matches = [...text.matchAll(/\[(.*?)\]/g)]
+    if (matches && matches.length > 0) {
+        const lastMatch = matches[matches.length - 1]
+        const rawiName = lastMatch[1]
+        let textAfter = text.substring(lastMatch.index + lastMatch[0].length)
+        return `Dari ${rawiName}${textAfter}`
+    }
+    return text
+}
+
 const fetchHadis = async (nomor) => {
     loadingHadis.value = true
     hadisError.value = null
@@ -367,7 +380,10 @@ const fetchHadis = async (nomor) => {
         const res = await fetch(`${HADIS_API}/${selectedPerawi.value}/${nomor}`)
         const json = await res.json()
         if (json.status && json.data) {
-            hadisData.value = json.data
+            hadisData.value = {
+                ...json.data,
+                id: formatHadisText(json.data.id)
+            }
             hadisNomor.value = nomor
         } else {
             hadisError.value = 'Hadis tidak ditemukan pada nomor tersebut.'
@@ -437,7 +453,10 @@ const searchHadis = async (page = 1) => {
         }
         const json = await res.json()
         if (json.status && json.data && json.data.hadis) {
-            hadisSearchResults.value = json.data.hadis
+            hadisSearchResults.value = json.data.hadis.map(h => ({
+                ...h,
+                text: formatHadisText(h.text)
+            }))
             hadisSearchPaging.value = json.data.paging
         } else {
             hadisSearchResults.value = []
