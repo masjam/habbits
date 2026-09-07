@@ -62,8 +62,7 @@ const youtubeEmbedUrl = computed(() => {
         <!-- Running Text Announcement -->
         <div v-if="settings?.running_text" class="w-full bg-emerald-600 text-white overflow-hidden py-2 shadow-sm relative z-50">
             <div class="flex whitespace-nowrap overflow-hidden">
-                <span class="animate-marquee inline-block px-4 font-medium text-sm w-full">
-                    {{ settings.running_text }}
+                <span class="animate-marquee inline-block px-4 font-medium text-sm w-full" v-html="settings.running_text">
                 </span>
             </div>
         </div>
