@@ -72,10 +72,19 @@ const activeTabId = ref(props.habits.length > 0 ? props.habits[0].id : null);
 const initLogs = () => {
     return props.habits.map(habit => {
         const existingLog = props.logsHariIni[habit.id];
+        let parsedDetails = {};
+        if (existingLog && existingLog.details) {
+            if (Array.isArray(existingLog.details) && existingLog.details.length === 0) {
+                parsedDetails = {};
+            } else {
+                parsedDetails = { ...existingLog.details };
+            }
+        }
+
         return {
             habit_id: habit.id,
             nilai_input: existingLog ? existingLog.nilai_input : (['default', 'boolean'].includes(habit.template) ? 0 : ''),
-            details: existingLog?.details ? existingLog.details : {}
+            details: parsedDetails
         }
     });
 };
