@@ -104,6 +104,75 @@ watch(() => props.tanggal, (newVal) => {
 const showConfirmModal = ref(false)
 const recapItems = ref([])
 
+const calculateSkor = (habit, log) => {
+    if (!log) return 0;
+    const details = log.details || {};
+    let nilaiInput = 0;
+    let skorDiperoleh = 0;
+
+    switch (habit.template) {
+        case 'sholat_wajib':
+            let countJamaah = 0;
+            ['subuh', 'dhuhur', 'asar', 'maghrib', 'isya'].forEach(w => {
+                if (details[w] === 'JD' || details[w] === 'JM') countJamaah++;
+            });
+            nilaiInput = countJamaah;
+            if (nilaiInput >= habit.target_pencapaian) skorDiperoleh = habit.skor_maksimal;
+            break;
+
+        case 'sholat_rawatib':
+            let countRawatib = 0;
+            for (let key in details) {
+                if (details[key] === true) countRawatib++;
+            }
+            nilaiInput = countRawatib;
+            if (nilaiInput >= habit.target_pencapaian) skorDiperoleh = habit.skor_maksimal;
+            break;
+
+        case 'quran':
+            const durasiQ = parseInt(details['durasi']) || 0;
+            if (durasiQ > 0) {
+                nilaiInput = durasiQ;
+            } else if (details['surat_awal'] || details['ayat_awal']) {
+                nilaiInput = 1;
+            }
+            if (habit.target_pencapaian > 0 && nilaiInput >= habit.target_pencapaian) {
+                skorDiperoleh = habit.skor_maksimal;
+            } else if (habit.target_pencapaian == 0 && nilaiInput > 0) {
+                skorDiperoleh = habit.skor_maksimal;
+            }
+            break;
+
+        case 'tahajud':
+        case 'dhuha':
+        case 'integer':
+            nilaiInput = parseInt(log.nilai_input) || 0;
+            if (habit.target_pencapaian > 0 && nilaiInput >= habit.target_pencapaian) {
+                skorDiperoleh = habit.skor_maksimal;
+            } else {
+                skorDiperoleh = 0;
+            }
+            break;
+
+        case 'hadist':
+        case 'buku':
+        case 'default':
+        case 'boolean':
+            const checkboxVal = parseInt(log.nilai_input) || 0;
+            const durasi = parseInt(details['durasi']) || 0;
+            nilaiInput = durasi > 0 ? durasi : checkboxVal;
+            
+            if (habit.target_pencapaian > 0 && nilaiInput >= habit.target_pencapaian) {
+                skorDiperoleh = habit.skor_maksimal;
+            } else if (habit.target_pencapaian == 0 && nilaiInput > 0) {
+                skorDiperoleh = habit.skor_maksimal;
+            }
+            break;
+    }
+    
+    return skorDiperoleh;
+};
+
 const buildRecapItems = () => {
     return props.habits.map(habit => {
         const logIdx = form.logs.findIndex(l => l.habit_id === habit.id)
@@ -113,6 +182,7 @@ const buildRecapItems = () => {
 
         let lines = []
         let status = 'empty'
+        const skor = calculateSkor(habit, log)
 
         if (habit.template === 'sholat_wajib') {
             const waktuList = ['subuh', 'dhuhur', 'asar', 'maghrib', 'isya']
@@ -186,7 +256,7 @@ const buildRecapItems = () => {
             status = done ? 'done' : 'empty'
         }
 
-        return { habit, lines, status }
+        return { habit, lines, status, skor }
     })
 }
 
@@ -205,6 +275,14 @@ const doSubmit = () => {
         preserveScroll: true,
     })
 }
+
+const totalSkorEstimasi = computed(() => {
+    let total = 0;
+    recapItems.value.forEach(item => {
+        total += item.skor;
+    });
+    return total;
+});
 
 // --- Helper Functions ---
 const getLogIndex = (habitId) => {
@@ -636,11 +714,11 @@ const toggleBoolean = (index) => {
 
                         <!-- Subheader info -->
                         <div class="px-5 py-2.5 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800/30 shrink-0">
-                            <p class="text-xs text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                            <p class="text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                Periksa kembali rekap ibadah di bawah sebelum menyimpan.
+                                Periksa rekap ibadah sebelum menyimpan.
                             </p>
                         </div>
 
@@ -653,9 +731,14 @@ const toggleBoolean = (index) => {
                             >
                                 <!-- Habit Name + Status Badge -->
                                 <div class="flex items-center justify-between gap-2 mb-2">
-                                    <span class="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                                        {{ item.habit.nama_habit.replace('[Pengganti Haid] ', '') }}
-                                    </span>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+                                            {{ item.habit.nama_habit.replace('[Pengganti Haid] ', '') }}
+                                        </span>
+                                        <span class="text-[10px] text-slate-500 font-semibold mt-0.5">
+                                            Skor Diperoleh: <span :class="item.skor > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400 dark:text-slate-500'">{{ item.skor }} / {{ item.habit.skor_maksimal }} pt</span>
+                                        </span>
+                                    </div>
                                     <span 
                                         :class="[
                                             'text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap shrink-0',
@@ -702,6 +785,16 @@ const toggleBoolean = (index) => {
                                 </svg>
                                 Cek Lagi
                             </button>
+
+                            <!-- Total Skor -->
+                            <div class="flex flex-col items-center justify-center shrink-0 px-1 sm:px-2 relative">
+                                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)] border-4 border-white dark:border-slate-800 text-white z-10 transform sm:-translate-y-2">
+                                    <span class="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider opacity-90 leading-tight mb-0.5 sm:mb-1 drop-shadow-sm">Skor</span>
+                                    <div class="flex items-baseline gap-0.5 drop-shadow-md">
+                                        <span class="text-xl sm:text-3xl font-black leading-none">{{ totalSkorEstimasi }}</span>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Simpan -->
                             <button 
