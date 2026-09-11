@@ -25,6 +25,22 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Amiri+Quran&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
 
+        <!-- Prevent Theme & Dark Mode FOUC -->
+        <script>
+            (function() {
+                try {
+                    const savedTheme = localStorage.getItem('app-theme');
+                    if (savedTheme && savedTheme !== 'default') {
+                        document.documentElement.classList.add(savedTheme);
+                    }
+                    const savedDark = localStorage.getItem('habit-dark-mode');
+                    if (savedDark === 'true') {
+                        document.documentElement.classList.add('dark');
+                    }
+                } catch (e) {}
+            })();
+        </script>
+
         <!-- Scripts & Styles -->
         @routes
         @vite(['resources/css/app.css', 'resources/js/app.js'])

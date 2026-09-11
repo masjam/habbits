@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useDarkMode } from '@/Composables/useDarkMode'
+import ThemeSelector from '@/Components/ThemeSelector.vue'
 
 const props = defineProps({
     user: {
@@ -44,7 +45,7 @@ const userAvatarUrl = computed(() => {
 </script>
 
 <template>
-    <header class="flex items-center justify-between h-16 px-4 md:px-6 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex-shrink-0 z-20 shadow-sm">
+    <header class="flex items-center justify-between h-16 px-4 md:px-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-700/80 flex-shrink-0 z-20 shadow-xs">
         <!-- Left: Hamburger (mobile only) -->
         <div class="flex items-center gap-3">
             <button
@@ -62,8 +63,11 @@ const userAvatarUrl = computed(() => {
             </span>
         </div>
 
-        <!-- Right: Dark Mode Toggle + User Dropdown -->
-        <div class="flex items-center gap-2">
+        <!-- Right: Theme Selector + Dark Mode Toggle + User Dropdown -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Theme Selector (Responsive: Swatch Pill on Desktop, Palette Popover on Mobile) -->
+            <ThemeSelector />
+
             <!-- Dark Mode Toggle Button -->
             <button
                 v-if="$page.props.global_settings?.dark_mode_active === '1' || $page.props.global_settings?.dark_mode_active === 'true' || $page.props.global_settings?.dark_mode_active === true"
