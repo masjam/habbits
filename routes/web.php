@@ -40,10 +40,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/dzikir', [\App\Http\Controllers\DzikirController::class, 'index'])->name('dzikir.index');
     Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qibla.index');
 
+    // Presensi Pegawai
+    Route::get('/presensi', [\App\Http\Controllers\AttendanceController::class, 'index'])->name('attendance.index');
+    Route::post('/presensi/check-in', [\App\Http\Controllers\AttendanceController::class, 'checkIn'])->name('attendance.check-in');
+    Route::post('/presensi/check-out', [\App\Http\Controllers\AttendanceController::class, 'checkOut'])->name('attendance.check-out');
+
     Route::post('/push-subscriptions', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.store');
 
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {
+
+        Route::get('/presensi', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'index'])->name('admin.attendance.index');
+        Route::post('/presensi/location', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateLocation'])->name('admin.attendance.location');
+        Route::post('/presensi/record', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateRecord'])->name('admin.attendance.update-record');
+        Route::delete('/presensi/record/{id}', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'deleteRecord'])->name('admin.attendance.delete-record');
+        Route::get('/presensi/export', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'export'])->name('admin.attendance.export');
 
         Route::get('/laporan', [\App\Http\Controllers\Admin\LaporanController::class, 'index'])->name('admin.laporan');
         Route::get('/laporan/export', [\App\Http\Controllers\Admin\LaporanController::class, 'export'])->name('admin.laporan.export');
@@ -64,6 +75,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
         Route::post('/users/{user}/badges', [\App\Http\Controllers\Admin\UserController::class, 'assignBadge'])->name('admin.users.badges.assign');
         Route::delete('/users/{user}/badges', [\App\Http\Controllers\Admin\UserController::class, 'removeBadge'])->name('admin.users.badges.remove');
+
+        // Jadwal Piket & Jam Kerja Harian
+        Route::get('/duty-schedules', [\App\Http\Controllers\Admin\DutyScheduleController::class, 'index'])->name('admin.duty-schedules.index');
+        Route::post('/duty-schedules', [\App\Http\Controllers\Admin\DutyScheduleController::class, 'store'])->name('admin.duty-schedules.store');
+        Route::delete('/duty-schedules/{dutySchedule}', [\App\Http\Controllers\Admin\DutyScheduleController::class, 'destroy'])->name('admin.duty-schedules.destroy');
+        Route::post('/duty-schedules/daily-work', [\App\Http\Controllers\Admin\DutyScheduleController::class, 'saveDailyWorkSchedules'])->name('admin.duty-schedules.daily-work');
 
         Route::resource('divisions', \App\Http\Controllers\Admin\DivisionController::class)->except(['create', 'show', 'edit'])->names([
             'index' => 'admin.divisions.index',

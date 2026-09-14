@@ -46,6 +46,9 @@ const form = useForm({
     catatan_pimpinan: '',
     target_tidak_aktif: '',
     can_multi_login: false,
+    work_start: '',
+    work_end: '',
+    late_tolerance: '',
 })
 
 const resetForm = useForm({
@@ -102,6 +105,9 @@ const openEditModal = (user) => {
     form.catatan_pimpinan = user.catatan_pimpinan || ''
     form.target_tidak_aktif = user.target_tidak_aktif || ''
     form.can_multi_login = !!user.can_multi_login
+    form.work_start = user.work_start || ''
+    form.work_end = user.work_end || ''
+    form.late_tolerance = user.late_tolerance !== null && user.late_tolerance !== undefined ? user.late_tolerance : ''
     
     isModalOpen.value = true
 }
@@ -235,7 +241,13 @@ const canEditUser = (user) => {
                         <option :value="50">50 Baris</option>
                         <option :value="100">100 Baris</option>
                     </select>
-                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                        <Link :href="route('admin.duty-schedules.index')" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-sm shadow-xs hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-colors">
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="hidden sm:inline">Jadwal Piket</span>
+                        </Link>
                         <button @click="openUploadModal" class="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-sm shadow-sm hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-slate-200">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -518,6 +530,32 @@ const canEditUser = (user) => {
                                     </div>
                                     <div v-else-if="!isEditing" class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                                         <p class="text-xs text-slate-500 font-medium">Pengguna baru akan otomatis didaftarkan sebagai <strong>Pegawai</strong>.</p>
+                                    </div>
+
+                                    <!-- ── Pengaturan Jam Kerja Perseorangan (Opsional) ── -->
+                                    <div class="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-800/40">
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <label class="block text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Jam Kerja Khusus Pegawai</label>
+                                            <span class="text-[10px] text-emerald-700 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-emerald-200 font-bold">Perseorangan</span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 mb-2.5">Kosongkan jika pegawai ini mengikuti jam kerja default sekolah.</p>
+                                        <div class="grid grid-cols-3 gap-2">
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Jam Masuk</label>
+                                                <input type="time" v-model="form.work_start" class="w-full p-1.5 text-xs border-slate-300 rounded-lg focus:ring-emerald-500 bg-white dark:bg-slate-800" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Toleransi</label>
+                                                <div class="relative">
+                                                    <input type="number" v-model="form.late_tolerance" min="0" max="120" placeholder="15" class="w-full p-1.5 text-xs border-slate-300 rounded-lg focus:ring-emerald-500 bg-white dark:bg-slate-800 pr-7" />
+                                                    <span class="absolute inset-y-0 right-1.5 flex items-center text-[10px] text-slate-400">mnt</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Jam Pulang</label>
+                                                <input type="time" v-model="form.work_end" class="w-full p-1.5 text-xs border-slate-300 rounded-lg focus:ring-emerald-500 bg-white dark:bg-slate-800" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

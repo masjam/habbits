@@ -20,8 +20,8 @@ class SettingController extends Controller
 
     public function hrIndex()
     {
-        if (!auth()->user()->isActualSuperadmin()) {
-            abort(403, 'Hanya Superadmin yang dapat mengakses halaman ini.');
+        if (!auth()->user()->hasAnyRole(['admin', 'superadmin'])) {
+            abort(403, 'Hanya Admin dan Superadmin yang dapat mengakses halaman ini.');
         }
 
         $settings = Setting::all()->pluck('value', 'key')->toArray();
@@ -40,6 +40,16 @@ class SettingController extends Controller
             'youtube_link' => 'nullable|string',
             'running_text' => 'nullable|string',
         ];
+
+        if (auth()->user()->hasAnyRole(['admin', 'superadmin'])) {
+            $rules['feature_presensi'] = 'boolean';
+            $rules['presensi_latitude'] = 'nullable|string|max:50';
+            $rules['presensi_longitude'] = 'nullable|string|max:50';
+            $rules['presensi_radius_meters'] = 'nullable|numeric|min:10|max:10000';
+            $rules['presensi_work_start'] = 'nullable|string|max:10';
+            $rules['presensi_late_tolerance'] = 'nullable|numeric|min:0|max:120';
+            $rules['presensi_work_end'] = 'nullable|string|max:10';
+        }
 
         if (auth()->user()->isActualSuperadmin()) {
             $rules['gamification_active'] = 'boolean';

@@ -56,6 +56,9 @@ class UserController extends Controller
                 'status_kehadiran' => $user->status_kehadiran,
                 'catatan_pimpinan' => $user->catatan_pimpinan,
                 'can_multi_login'  => (bool) $user->can_multi_login,
+                'work_start'       => $user->work_start ? substr($user->work_start, 0, 5) : null,
+                'work_end'         => $user->work_end ? substr($user->work_end, 0, 5) : null,
+                'late_tolerance'   => $user->late_tolerance,
                 'created_at'       => $user->created_at->format('Y-m-d H:i:s'),
                 'badges'           => $user->badges,
             ];
@@ -89,6 +92,9 @@ class UserController extends Controller
             'nip'              => 'nullable|string|max:255',
             'divisi'           => 'nullable|string|max:255',
             'status_kehadiran' => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
+            'work_start'       => 'nullable|string|max:10',
+            'work_end'         => 'nullable|string|max:10',
+            'late_tolerance'   => 'nullable|integer|min:0|max:120',
         ];
 
         // Jika superadmin, validasi pilihan role & multi login
@@ -108,21 +114,24 @@ class UserController extends Controller
             'divisi'           => $validated['divisi'] ?? null,
             'status_kehadiran' => $validated['status_kehadiran'] ?? 'Aktif',
             'can_multi_login'  => $isSuperadmin ? ($validated['can_multi_login'] ?? false) : false,
+            'work_start'       => !empty($validated['work_start']) ? $validated['work_start'] : null,
+            'work_end'         => !empty($validated['work_end']) ? $validated['work_end'] : null,
+            'late_tolerance'   => isset($validated['late_tolerance']) && $validated['late_tolerance'] !== '' ? $validated['late_tolerance'] : null,
         ]);
 
         // Tetapkan role
         if ($isSuperadmin && isset($validated['role'])) {
             $user->assignRole($validated['role']);
         } else {
-            // Admin biasa hanya bisa membuat pegawai
             $user->assignRole('user');
         }
 
-        return redirect()->back()->with('success', 'Pengguna baru berhasil ditambahkan.');
+        return redirect()->route('admin.users.index')
+            ->with('success', "Pengguna {$user->name} berhasil ditambahkan.");
     }
 
     /**
-     * Update data user.
+     * Update user yang ada.
      */
     public function update(Request $request, User $user)
     {
@@ -142,6 +151,9 @@ class UserController extends Controller
             'divisi'             => 'nullable|string|max:255',
             'status_kehadiran'   => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
             'target_tidak_aktif' => 'nullable|integer|min:0|max:100',
+            'work_start'         => 'nullable|string|max:10',
+            'work_end'           => 'nullable|string|max:10',
+            'late_tolerance'     => 'nullable|integer|min:0|max:120',
         ];
 
         // Jika form mengirim password (opsional di edit)
@@ -171,6 +183,9 @@ class UserController extends Controller
             'divisi'             => $validated['divisi'] ?? null,
             'status_kehadiran'   => $validated['status_kehadiran'] ?? 'Aktif',
             'target_tidak_aktif' => $validated['target_tidak_aktif'] ?? null,
+            'work_start'         => !empty($validated['work_start']) ? $validated['work_start'] : null,
+            'work_end'           => !empty($validated['work_end']) ? $validated['work_end'] : null,
+            'late_tolerance'     => isset($validated['late_tolerance']) && $validated['late_tolerance'] !== '' ? $validated['late_tolerance'] : null,
         ];
 
         if ($isSuperadmin && array_key_exists('can_multi_login', $validated)) {

@@ -63,6 +63,9 @@ const navLinkClass = (routeName) => [
 const page = usePage()
 const featureEnabled = (key) => {
     const val = page.props.global_settings?.[key]
+    if (key === 'feature_presensi') {
+        return val === undefined || val === '1' || val === 'true' || val === true
+    }
     return val === '1' || val === 'true' || val === true
 }
 </script>
@@ -139,6 +142,9 @@ const featureEnabled = (key) => {
                 <span>Dzikir Pagi &amp; Petang</span>
             </Link>
 
+            <!-- Presensi GPS — Semua Role (bisa diakses pegawai & admin) -->
+           
+
             <!-- Arah Kiblat (Hanya Mobile) -->
             <Link
                 :href="route('qibla.index')"
@@ -163,6 +169,21 @@ const featureEnabled = (key) => {
                         Ibadah Saya
                     </p>
                 </div>
+                 <Link
+                    v-if="featureEnabled('feature_presensi')"
+                    :href="route('attendance.index')"
+                    :class="navLinkClass('attendance.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('attendance.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Presensi</span>
+                </Link>
 
                 <Link
                     :href="route('habit.form')"
@@ -234,6 +255,22 @@ const featureEnabled = (key) => {
                     </p>
                 </div>
 
+                <!-- Rekap Presensi GPS -->
+                <Link
+                    v-if="featureEnabled('feature_presensi')"
+                    :href="route('admin.attendance.index')"
+                    :class="navLinkClass('admin.attendance.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.attendance.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    <span>Rekap Presensi GPS</span>
+                </Link>
+
                 <Link
                     :href="route('admin.laporan')"
                     :class="navLinkClass('admin.laporan')"
@@ -277,9 +314,22 @@ const featureEnabled = (key) => {
                         <span>Manajemen User</span>
                     </Link>
 
-                    <!-- Submenu Daftar Divisi — hanya jika fitur Divisi aktif -->
-                    <div v-if="featureEnabled('feature_divisi')" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5">
+                    <div class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5">
+                        <!-- Submenu Jadwal Piket -->
                         <Link
+                            :href="route('admin.duty-schedules.index')"
+                            :class="[...navLinkClass('admin.duty-schedules.index'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.duty-schedules.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>Jadwal Piket</span>
+                        </Link>
+
+                        <!-- Submenu Daftar Divisi — hanya jika fitur Divisi aktif -->
+                        <Link
+                            v-if="featureEnabled('feature_divisi')"
                             :href="route('admin.divisions.index')"
                             :class="[...navLinkClass('admin.divisions.index'), 'text-xs py-2']"
                             @click="closeSidebar"
@@ -308,9 +358,9 @@ const featureEnabled = (key) => {
                     </svg>
                     <span>Pengaturan Sistem</span>
                 </Link>
-                  <template v-if="hasRole('superadmin')">
-
-                                      <Link
+                
+                <template v-if="hasRole('superadmin')">
+                    <Link
                         :href="route('admin.settings.hr')"
                         :class="navLinkClass('admin.settings.hr')"
                         @click="closeSidebar"

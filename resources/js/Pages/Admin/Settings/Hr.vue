@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Head, useForm, router } from '@inertiajs/vue3'
+import { Head, useForm, router, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
@@ -30,6 +30,7 @@ const form = useForm({
 })
 
 const handleInstantToggle = () => {
+
     isTogglingInstant.value = true
     router.post(route('admin.maintenance.toggle'), {
         target_mode: form.maintenance_mode,
@@ -284,6 +285,33 @@ const submit = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- ═══ CARD: LINK KE PENGATURAN PRESENSI ═══ -->
+                    <div class="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent rounded-3xl border border-emerald-500/20 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3.5">
+                            <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-black text-slate-800 dark:text-slate-100">Pengaturan Presensi &amp; Jam Kerja</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    Pengaturan titik koordinat sekolah, radius toleransi GPS, dan jam kerja sekarang terpusat di menu <strong>Pengaturan Sistem (3 Kolom)</strong>.
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            :href="route('admin.settings')"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm shrink-0"
+                        >
+                            <span>Buka Pengaturan Sistem</span>
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </Link>
                     </div>
                 </div>
 

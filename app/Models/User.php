@@ -3,8 +3,10 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -35,6 +37,9 @@ class User extends Authenticatable
         'catatan_pimpinan',
         'target_tidak_aktif',
         'can_multi_login',
+        'work_start',
+        'work_end',
+        'late_tolerance',
     ];
 
     protected $hidden = [
@@ -54,12 +59,87 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'can_multi_login'   => 'boolean',
+            'late_tolerance'    => 'integer',
         ];
     }
 
     public function habitLogs(): HasMany
     {
         return $this->hasMany(HabitLog::class);
+    }
+
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    /**
+     * Relasi ke jadwal piket yang ditugaskan ke user ini.
+     */
+    public function dutySchedules(): BelongsToMany
+    {
+        return $this->belongsToMany(DutySchedule::class, 'duty_schedule_user')->withTimestamps();
+    }
+
+    /**
+     * Dapatkan jadwal kerja efektif (memprioritaskan jadwal piket di hari terkait, lalu perorangan, lalu harian sekolah, lalu jadwal global).
+     */
+    public function getEffectiveWorkSchedule(?string $date = null): array
+    {
+        $targetDate = $date ? Carbon::parse($date) : Carbon::today();
+        $dayOfWeek = (int) $targetDate->dayOfWeekIso; // 1 = Senin, ..., 7 = Minggu
+
+        // 1. Cek apakah user sedang bertugas Piket aktif di hari ini
+        $piket = $this->dutySchedules()
+            ->where('day_of_week', $dayOfWeek)
+            ->where('is_active', true)
+            ->first();
+
+        $globalTol = (int)(Setting::where('key', 'presensi_late_tolerance')->value('value') ?: 15);
+
+        if ($piket) {
+            return [
+                'work_start'     => $piket->time_in,
+                'work_end'       => $piket->time_out,
+                'late_tolerance' => $piket->late_tolerance !== null ? (int)$piket->late_tolerance : $globalTol,
+                'is_custom'      => true,
+                'is_piket'       => true,
+                'piket_name'     => $piket->name,
+                'piket_id'       => $piket->id,
+                'is_off_day'     => false,
+            ];
+        }
+
+        // 2. Cek apakah ada jadwal khusus perorangan
+        $hasUserCustom = $this->work_start !== null || $this->work_end !== null || $this->late_tolerance !== null;
+
+        // 3. Cek pengaturan jadwal harian sekolah (presensi_daily_schedules JSON)
+        $dailySchedulesJson = Setting::where('key', 'presensi_daily_schedules')->value('value');
+        $daySchedule = null;
+        if ($dailySchedulesJson) {
+            $decoded = json_decode($dailySchedulesJson, true);
+            if (isset($decoded[$dayOfWeek])) {
+                $daySchedule = $decoded[$dayOfWeek];
+            }
+        }
+
+        // 4. Default global fallback
+        $globalStart = Setting::where('key', 'presensi_work_start')->value('value') ?: '07:00';
+        $globalEnd   = Setting::where('key', 'presensi_work_end')->value('value') ?: '15:00';
+
+        $defaultDayStart = ($daySchedule && !empty($daySchedule['start'])) ? $daySchedule['start'] : $globalStart;
+        $defaultDayEnd   = ($daySchedule && !empty($daySchedule['end'])) ? $daySchedule['end'] : $globalEnd;
+        $defaultDayTol   = ($daySchedule && isset($daySchedule['tolerance'])) ? (int)$daySchedule['tolerance'] : $globalTol;
+        $isOffDay        = ($daySchedule && isset($daySchedule['is_active']) && !$daySchedule['is_active']);
+
+        return [
+            'work_start'     => $this->work_start ?: $defaultDayStart,
+            'work_end'       => $this->work_end ?: $defaultDayEnd,
+            'late_tolerance' => $this->late_tolerance !== null ? (int)$this->late_tolerance : $defaultDayTol,
+            'is_custom'      => $hasUserCustom,
+            'is_piket'       => false,
+            'is_off_day'     => $isOffDay,
+        ];
     }
 
     /**
@@ -144,3 +224,5 @@ class User extends Authenticatable
                     ->withTimestamps();
     }
 }
+
+
