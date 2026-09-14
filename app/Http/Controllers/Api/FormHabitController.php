@@ -118,7 +118,7 @@ class FormHabitController extends Controller
                 case 'sholat_wajib':
                     $countJamaah = 0;
                     foreach (['subuh', 'dhuhur', 'asar', 'maghrib', 'isya'] as $waktu) {
-                        if (isset($details[$waktu]) && in_array($details[$waktu], ['JD', 'JM'])) {
+                        if (isset($details[$waktu]) && in_array($details[$waktu], ['JM', 'JR', 'JD'])) {
                             $countJamaah++;
                         }
                     }

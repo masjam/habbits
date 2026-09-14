@@ -114,7 +114,7 @@ const calculateSkor = (habit, log) => {
         case 'sholat_wajib':
             let countJamaah = 0;
             ['subuh', 'dhuhur', 'asar', 'maghrib', 'isya'].forEach(w => {
-                if (details[w] === 'JD' || details[w] === 'JM') countJamaah++;
+                if (details[w] === 'JM' || details[w] === 'JR' || details[w] === 'JD') countJamaah++;
             });
             nilaiInput = countJamaah;
             if (nilaiInput >= habit.target_pencapaian) skorDiperoleh = habit.skor_maksimal;

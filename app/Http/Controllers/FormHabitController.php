@@ -133,10 +133,10 @@ class FormHabitController extends Controller
             // Kalkulasi khusus berdasarkan template
             switch ($habit->template) {
                 case 'sholat_wajib':
-                    // Hitung jumlah sholat jamaah (JD, JM)
+                    // Hitung jumlah sholat jamaah (JM, JR, JD)
                     $countJamaah = 0;
                     foreach (['subuh', 'dhuhur', 'asar', 'maghrib', 'isya'] as $waktu) {
-                        if (isset($details[$waktu]) && in_array($details[$waktu], ['JD', 'JM'])) {
+                        if (isset($details[$waktu]) && in_array($details[$waktu], ['JM', 'JR', 'JD'])) {
                             $countJamaah++;
                         }
                     }
