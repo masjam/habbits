@@ -45,11 +45,11 @@ const userAvatarUrl = computed(() => {
 </script>
 
 <template>
-    <header class="flex items-center justify-between h-16 px-4 md:px-6 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-700/80 flex-shrink-0 z-20 shadow-xs">
+    <header class="flex items-center justify-between h-16 px-4 md:px-6 bg-topbar backdrop-blur-md border-b border-theme flex-shrink-0 z-20 shadow-xs transition-colors duration-300">
         <!-- Left: Hamburger (mobile only) -->
         <div class="flex items-center gap-3">
             <button
-                class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
+                class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-primary-100/60 dark:hover:bg-primary-900/30 active:bg-primary-100 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
                 aria-label="Toggle menu"
                 @click="emit('toggleSidebar')"
             >
@@ -73,7 +73,7 @@ const userAvatarUrl = computed(() => {
                 v-if="$page.props.global_settings?.dark_mode_active === '1' || $page.props.global_settings?.dark_mode_active === 'true' || $page.props.global_settings?.dark_mode_active === true"
                 @click="toggleDark"
                 :title="isDark ? 'Mode Terang' : 'Mode Gelap'"
-                class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-primary-100/60 dark:hover:bg-primary-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
                 <!-- Sun icon (mode gelap aktif) -->
                 <svg v-if="isDark" class="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -89,7 +89,7 @@ const userAvatarUrl = computed(() => {
             <div class="relative">
                 <!-- Trigger Button -->
                 <button
-                    class="flex items-center gap-2.5 rounded-xl px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 dark:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
+                    class="flex items-center gap-2.5 rounded-xl px-3 py-2 hover:bg-primary-100/50 dark:hover:bg-primary-900/30 active:bg-primary-100 dark:bg-primary-950/20 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
                     aria-haspopup="true"
                     :aria-expanded="isDropdownOpen"
                     @click="toggleDropdown"
@@ -134,25 +134,25 @@ const userAvatarUrl = computed(() => {
                 >
                     <div
                         v-if="isDropdownOpen"
-                        class="absolute right-0 top-full mt-2 w-64 origin-top-right bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-20"
+                        class="absolute right-0 top-full mt-2 w-64 origin-top-right bg-sidebar rounded-xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
                         role="menu"
                     >
-                        <div class="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700">
+                        <div class="flex items-center gap-3 px-4 py-3 bg-card-subtle border-b border-theme">
                             <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                 <img v-if="userAvatarUrl" :src="userAvatarUrl" class="w-full h-full object-cover" />
                                 <span v-else class="text-sm font-bold text-white">{{ userInitial }}</span>
                             </div>
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{{ user?.name }}</p>
-                                <p class="text-xs text-emerald-500 font-medium">{{ roleLabel }}</p>
+                                <p class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">{{ roleLabel }}</p>
                             </div>
                         </div>
 
                         <!-- ─── MULTI ACCOUNT SECTION ─── -->
-                        <div v-if="$page.props.auth.multi_accounts && $page.props.auth.multi_accounts.length > 1" class="py-2 border-b border-slate-100 dark:border-slate-700">
+                        <div v-if="$page.props.auth.multi_accounts && $page.props.auth.multi_accounts.length > 1" class="py-2 border-b border-subtle">
                             <p class="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Beralih Akun</p>
                             <div v-for="acc in $page.props.auth.multi_accounts" :key="acc.id">
-                                <div v-if="acc.id !== user.id" class="flex items-center justify-between px-4 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 group transition-colors">
+                                <div v-if="acc.id !== user.id" class="flex items-center justify-between px-4 py-1.5 hover:bg-primary-50/60 dark:hover:bg-primary-900/30 group transition-colors">
                                     <Link
                                         :href="route('multi-account.switch', acc.id)"
                                         method="post"
@@ -179,7 +179,7 @@ const userAvatarUrl = computed(() => {
                             </div>
                         </div>
                         
-                        <div v-if="$page.props.auth.user.can_multi_login || ($page.props.auth.multi_accounts && $page.props.auth.multi_accounts.length > 0 && $page.props.auth.multi_accounts.some(a => a.can_multi_login))" class="py-1 border-b border-slate-100 dark:border-slate-700">
+                        <div v-if="$page.props.auth.user.can_multi_login || ($page.props.auth.multi_accounts && $page.props.auth.multi_accounts.length > 0 && $page.props.auth.multi_accounts.some(a => a.can_multi_login))" class="py-1 border-b border-subtle">
                             <a
                                 :href="route('multi-account.add')"
                                 class="flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors w-full"
@@ -193,7 +193,7 @@ const userAvatarUrl = computed(() => {
                         <div class="py-1.5">
                             <Link
                                 :href="route('profile.edit')"
-                                class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors w-full"
+                                class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-primary-50/60 dark:hover:bg-primary-900/30 hover:text-slate-900 dark:hover:text-white transition-colors w-full"
                                 role="menuitem"
                                 @click="closeDropdown"
                             >
@@ -203,7 +203,7 @@ const userAvatarUrl = computed(() => {
                                 <span>Profil Saya</span>
                             </Link>
 
-                            <div class="my-1 border-t border-slate-100 dark:border-slate-700" />
+                            <div class="my-1 border-t border-subtle" />
 
                             <Link
                                 :href="route('logout')"

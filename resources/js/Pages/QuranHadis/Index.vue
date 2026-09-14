@@ -129,6 +129,17 @@ const goBack = () => {
     stopAudio() // Hentikan audio jika kembali ke daftar surah
     surahDetail.value = null
     selectedSurah.value = null
+    showMobileQuranSettings.value = false
+}
+
+const showMobileQuranSettings = ref(false)
+
+const jumpAndCloseMobileSettings = (nomorAyat) => {
+    if (!nomorAyat) return
+    showMobileQuranSettings.value = false
+    setTimeout(() => {
+        scrollToAyat(nomorAyat)
+    }, 200)
 }
 
 const goToSurah = (nomor) => {
@@ -790,8 +801,8 @@ onUnmounted(() => {
                             </button>
                         </div>
 
-                        <!-- Bar Pengaturan Opsi Tampilan Ayat (Toggleable) -->
-                        <div class="p-3 sm:p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100 mb-6 transition-all duration-200 shadow-2xs">
+                        <!-- Bar Pengaturan Opsi Tampilan Ayat (Toggleable - Desktop/Tablet only, di Mobile via Floating Button) -->
+                        <div class="hidden sm:block p-3 sm:p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 mb-6 transition-all duration-200 shadow-2xs">
                             <div class="flex items-center justify-between gap-3">
                                 <!-- Tombol Toggle Pengaturan -->
                                 <button
@@ -1636,7 +1647,265 @@ onUnmounted(() => {
 
             <!-- ══════════════════════════════════════════════════════ -->
             <!-- Share Modal component -->
-<ShareImageModal v-model="shareModalOpen" :shareData="shareData" />
+            <ShareImageModal v-model="shareModalOpen" :shareData="shareData" />
+
+            <!-- ══════════════════════════════════════════════════════ -->
+            <!-- Floating Action Button for Mobile Quran Settings -->
+            <Transition
+                enter-active-class="transition-all duration-300 ease-out"
+                enter-from-class="opacity-0 scale-75 translate-y-4"
+                enter-to-class="opacity-100 scale-100 translate-y-0"
+                leave-active-class="transition-all duration-200 ease-in"
+                leave-from-class="opacity-100 scale-100 translate-y-0"
+                leave-to-class="opacity-0 scale-75 translate-y-4"
+            >
+                <button
+                    v-if="surahDetail && activeTab === 'quran'"
+                    @click="showMobileQuranSettings = true"
+                    type="button"
+                    class="sm:hidden fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 active:scale-90 text-white p-3.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.18)] hover:shadow-[0_8px_30px_rgba(52,211,153,0.3)] transition-all hover:-translate-y-1 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-emerald-400/40 cursor-pointer"
+                    title="Pengaturan Tampilan Al-Qur'an"
+                    aria-label="Pengaturan Tampilan Al-Qur'an"
+                >
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                </button>
+            </Transition>
+
+            <!-- ══════════════════════════════════════════════════════ -->
+            <!-- Mobile Quran Settings Off-Canvas / Bottom Sheet Modal -->
+            <Transition
+                enter-active-class="transition-opacity ease-out duration-300"
+                enter-from-class="opacity-0"
+                enter-to-class="opacity-100"
+                leave-active-class="transition-opacity ease-in duration-200"
+                leave-from-class="opacity-100"
+                leave-to-class="opacity-0"
+            >
+                <div 
+                    v-if="showMobileQuranSettings && surahDetail" 
+                    class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+                >
+                    <!-- Backdrop -->
+                    <div 
+                        class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
+                        @click="showMobileQuranSettings = false"
+                    />
+
+                    <!-- Panel Bottom Sheet -->
+                    <div 
+                        class="relative z-10 w-full max-w-md bg-sidebar text-slate-800 dark:text-slate-100 rounded-t-3xl sm:rounded-3xl shadow-2xl border-t sm:border border-theme overflow-hidden flex flex-col max-h-[85vh] transition-all transform animate-in slide-in-from-bottom duration-300"
+                    >
+                        <!-- Drag handle indicator for mobile bottom sheet -->
+                        <div class="sm:hidden pt-2.5 pb-1 flex justify-center">
+                            <div class="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        </div>
+
+                        <!-- Header Modal -->
+                        <div class="flex items-center justify-between px-5 py-3.5 border-b border-subtle bg-card-subtle">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">Pengaturan Tampilan</h3>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">QS. {{ surahDetail.namaLatin }} ({{ surahDetail.jumlahAyat }} Ayat)</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                @click="showMobileQuranSettings = false" 
+                                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 hover:text-slate-700 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Isi Pengaturan (Scrollable) -->
+                        <div class="p-5 space-y-4.5 overflow-y-auto max-h-[calc(85vh-140px)]">
+                            <!-- 1. Ukuran Font Arab -->
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                        Ukuran Tulisan Arab
+                                    </label>
+                                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[11px]">
+                                        {{ fontScale }}%
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        @click="decreaseFontSize"
+                                        class="flex-1 py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-700 dark:text-slate-200 font-bold text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer border border-transparent hover:border-emerald-200"
+                                        title="Kecilkan Font (-5%)"
+                                    >
+                                        −
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="resetFontSize"
+                                        :class="[
+                                            'px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer border',
+                                            fontScale === 100 
+                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
+                                                : 'bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 border-transparent hover:bg-emerald-50'
+                                        ]"
+                                        title="Reset Normal (100%)"
+                                    >
+                                        Normal (100%)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="increaseFontSize"
+                                        class="flex-1 py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-700 dark:text-slate-200 font-bold text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer border border-transparent hover:border-emerald-200"
+                                        title="Besarkan Font (+5%)"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+
+                                <!-- Live preview teks arab -->
+                                <div class="p-3 bg-card-subtle rounded-xl border border-subtle text-center overflow-hidden">
+                                    <p 
+                                        class="font-arabic text-slate-800 dark:text-slate-100 leading-relaxed truncate transition-all duration-150"
+                                        :style="{ fontSize: `calc(${fontScale / 100} * 1.35rem)` }"
+                                    >
+                                        بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- 2. Lompat Cepat ke Ayat -->
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-bold text-slate-700 dark:text-slate-200">Lompat ke Ayat</label>
+                                <div class="relative">
+                                    <select
+                                        v-model="selectedAyatJump"
+                                        @change="jumpAndCloseMobileSettings($event.target.value)"
+                                        class="w-full bg-slate-50 dark:bg-slate-700/40 border border-theme text-slate-800 dark:text-slate-100 text-xs font-semibold rounded-xl py-2.5 pl-3.5 pr-8 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-xs appearance-none"
+                                    >
+                                        <option value="" disabled>Pilih Nomor Ayat (1 - {{ surahDetail.jumlahAyat }})</option>
+                                        <option
+                                            v-for="a in surahDetail.ayat"
+                                            :key="a.nomorAyat"
+                                            :value="String(a.nomorAyat)"
+                                        >
+                                            Ayat {{ a.nomorAyat }}
+                                        </option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Pilih Qori Audio Murottal -->
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-bold text-slate-700 dark:text-slate-200">Suara Qori (Audio Ayat)</label>
+                                <div class="relative">
+                                    <select
+                                        v-model="audioQori"
+                                        @change="setAudioQori($event.target.value)"
+                                        class="w-full bg-slate-50 dark:bg-slate-700/40 border border-theme text-slate-800 dark:text-slate-100 text-xs font-semibold rounded-xl py-2.5 pl-3.5 pr-8 focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-xs appearance-none"
+                                    >
+                                        <option v-for="qori in qoriList" :key="qori.id" :value="qori.id">
+                                            {{ qori.name }}
+                                        </option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 4. Toggle Opsi Teks (Latin & Terjemahan) -->
+                            <div class="pt-1 space-y-2.5 border-t border-subtle">
+                                <label class="text-xs font-bold text-slate-700 dark:text-slate-200 block">Teks Tambahan</label>
+                                
+                                <!-- Toggle Transliterasi Latin -->
+                                <div 
+                                    @click="toggleLatin"
+                                    class="flex items-center justify-between p-3 rounded-xl bg-card-subtle border border-theme/60 cursor-pointer select-none active:scale-[0.99] transition-all"
+                                >
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs font-bold">
+                                            Aa
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-800 dark:text-slate-200">Teks Latin</p>
+                                            <p class="text-[10px] text-slate-500 dark:text-slate-400">Transliterasi pengucapan bahasa Arab</p>
+                                        </div>
+                                    </div>
+                                    <div 
+                                        :class="[
+                                            'w-10 h-6 rounded-full transition-colors relative flex items-center px-0.5',
+                                            showLatin ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'
+                                        ]"
+                                    >
+                                        <div 
+                                            :class="[
+                                                'w-5 h-5 rounded-full bg-white shadow-xs transition-transform transform',
+                                                showLatin ? 'translate-x-4' : 'translate-x-0'
+                                            ]"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Toggle Terjemahan Bahasa Indonesia -->
+                                <div 
+                                    @click="toggleTranslation"
+                                    class="flex items-center justify-between p-3 rounded-xl bg-card-subtle border border-theme/60 cursor-pointer select-none active:scale-[0.99] transition-all"
+                                >
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs font-bold">
+                                            ID
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-800 dark:text-slate-200">Terjemahan Arti</p>
+                                            <p class="text-[10px] text-slate-500 dark:text-slate-400">Terjemahan Kemenag bahasa Indonesia</p>
+                                        </div>
+                                    </div>
+                                    <div 
+                                        :class="[
+                                            'w-10 h-6 rounded-full transition-colors relative flex items-center px-0.5',
+                                            showTranslation ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'
+                                        ]"
+                                    >
+                                        <div 
+                                            :class="[
+                                                'w-5 h-5 rounded-full bg-white shadow-xs transition-transform transform',
+                                                showTranslation ? 'translate-x-4' : 'translate-x-0'
+                                            ]"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Action -->
+                        <div class="p-4 border-t border-subtle bg-card-subtle">
+                            <button
+                                type="button"
+                                @click="showMobileQuranSettings = false"
+                                class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs tracking-wide shadow-sm active:scale-98 transition-all cursor-pointer"
+                            >
+                                Terapkan &amp; Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
 
             <!-- Kredit -->
             <p class="text-center text-[11px] text-slate-400 pb-2">

@@ -20,8 +20,11 @@ import {
     Filler
 } from 'chart.js'
 import { Line as LineChart, Bar as BarChart, Radar as RadarChart } from 'vue-chartjs'
+import { useTheme } from '@/Composables/useTheme'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, RadialLinearScale, RadarController, Title, Tooltip, Legend, Filler)
+
+const { activeTheme } = useTheme()
 
 const props = defineProps({
     skorHariIni:      { type: Number,  default: 0 },
@@ -83,13 +86,13 @@ const dailyChartData = computed(() => {
             {
                 label: 'Skor Harian',
                 data: props.dailyChartData.map(d => d.skor),
-                borderColor: '#10b981', // emerald-500
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderColor: activeTheme.value.primary600 || activeTheme.value.hex,
+                backgroundColor: (activeTheme.value.primary600 || activeTheme.value.hex) + '1A',
                 borderWidth: 2,
-                pointBackgroundColor: '#10b981',
+                pointBackgroundColor: activeTheme.value.primary600 || activeTheme.value.hex,
                 pointBorderColor: '#fff',
                 pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: '#10b981',
+                pointHoverBorderColor: activeTheme.value.primary600 || activeTheme.value.hex,
                 fill: true,
                 tension: 0.4
             }
@@ -111,13 +114,14 @@ const dailyChartOptions = {
 }
 
 const barChartData = computed(() => {
+    const themeColor = activeTheme.value.primary600 || activeTheme.value.hex;
     return {
         labels: props.monthlyChartData.map(d => d.bulan),
         datasets: [
             {
                 label: 'Poin Bulanan',
                 data: props.monthlyChartData.map(d => d.skor),
-                backgroundColor: '#14b8a6', // teal-500
+                backgroundColor: themeColor,
                 borderRadius: 4,
                 barPercentage: 0.5,
             }
@@ -139,6 +143,7 @@ const barChartOptions = {
 const radarChartData = computed(() => {
     const labels = [];
     const data = [];
+    const themeColor = activeTheme.value.primary600 || activeTheme.value.hex;
 
     if (props.radarChartDataBackend) {
         for (const [name, count] of Object.entries(props.radarChartDataBackend)) {
@@ -154,12 +159,12 @@ const radarChartData = computed(() => {
             {
                 label: 'Hari Target Tercapai',
                 data,
-                backgroundColor: 'rgba(16, 185, 129, 0.2)', // emerald
-                borderColor: '#10b981',
-                pointBackgroundColor: '#10b981',
+                backgroundColor: themeColor + '33',
+                borderColor: themeColor,
+                pointBackgroundColor: themeColor,
                 pointBorderColor: '#fff',
                 pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: '#10b981',
+                pointHoverBorderColor: themeColor,
             }
         ]
     }

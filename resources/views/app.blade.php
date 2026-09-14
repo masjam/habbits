@@ -30,8 +30,19 @@
             (function() {
                 try {
                     const savedTheme = localStorage.getItem('app-theme');
+                    const themeColors = {
+                        'default': '#059669',
+                        'theme-blue': '#2563eb',
+                        'theme-rose': '#e11d48',
+                        'theme-amber': '#d97706',
+                        'theme-purple': '#9333ea'
+                    };
                     if (savedTheme && savedTheme !== 'default') {
                         document.documentElement.classList.add(savedTheme);
+                    }
+                    if (savedTheme && themeColors[savedTheme]) {
+                        const meta = document.querySelector('meta[name="theme-color"]');
+                        if (meta) meta.setAttribute('content', themeColors[savedTheme]);
                     }
                     const savedDark = localStorage.getItem('habit-dark-mode');
                     if (savedDark === 'true') {

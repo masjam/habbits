@@ -4,6 +4,7 @@ import IslamicWidget from '@/Components/IslamicWidget.vue'
 import { Head } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { Line, Doughnut } from 'vue-chartjs'
+import { useTheme } from '@/Composables/useTheme'
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -18,6 +19,8 @@ import {
 } from 'chart.js'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement)
+
+const { activeTheme } = useTheme()
 
 const props = defineProps({
     skorHariIni: Number,
@@ -59,37 +62,40 @@ const dailyChartOptions = {
     interaction: { mode: 'nearest', axis: 'x', intersect: false }
 }
 
-const dailyChartConfig = computed(() => ({
-    labels: props.dailyChartData.map(d => {
-        const date = new Date(d.tanggal)
-        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
-    }),
-    datasets: [
-        {
-            label: 'Skor Tercapai (Seluruh Pegawai)',
-            data: props.dailyChartData.map(d => d.skor),
-            borderColor: '#059669', // Emerald 600
-            backgroundColor: 'rgba(5, 150, 105, 0.1)',
-            borderWidth: 2,
-            tension: 0.3,
-            fill: true,
-            pointBackgroundColor: '#059669',
-            pointRadius: 3,
-            pointHoverRadius: 5
-        },
-        {
-            label: 'Batas Maksimal (100%)',
-            data: props.dailyChartData.map(d => d.maks),
-            borderColor: '#94a3b8', // Slate 400
-            borderWidth: 2,
-            borderDash: [5, 5],
-            tension: 0,
-            fill: false,
-            pointRadius: 0,
-            pointHoverRadius: 0
-        }
-    ]
-}))
+const dailyChartConfig = computed(() => {
+    const themeColor = activeTheme.value.primary600 || activeTheme.value.hex;
+    return {
+        labels: props.dailyChartData.map(d => {
+            const date = new Date(d.tanggal)
+            return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+        }),
+        datasets: [
+            {
+                label: 'Skor Tercapai (Seluruh Pegawai)',
+                data: props.dailyChartData.map(d => d.skor),
+                borderColor: themeColor,
+                backgroundColor: themeColor + '1A',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointBackgroundColor: themeColor,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            },
+            {
+                label: 'Batas Maksimal (100%)',
+                data: props.dailyChartData.map(d => d.maks),
+                borderColor: '#94a3b8', // Slate 400
+                borderWidth: 2,
+                borderDash: [5, 5],
+                tension: 0,
+                fill: false,
+                pointRadius: 0,
+                pointHoverRadius: 0
+            }
+        ]
+    }
+})
 
 // ─── MONTHLY CHART (SEMESTER) ───────────────────────────────────────────────
 const monthlyChartOptions = {

@@ -1,43 +1,13 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useTheme } from '@/Composables/useTheme';
 
-const themes = [
-    { id: 'default', name: 'Emerald Green', shortName: 'Emerald', hex: '#10b981', colorClass: 'bg-[#10b981]' },
-    { id: 'theme-blue', name: 'Ocean Blue', shortName: 'Blue', hex: '#3b82f6', colorClass: 'bg-[#3b82f6]' },
-    { id: 'theme-rose', name: 'Rose Pink', shortName: 'Rose', hex: '#f43f5e', colorClass: 'bg-[#f43f5e]' },
-    { id: 'theme-amber', name: 'Warm Amber', shortName: 'Amber', hex: '#f59e0b', colorClass: 'bg-[#f59e0b]' },
-    { id: 'theme-purple', name: 'Royal Purple', shortName: 'Purple', hex: '#a855f7', colorClass: 'bg-[#a855f7]' },
-];
+const { themes, currentTheme: selectedTheme, activeTheme: activeThemeObj, setTheme, initTheme } = useTheme();
 
-const selectedTheme = ref('default');
 const isMobileMenuOpen = ref(false);
 
-const activeThemeObj = computed(() => {
-    return themes.find(t => t.id === selectedTheme.value) || themes[0];
-});
-
-const applyTheme = (themeId) => {
-    if (typeof document === 'undefined') return;
-    const htmlEl = document.documentElement;
-    themes.forEach(t => {
-        if (t.id !== 'default') htmlEl.classList.remove(t.id);
-    });
-    if (themeId !== 'default') {
-        htmlEl.classList.add(themeId);
-    }
-    const themeObj = themes.find(t => t.id === themeId) || themes[0];
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta && themeObj) {
-        meta.setAttribute('content', themeObj.hex);
-    }
-};
-
 const selectTheme = (themeId) => {
-    selectedTheme.value = themeId;
-    applyTheme(themeId);
-    try {
-        localStorage.setItem('app-theme', themeId);
-    } catch (e) {}
+    setTheme(themeId);
     isMobileMenuOpen.value = false;
 };
 
@@ -50,11 +20,7 @@ const closeMobileMenu = () => {
 };
 
 onMounted(() => {
-    try {
-        const saved = localStorage.getItem('app-theme') || 'default';
-        selectedTheme.value = saved;
-        applyTheme(saved);
-    } catch (e) {}
+    initTheme();
 });
 </script>
 

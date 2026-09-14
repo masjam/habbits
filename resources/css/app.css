@@ -45,6 +45,19 @@
     --color-emerald-800: var(--primary-800);
     --color-emerald-900: var(--primary-900);
     --color-emerald-950: var(--primary-950);
+
+    /* Aliaskan juga 'teal' ke varian primary pendamping agar seluruh gradasi otomatis selaras */
+    --color-teal-50: var(--primary-50);
+    --color-teal-100: var(--primary-100);
+    --color-teal-200: var(--primary-200);
+    --color-teal-300: var(--primary-300);
+    --color-teal-400: var(--primary-400);
+    --color-teal-500: var(--primary-500);
+    --color-teal-600: var(--primary-700);
+    --color-teal-700: var(--primary-800);
+    --color-teal-800: var(--primary-900);
+    --color-teal-900: var(--primary-950);
+    --color-teal-950: var(--primary-950);
 }
 
 /* ============================================================
@@ -53,12 +66,13 @@
 :root {
     --bg-base: #f2faf5;
     --bg-surface: #ffffff;
-    --bg-surface-2: #f1f5f9;
-    --bg-sidebar: #ffffff;
-    --bg-topbar: #ffffff;
+    --bg-surface-2: #f0f8f4;
+    --bg-sidebar: #f7fcf9;
+    --bg-topbar: rgba(247, 252, 249, 0.88);
+    --bg-card-subtle: #f0f9f4;
 
-    --border-color: #e2e8f0;
-    --border-subtle: #f1f5f9;
+    --border-color: #dcf0e6;
+    --border-subtle: #ebf7f0;
 
     --text-primary: #0f172a;
     --text-secondary: #475569;
@@ -84,6 +98,15 @@
 /* THEME: BLUE */
 .theme-blue {
     --bg-base: #f0f6ff;
+    --bg-surface: #ffffff;
+    --bg-surface-2: #ebf3ff;
+    --bg-sidebar: #f7faff;
+    --bg-topbar: rgba(247, 250, 255, 0.88);
+    --bg-card-subtle: #f0f6ff;
+
+    --border-color: #dbeafe;
+    --border-subtle: #edf4ff;
+
     --primary-50: #eff6ff;
     --primary-100: #dbeafe;
     --primary-200: #bfdbfe;
@@ -100,6 +123,15 @@
 /* THEME: ROSE */
 .theme-rose {
     --bg-base: #fff2f4;
+    --bg-surface: #ffffff;
+    --bg-surface-2: #fdeef2;
+    --bg-sidebar: #fff8f9;
+    --bg-topbar: rgba(255, 248, 249, 0.88);
+    --bg-card-subtle: #fff1f3;
+
+    --border-color: #ffe0e6;
+    --border-subtle: #fdf0f3;
+
     --primary-50: #fff1f2;
     --primary-100: #ffe4e6;
     --primary-200: #fecdd3;
@@ -116,6 +148,15 @@
 /* THEME: AMBER */
 .theme-amber {
     --bg-base: #fefcf3;
+    --bg-surface: #ffffff;
+    --bg-surface-2: #fbf5e6;
+    --bg-sidebar: #fdfbf6;
+    --bg-topbar: rgba(253, 251, 246, 0.88);
+    --bg-card-subtle: #fef8eb;
+
+    --border-color: #feecc7;
+    --border-subtle: #fef6df;
+
     --primary-50: #fffbeb;
     --primary-100: #fef3c7;
     --primary-200: #fde68a;
@@ -132,6 +173,15 @@
 /* THEME: PURPLE */
 .theme-purple {
     --bg-base: #faf5ff;
+    --bg-surface: #ffffff;
+    --bg-surface-2: #f4ebfc;
+    --bg-sidebar: #faf7ff;
+    --bg-topbar: rgba(250, 247, 255, 0.88);
+    --bg-card-subtle: #f8f2ff;
+
+    --border-color: #f0e0ff;
+    --border-subtle: #f7edff;
+
     --primary-50: #faf5ff;
     --primary-100: #f3e8ff;
     --primary-200: #e9d5ff;
@@ -145,16 +195,17 @@
     --primary-950: #3b0764;
 }
 
-/* Dark Mode Tokens */
+/* Dark Mode Tokens (Default: Emerald Dark) */
 .dark {
     --bg-base: #071912;
-    --bg-surface: #1e293b;
-    --bg-surface-2: #293548;
-    --bg-sidebar: #1e293b;
-    --bg-topbar: #1e293b;
+    --bg-surface: #0e261d;
+    --bg-surface-2: #143327;
+    --bg-sidebar: #0b2018;
+    --bg-topbar: rgba(11, 32, 24, 0.88);
+    --bg-card-subtle: #0e271d;
 
-    --border-color: #334155;
-    --border-subtle: #293548;
+    --border-color: #184534;
+    --border-subtle: #113024;
 
     --text-primary: #f1f5f9;
     --text-secondary: #94a3b8;
@@ -166,18 +217,50 @@
 
 .dark.theme-blue, .theme-blue.dark {
     --bg-base: #081426;
+    --bg-surface: #0f223d;
+    --bg-surface-2: #152e52;
+    --bg-sidebar: #0c1b30;
+    --bg-topbar: rgba(12, 27, 48, 0.88);
+    --bg-card-subtle: #10233e;
+
+    --border-color: #1a3b68;
+    --border-subtle: #132b4d;
 }
 
 .dark.theme-rose, .theme-rose.dark {
     --bg-base: #1a0812;
+    --bg-surface: #29101f;
+    --bg-surface-2: #38152b;
+    --bg-sidebar: #210b19;
+    --bg-topbar: rgba(33, 11, 25, 0.88);
+    --bg-card-subtle: #2b0f21;
+
+    --border-color: #4a1835;
+    --border-subtle: #331125;
 }
 
 .dark.theme-amber, .theme-amber.dark {
     --bg-base: #181206;
+    --bg-surface: #291e0c;
+    --bg-surface-2: #382a12;
+    --bg-sidebar: #201809;
+    --bg-topbar: rgba(32, 24, 9, 0.88);
+    --bg-card-subtle: #291f0c;
+
+    --border-color: #4a3615;
+    --border-subtle: #33250e;
 }
 
 .dark.theme-purple, .theme-purple.dark {
     --bg-base: #120924;
+    --bg-surface: #1f103d;
+    --bg-surface-2: #2c1654;
+    --bg-sidebar: #170c2e;
+    --bg-topbar: rgba(23, 12, 46, 0.88);
+    --bg-card-subtle: #1f103d;
+
+    --border-color: #3b1c6e;
+    --border-subtle: #29134c;
 }
 
 /* ============================================================
@@ -242,6 +325,10 @@
 
     .bg-topbar {
         background-color: var(--bg-topbar);
+    }
+
+    .bg-card-subtle {
+        background-color: var(--bg-card-subtle);
     }
 
     .border-theme {

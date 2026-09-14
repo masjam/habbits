@@ -56,7 +56,7 @@ const navLinkClass = (routeName) => [
     'transition-all duration-150 w-full',
     isActive(routeName)
         ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 font-semibold'
-        : 'text-slate-600 dark:text-slate-400 dark:text-slate-500 hover:bg-emerald-50 dark:hover:bg-slate-700/60 hover:text-emerald-700 dark:hover:text-emerald-400',
+        : 'text-slate-600 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-primary-950/40 hover:text-emerald-700 dark:hover:text-emerald-400',
 ]
 
 // ─── Feature Flags (dari global_settings yang di-share via Inertia) ─────────
@@ -71,15 +71,15 @@ const featureEnabled = (key) => {
     <aside
         :class="[
             'fixed inset-y-0 left-0 z-40 flex w-64 flex-col',
-            'bg-white dark:bg-slate-800',
-            'border-r border-slate-200 dark:border-slate-700',
+            'bg-sidebar shadow-xs',
+            'border-r border-theme',
             'transition-transform duration-300 ease-in-out',
             isOpen ? 'translate-x-0' : '-translate-x-full',
             'md:relative md:z-auto md:flex-shrink-0 md:translate-x-0',
         ]"
     >
         <!-- ── Sidebar Header / Brand ─────────────────────────── -->
-        <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-100 dark:border-slate-700 flex-shrink-0">
+        <div class="flex items-center gap-3 px-5 py-5 border-b border-subtle flex-shrink-0">
             <img src="/logo.png" alt="Logo SDAM" class="w-9 h-9 object-contain flex-shrink-0" />
             <div class="leading-none">
                 <p class="text-[15px] font-bold text-emerald-600 tracking-tight">HabitTracker</p>
@@ -278,7 +278,7 @@ const featureEnabled = (key) => {
                     </Link>
 
                     <!-- Submenu Daftar Divisi — hanya jika fitur Divisi aktif -->
-                    <div v-if="featureEnabled('feature_divisi')" class="ml-5 pl-2 border-l-2 border-slate-100 dark:border-slate-700 space-y-0.5">
+                    <div v-if="featureEnabled('feature_divisi')" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5">
                         <Link
                             :href="route('admin.divisions.index')"
                             :class="[...navLinkClass('admin.divisions.index'), 'text-xs py-2']"
@@ -343,8 +343,8 @@ const featureEnabled = (key) => {
         </nav>
 
         <!-- ── Sidebar Footer (mini user card) ───────────────── -->
-        <div class="flex-shrink-0 px-3 py-4 border-t border-slate-100 dark:border-slate-700">
-            <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+        <div class="flex-shrink-0 px-3 py-4 border-t border-subtle">
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-card-subtle border border-theme/60">
                 <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 border-2 border-emerald-200 dark:border-emerald-700 overflow-hidden">
                     <img v-if="userAvatarUrl" :src="userAvatarUrl" class="w-full h-full object-cover" />
                     <span v-else class="text-xs font-bold text-emerald-700 dark:text-emerald-400">{{ userInitial }}</span>
@@ -353,7 +353,7 @@ const featureEnabled = (key) => {
                     <p class="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{{ user?.name }}</p>
                     <p class="text-[10px] text-slate-400 dark:text-slate-500 truncate">{{ roleLabel }}</p>
                 </div>
-                <span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 ring-2 ring-white dark:ring-slate-800" />
+                <span class="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0 ring-2 ring-white dark:ring-slate-900" />
             </div>
         </div>
     </aside>
