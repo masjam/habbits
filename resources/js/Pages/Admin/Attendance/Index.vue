@@ -1,9 +1,7 @@
 <script setup>
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
-import { Head, useForm, router, usePage } from '@inertiajs/vue3'
+import { ref, computed, watch } from 'vue'
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 
 const page = usePage()
 
@@ -69,6 +67,75 @@ const selectDateAndSwitch = (targetDate) => {
     applyFilters()
 }
 
+// ─── PAGINATION MATRIKS BULANAN ─────────────────────────────────────────────
+const currentPage = ref(1)
+const perPage = ref(15)
+const perPageOptions = [10, 15, 25, 50, 100]
+
+const totalMonthlyRows = computed(() => props.monthlyReportData?.length || 0)
+const totalMonthlyPages = computed(() => Math.max(1, Math.ceil(totalMonthlyRows.value / perPage.value)))
+
+const paginatedMonthlyData = computed(() => {
+    if (!props.monthlyReportData) return []
+    const start = (currentPage.value - 1) * perPage.value
+    return props.monthlyReportData.slice(start, start + perPage.value)
+})
+
+const paginationStart = computed(() => {
+    if (totalMonthlyRows.value === 0) return 0
+    return (currentPage.value - 1) * perPage.value + 1
+})
+
+const paginationEnd = computed(() => {
+    return Math.min(currentPage.value * perPage.value, totalMonthlyRows.value)
+})
+
+const goToPage = (p) => {
+    const target = Math.max(1, Math.min(p, totalMonthlyPages.value))
+    currentPage.value = target
+}
+
+const visiblePages = computed(() => {
+    const total = totalMonthlyPages.value
+    const current = currentPage.value
+    const delta = 2
+    const range = []
+    const rangeWithDots = []
+    let l
+
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+            range.push(i)
+        }
+    }
+
+    for (const i of range) {
+        if (l) {
+            if (i - l === 2) {
+                rangeWithDots.push(l + 1)
+            } else if (i - l !== 1) {
+                rangeWithDots.push('...')
+            }
+        }
+        rangeWithDots.push(i)
+        l = i
+    }
+
+    return rangeWithDots
+})
+
+// Reset pagination ke halaman 1 saat filter atau data berubah
+watch([
+    () => props.monthlyReportData,
+    () => selectedMonth.value,
+    () => selectedDivision.value,
+    () => selectedStatus.value,
+    () => searchQuery.value,
+    perPage
+], () => {
+    currentPage.value = 1
+})
+
 // Navigasi Ganti Bulan
 const prevMonth = () => {
     const [year, month] = selectedMonth.value.split('-').map(Number)
@@ -93,6 +160,79 @@ const exportExcel = () => {
         division: selectedDivision.value,
     })
     window.location.href = `${route('admin.attendance.export')}?${params.toString()}`
+}
+
+// ─── HELPER CEK PENGAJUAN IZIN / PULANG CEPAT ───────────────────────────────
+const hasPermitOrEarlyDeparture = (record) => {
+    if (!record) return false
+    return ['izin', 'sakit'].includes(record.status) ||
+           !!record.is_early_departure ||
+           (!!record.approval_type && record.approval_type !== 'none') ||
+           record.approval_status === 'pending'
+}
+
+const getPermitTypeLabel = (record) => {
+    if (!record) return 'Izin'
+    if (record.status === 'sakit' || record.approval_type === 'sakit') return 'Sakit'
+    if (record.status === 'izin' || record.approval_type === 'izin') return 'Izin Tidak Masuk'
+    if (record.is_early_departure || record.approval_type === 'pulang_cepat') return 'Pulang Mendahului'
+    return 'Pengajuan Izin'
+}
+
+// ─── PERSETUJUAN & PENOLAKAN IZIN OLEH ADMIN ─────────────────────────────────
+const isRejectModalOpen = ref(false)
+const selectedRejectItem = ref(null)
+
+const approvalForm = useForm({
+    attendance_id: null,
+    approval_status: 'approved',
+    rejection_note: '',
+})
+
+const handleQuickApprove = (item) => {
+    const attId = item.attendance_id || item.id || item.record?.id || item.record?.attendance_id
+    if (!attId) return
+    const userName = item.name || item.userName || 'pegawai ini'
+    if (!confirm(`Setujui permohonan izin/kehadiran untuk ${userName}?`)) return
+
+    router.post(route('admin.attendance.approval'), {
+        attendance_id: attId,
+        approval_status: 'approved',
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (selectedDetailModal.value?.record) {
+                selectedDetailModal.value.record.approval_status = 'approved'
+            }
+        }
+    })
+}
+
+const openRejectModal = (item) => {
+    selectedRejectItem.value = item
+    const attId = item.attendance_id || item.id || item.record?.id || item.record?.attendance_id
+    approvalForm.attendance_id = attId
+    approvalForm.approval_status = 'rejected'
+    approvalForm.rejection_note = item.rejection_note || item.record?.rejection_note || ''
+    isRejectModalOpen.value = true
+}
+
+const submitRejectApproval = () => {
+    if (!approvalForm.rejection_note.trim()) {
+        alert('Keterangan alasan penolakan wajib diisi.')
+        return
+    }
+    approvalForm.post(route('admin.attendance.approval'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isRejectModalOpen.value = false
+            if (selectedDetailModal.value?.record) {
+                selectedDetailModal.value.record.approval_status = 'rejected'
+                selectedDetailModal.value.record.rejection_note = approvalForm.rejection_note
+            }
+            approvalForm.reset()
+        }
+    })
 }
 
 // ─── MODAL DETAIL & EDIT PRESENSI (SUPERADMIN) ──────────────────────────────
@@ -169,183 +309,6 @@ const deleteAttendanceRecord = () => {
     })
 }
 
-// ─── PENGATURAN TITIK LOKASI & MINI MAP (LEAFLET) ───────────────────────────
-const isLocationModalOpen = ref(false)
-let mapInstance = null
-let mapMarker = null
-let mapCircle = null
-const isLocatingAdmin = ref(false)
-
-const locationForm = useForm({
-    latitude: props.officeLocation?.latitude || -7.7956,
-    longitude: props.officeLocation?.longitude || 110.3695,
-    radius_meters: props.officeLocation?.radius_meters || 100,
-    work_start: props.officeLocation?.work_start || '07:00',
-    work_end: props.officeLocation?.work_end || '15:00',
-    late_tolerance: props.officeLocation?.late_tolerance || 15,
-})
-
-const openLocationModal = () => {
-    locationForm.latitude = props.officeLocation?.latitude || -7.7956
-    locationForm.longitude = props.officeLocation?.longitude || 110.3695
-    locationForm.radius_meters = props.officeLocation?.radius_meters || 100
-    locationForm.work_start = props.officeLocation?.work_start || '07:00'
-    locationForm.work_end = props.officeLocation?.work_end || '15:00'
-    locationForm.late_tolerance = props.officeLocation?.late_tolerance || 15
-    isLocationModalOpen.value = true
-
-    nextTick(() => {
-        initMiniMap()
-    })
-}
-
-const closeLocationModal = () => {
-    isLocationModalOpen.value = false
-    if (mapInstance) {
-        mapInstance.remove()
-        mapInstance = null
-        mapMarker = null
-        mapCircle = null
-    }
-}
-
-const initMiniMap = () => {
-    const mapEl = document.getElementById('office-mini-map')
-    if (!mapEl) return
-
-    if (mapInstance) {
-        mapInstance.remove()
-        mapInstance = null
-    }
-
-    const initialLat = Number(locationForm.latitude) || -7.7956
-    const initialLng = Number(locationForm.longitude) || 110.3695
-    const initialRadius = Number(locationForm.radius_meters) || 100
-
-    mapInstance = L.map('office-mini-map', {
-        center: [initialLat, initialLng],
-        zoom: 17,
-        scrollWheelZoom: true,
-    })
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(mapInstance)
-
-    const markerIcon = L.divIcon({
-        className: 'school-pin-marker',
-        html: `
-            <div style="background-color: #059669; color: white; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(5,150,105,0.6); border: 2.5px solid white; transform: translate(-50%, -50%); cursor: grab;">
-                <svg style="width: 22px; height: 22px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-            </div>
-        `,
-        iconSize: [38, 38],
-        iconAnchor: [0, 0]
-    })
-
-    mapMarker = L.marker([initialLat, initialLng], {
-        icon: markerIcon,
-        draggable: true
-    }).addTo(mapInstance)
-
-    mapCircle = L.circle([initialLat, initialLng], {
-        radius: initialRadius,
-        color: '#059669',
-        fillColor: '#10B981',
-        fillOpacity: 0.25,
-        weight: 2
-    }).addTo(mapInstance)
-
-    // Klik di peta => pindahkan marker dan circle
-    mapInstance.on('click', (e) => {
-        const { lat, lng } = e.latlng
-        updateMarkerPosition(lat, lng)
-    })
-
-    // Drag marker
-    mapMarker.on('dragend', (e) => {
-        const pos = e.target.getLatLng()
-        updateMarkerPosition(pos.lat, pos.lng)
-    })
-
-    // Render ulang ukuran setelah dialog terbuka
-    setTimeout(() => {
-        mapInstance?.invalidateSize()
-    }, 250)
-}
-
-const updateMarkerPosition = (lat, lng) => {
-    locationForm.latitude = parseFloat(lat).toFixed(7)
-    locationForm.longitude = parseFloat(lng).toFixed(7)
-
-    if (mapMarker) mapMarker.setLatLng([lat, lng])
-    if (mapCircle) mapCircle.setLatLng([lat, lng])
-}
-
-// Watch radius input to update circle radius immediately
-watch(() => locationForm.radius_meters, (newRadius) => {
-    const r = Number(newRadius) || 100
-    if (mapCircle) {
-        mapCircle.setRadius(r)
-    }
-})
-
-// Manual coord change
-const handleManualCoordChange = () => {
-    const lat = Number(locationForm.latitude)
-    const lng = Number(locationForm.longitude)
-    if (!isNaN(lat) && !isNaN(lng)) {
-        if (mapMarker) mapMarker.setLatLng([lat, lng])
-        if (mapCircle) mapCircle.setLatLng([lat, lng])
-        if (mapInstance) mapInstance.panTo([lat, lng])
-    }
-}
-
-// Ambil lokasi GPS saat ini
-const getAdminCurrentGps = () => {
-    if (!navigator.geolocation) {
-        alert('Browser Anda tidak mendukung deteksi lokasi.')
-        return
-    }
-
-    isLocatingAdmin.value = true
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude
-            const lng = pos.coords.longitude
-            updateMarkerPosition(lat, lng)
-            if (mapInstance) {
-                mapInstance.setView([lat, lng], 18)
-            }
-            isLocatingAdmin.value = false
-        },
-        (err) => {
-            alert('Gagal mendeteksi lokasi GPS: ' + err.message)
-            isLocatingAdmin.value = false
-        },
-        { enableHighAccuracy: true }
-    )
-}
-
-const submitLocation = () => {
-    locationForm.post(route('admin.attendance.location'), {
-        preserveScroll: true,
-        onSuccess: () => {
-            closeLocationModal()
-        }
-    })
-}
-
-onUnmounted(() => {
-    if (mapInstance) {
-        mapInstance.remove()
-        mapInstance = null
-    }
-})
-
 // Helper Style Cell Matriks per Tanggal
 const getCellClass = (record, isWeekend, isFuture) => {
     if (!record) {
@@ -388,18 +351,19 @@ const getCellClass = (record, isWeekend, isFuture) => {
                 </div>
 
                 <div class="flex items-center gap-2.5">
-                    <!-- Tombol Atur Titik Lokasi & Mini Map (Akses Admin) -->
-                    <button
-                        type="button"
-                        @click="openLocationModal"
+                    <!-- Link ke Pengaturan Superadmin (Titik Lokasi & Cleansing) -->
+                    <Link
+                        v-if="canEditAttendance"
+                        :href="route('admin.settings.hr')"
                         class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-card-subtle hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-200 border border-theme text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                        title="Atur titik lokasi default, jam kerja, dan pembersihan foto di Pengaturan HR & Pemeliharaan Sistem"
                     >
                         <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span>Atur Titik Lokasi &amp; Radius</span>
-                    </button>
+                        <span>⚙️ Pengaturan Default &amp; Cleansing</span>
+                    </Link>
 
                     <!-- Tombol Ekspor Excel -->
                     <button
@@ -416,126 +380,213 @@ const getCellClass = (record, isWeekend, isFuture) => {
                 </div>
             </div>
 
-            <!-- ── Tab Mode & Pemilih Periode Bulan ───────────────────────────── -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-subtle pb-3">
-                <div class="flex items-center gap-2">
-                    <button
-                        type="button"
-                        @click="activeTab = 'monthly'; applyFilters()"
-                        :class="[
-                            'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
-                            activeTab === 'monthly'
-                                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
-                                : 'bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
-                        ]"
-                    >
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        <span>📊 Matriks Bulanan</span>
-                    </button>
+            <!-- ── BLOK KONTROL REKAP (Tab Mode, Navigasi Periode, Statistik & Filter) ── -->
+            <div class="bg-sidebar rounded-3xl border border-theme shadow-xs p-4 sm:p-5 space-y-4">
+                <!-- Baris 1: Mode Tab & Navigasi Periode -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-subtle">
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            @click="activeTab = 'monthly'; applyFilters()"
+                            :class="[
+                                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                                activeTab === 'monthly'
+                                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                                    : 'bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-theme/60'
+                            ]"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            <span>📊 Matriks Bulanan</span>
+                        </button>
 
-                    <button
-                        type="button"
-                        @click="activeTab = 'daily'; applyFilters()"
-                        :class="[
-                            'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
-                            activeTab === 'daily'
-                                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
-                                : 'bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
-                        ]"
-                    >
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span>📅 Detail Harian ({{ formattedDate }})</span>
-                    </button>
+                        <button
+                            type="button"
+                            @click="activeTab = 'daily'; applyFilters()"
+                            :class="[
+                                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                                activeTab === 'daily'
+                                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                                    : 'bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-theme/60'
+                            ]"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>📅 Detail Harian ({{ formattedDate }})</span>
+                        </button>
+                    </div>
+
+                    <!-- Kontrol Navigasi Periode (Bulan / Tanggal) -->
+                    <div class="flex items-center gap-2 self-start sm:self-auto">
+                        <template v-if="activeTab === 'monthly'">
+                            <button
+                                type="button"
+                                @click="prevMonth"
+                                class="p-1.5 rounded-lg bg-card-subtle hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer border border-theme"
+                                title="Bulan Sebelumnya"
+                            >
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+
+                            <input 
+                                type="month" 
+                                v-model="selectedMonth" 
+                                @change="applyFilters"
+                                class="text-xs font-bold rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                            />
+
+                            <button
+                                type="button"
+                                @click="nextMonth"
+                                class="p-1.5 rounded-lg bg-card-subtle hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer border border-theme"
+                                title="Bulan Berikutnya"
+                            >
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </template>
+                        <template v-else>
+                            <input 
+                                type="date" 
+                                v-model="selectedDate" 
+                                @change="applyFilters"
+                                class="text-xs font-bold rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                            />
+                        </template>
+                    </div>
                 </div>
 
-                <!-- Kontrol Navigasi Bulan -->
-                <div class="flex items-center gap-2 self-start sm:self-auto">
-                    <button
-                        type="button"
-                        @click="prevMonth"
-                        class="p-1.5 rounded-lg bg-card-subtle hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                        title="Bulan Sebelumnya"
-                    >
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
+                <!-- Baris 2: Statistik Ringkasan Mini di Samping Filter & Pencarian -->
+                <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+                    <!-- Sisi Kiri: 7 Kotak Statistik Mini -->
+                    <div v-if="activeTab === 'monthly'" class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-none whitespace-nowrap">Total Pegawai</p>
+                            <p class="text-sm font-black text-slate-800 dark:text-slate-100 leading-none mt-1">{{ monthlyStats?.total_pegawai || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-emerald-600 leading-none whitespace-nowrap">Rata-rata Hadir</p>
+                            <p class="text-sm font-black text-emerald-600 leading-none mt-1">{{ monthlyStats?.avg_attendance_rate || 0 }}%</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-teal-600 leading-none whitespace-nowrap">Tepat Waktu</p>
+                            <p class="text-sm font-black text-teal-600 leading-none mt-1">{{ monthlyStats?.total_hadir_sebulan || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-amber-600 leading-none whitespace-nowrap">Terlambat</p>
+                            <p class="text-sm font-black text-amber-600 leading-none mt-1">{{ monthlyStats?.total_terlambat_sebulan || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-blue-600 leading-none whitespace-nowrap">Tugas Luar</p>
+                            <p class="text-sm font-black text-blue-600 leading-none mt-1">{{ monthlyStats?.total_dinas_luar_sebulan || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-purple-600 leading-none whitespace-nowrap">Pulang Cepat</p>
+                            <p class="text-sm font-black text-purple-600 leading-none mt-1">{{ monthlyStats?.total_pulang_cepat_sebulan || 0 }}</p>
+                        </div>
+                        <div 
+                            @click="selectedStatus = (selectedStatus === 'pending' ? '' : 'pending'); applyFilters()"
+                            class="px-2.5 py-1.5 rounded-xl border shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95 text-center min-w-[64px]"
+                            :class="[
+                                selectedStatus === 'pending'
+                                    ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/50'
+                                    : (monthlyStats?.total_pending_approval > 0 ? 'border-amber-400 bg-amber-50/30' : 'border-theme/60 bg-card-subtle/80')
+                            ]"
+                            title="Klik untuk filter yang perlu review"
+                        >
+                            <div class="flex items-center justify-center gap-1">
+                                <p class="text-[10px] font-bold text-amber-600 leading-none whitespace-nowrap">Perlu Review</p>
+                                <span v-if="monthlyStats?.total_pending_approval > 0" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                            </div>
+                            <p class="text-sm font-black text-amber-600 leading-none mt-1">{{ monthlyStats?.total_pending_approval || 0 }}</p>
+                        </div>
+                    </div>
 
-                    <input 
-                        type="month" 
-                        v-model="selectedMonth" 
-                        @change="applyFilters"
-                        class="text-xs font-bold rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    />
+                    <div v-else class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-none whitespace-nowrap">Total Pegawai</p>
+                            <p class="text-sm font-black text-slate-800 dark:text-slate-100 leading-none mt-1">{{ dailyStats?.total_pegawai || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-emerald-600 leading-none whitespace-nowrap">Tepat Waktu</p>
+                            <p class="text-sm font-black text-emerald-600 leading-none mt-1">{{ dailyStats?.hadir || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-amber-600 leading-none whitespace-nowrap">Terlambat</p>
+                            <p class="text-sm font-black text-amber-600 leading-none mt-1">{{ dailyStats?.terlambat || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-blue-600 leading-none whitespace-nowrap">Tugas Luar</p>
+                            <p class="text-sm font-black text-blue-600 leading-none mt-1">{{ dailyStats?.dinas_luar || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-purple-600 leading-none whitespace-nowrap">Pulang Cepat</p>
+                            <p class="text-sm font-black text-purple-600 leading-none mt-1">{{ dailyStats?.pulang_cepat || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
+                            <p class="text-[10px] font-bold text-indigo-600 leading-none whitespace-nowrap">Izin / Sakit</p>
+                            <p class="text-sm font-black text-indigo-600 leading-none mt-1">{{ dailyStats?.izin_sakit || 0 }}</p>
+                        </div>
+                        <div 
+                            @click="selectedStatus = (selectedStatus === 'pending' ? '' : 'pending'); applyFilters()"
+                            class="px-2.5 py-1.5 rounded-xl border shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95 text-center min-w-[64px]"
+                            :class="[
+                                selectedStatus === 'pending'
+                                    ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/50'
+                                    : (dailyStats?.pending_approval > 0 ? 'border-amber-400 bg-amber-50/30' : 'border-theme/60 bg-card-subtle/80')
+                            ]"
+                            title="Klik untuk filter yang perlu review"
+                        >
+                            <div class="flex items-center justify-center gap-1">
+                                <p class="text-[10px] font-bold text-amber-600 leading-none whitespace-nowrap">Perlu Review</p>
+                                <span v-if="dailyStats?.pending_approval > 0" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                            </div>
+                            <p class="text-sm font-black text-amber-600 leading-none mt-1">{{ dailyStats?.pending_approval || 0 }}</p>
+                        </div>
+                    </div>
 
-                    <button
-                        type="button"
-                        @click="nextMonth"
-                        class="p-1.5 rounded-lg bg-card-subtle hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                        title="Bulan Berikutnya"
-                    >
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- ── Statistik Ringkasan Bulan Ini ──────────────────────────────── -->
-            <div v-if="activeTab === 'monthly'" class="grid grid-cols-2 sm:grid-cols-6 gap-3">
-                <div class="p-3.5 bg-sidebar rounded-2xl border border-theme shadow-xs">
-                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400">Total Pegawai</p>
-                    <p class="text-xl font-black text-slate-800 dark:text-slate-100 mt-0.5">{{ monthlyStats?.total_pegawai || 0 }}</p>
-                </div>
-                <div class="p-3.5 bg-sidebar rounded-2xl border border-theme shadow-xs">
-                    <p class="text-[11px] font-bold text-emerald-600">Rata-rata Hadir</p>
-                    <p class="text-xl font-black text-emerald-600 mt-0.5">{{ monthlyStats?.avg_attendance_rate || 0 }}%</p>
-                </div>
-                <div class="p-3.5 bg-sidebar rounded-2xl border border-theme shadow-xs">
-                    <p class="text-[11px] font-bold text-teal-600">Tepat Waktu</p>
-                    <p class="text-xl font-black text-teal-600 mt-0.5">{{ monthlyStats?.total_hadir_sebulan || 0 }}</p>
-                </div>
-                <div class="p-3.5 bg-sidebar rounded-2xl border border-theme shadow-xs">
-                    <p class="text-[11px] font-bold text-amber-600">Terlambat</p>
-                    <p class="text-xl font-black text-amber-600 mt-0.5">{{ monthlyStats?.total_terlambat_sebulan || 0 }}</p>
-                </div>
-                <div class="p-3.5 bg-sidebar rounded-2xl border border-theme shadow-xs">
-                    <p class="text-[11px] font-bold text-blue-600">Tugas Luar</p>
-                    <p class="text-xl font-black text-blue-600 mt-0.5">{{ monthlyStats?.total_dinas_luar_sebulan || 0 }}</p>
-                </div>
-                <div class="p-3.5 bg-sidebar rounded-2xl border border-theme shadow-xs col-span-2 sm:col-span-1">
-                    <p class="text-[11px] font-bold text-purple-600">Pulang Mendahului</p>
-                    <p class="text-xl font-black text-purple-600 mt-0.5">{{ monthlyStats?.total_pulang_cepat_sebulan || 0 }}</p>
-                </div>
-            </div>
-
-            <!-- ── Filter & Legenda Warna Matriks ─────────────────────────────── -->
-            <div class="bg-sidebar p-4 rounded-2xl border border-theme shadow-xs space-y-3">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <!-- Filter Divisi & Pencarian -->
-                    <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+                    <!-- Sisi Kanan: Filter Divisi, Status & Pencarian di Sampingnya -->
+                    <div class="flex flex-wrap items-center gap-2">
                         <div>
                             <select 
                                 v-model="selectedDivision" 
                                 @change="applyFilters"
-                                class="text-xs rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
+                                class="text-xs rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
                             >
                                 <option value="">Semua Divisi</option>
                                 <option v-for="d in divisions" :key="d.id" :value="d.name">{{ d.name }}</option>
                             </select>
                         </div>
 
-                        <div class="flex-1 min-w-[180px] max-w-sm">
+                        <div>
+                            <select 
+                                v-model="selectedStatus" 
+                                @change="applyFilters"
+                                class="text-xs rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 font-medium"
+                            >
+                                <option value="">Semua Status</option>
+                                <option value="pending">⏳ Menunggu Review ({{ activeTab === 'daily' ? (dailyStats?.pending_approval || 0) : (monthlyStats?.total_pending_approval || 0) }})</option>
+                                <option value="hadir">Hadir (Tepat Waktu)</option>
+                                <option value="terlambat">Terlambat</option>
+                                <option value="dinas_luar">Tugas Luar</option>
+                                <option value="izin">Izin</option>
+                                <option value="sakit">Sakit</option>
+                                <option value="belum_hadir">Belum Hadir</option>
+                            </select>
+                        </div>
+
+                        <div class="w-44 sm:w-56">
                             <div class="relative">
                                 <input 
                                     type="text" 
                                     v-model="searchQuery" 
                                     placeholder="Cari nama pegawai..." 
-                                    class="w-full text-xs rounded-xl border border-theme bg-card-subtle pl-8 pr-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
+                                    class="w-full text-xs rounded-xl border border-theme bg-card-subtle pl-8 pr-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
                                 />
                                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -545,10 +596,24 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Legenda Warna Status Cell -->
-                    <div class="flex flex-wrap items-center gap-2 text-[10px] font-bold">
-                        <span class="text-slate-400 uppercase tracking-wider text-[9px] mr-1">Legenda:</span>
+            <!-- ── TABEL 1: MATRIKS PRESENSI BULANAN (GRID CELL JAM MASUK & PULANG) ── -->
+            <div v-if="activeTab === 'monthly'" class="bg-sidebar rounded-3xl border border-theme shadow-xs overflow-hidden">
+                <div class="p-4 border-b border-subtle flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <span>Matriks Kehadiran Bulan {{ formattedMonth }}</span>
+                        </h2>
+                        <p class="text-[11px] text-slate-400">
+                            Format cell per tanggal: <strong>[Jam Masuk]</strong> (atas) dan <strong>[Jam Pulang]</strong> (bawah). Klik tanggal di header atau cell untuk rincian.
+                        </p>
+                    </div>
+
+                    <!-- Legenda Warna Status Cell di Header Tabel Matriks -->
+                    <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] font-bold">
+                        <span class="text-slate-400 uppercase tracking-wider text-[9px] mr-0.5">Legenda:</span>
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Tepat Waktu
                         </span>
@@ -564,20 +629,6 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-400" /> Weekend / Libur
                         </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── TABEL 1: MATRIKS PRESENSI BULANAN (GRID CELL JAM MASUK & PULANG) ── -->
-            <div v-if="activeTab === 'monthly'" class="bg-sidebar rounded-3xl border border-theme shadow-xs overflow-hidden">
-                <div class="p-4 border-b border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                        <h2 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                            <span>Matriks Kehadiran Bulan {{ formattedMonth }}</span>
-                        </h2>
-                        <p class="text-[11px] text-slate-400">
-                            Format cell per tanggal: <strong>[Jam Masuk]</strong> (atas) dan <strong>[Jam Pulang]</strong> (bawah). Klik tanggal di header atau cell untuk rincian.
-                        </p>
                     </div>
                 </div>
 
@@ -623,7 +674,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         </thead>
 
                         <tbody class="divide-y divide-subtle">
-                            <tr v-for="user in monthlyReportData" :key="user.user_id" class="hover:bg-card-subtle/30 transition-colors">
+                            <tr v-for="user in paginatedMonthlyData" :key="user.user_id" class="hover:bg-card-subtle/30 transition-colors">
                                 <!-- Sticky Info Pegawai -->
                                 <td class="py-2.5 px-4 sticky left-0 bg-sidebar z-10 border-r border-subtle shadow-xs">
                                     <div class="flex items-center gap-2.5">
@@ -660,8 +711,13 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     >
                                         <template v-if="user.daily_records?.[d.day]">
                                             <!-- Jam Masuk (Atas) -->
-                                            <div class="text-[10px] font-black font-mono leading-none tracking-tight">
-                                                {{ user.daily_records[d.day].time_in || '--:--' }}
+                                            <div class="text-[10px] font-black font-mono leading-none tracking-tight flex items-center justify-center gap-0.5">
+                                                <span>{{ user.daily_records[d.day].time_in || '--:--' }}</span>
+                                                <span 
+                                                    v-if="hasPermitOrEarlyDeparture(user.daily_records[d.day])" 
+                                                    class="text-[9px] cursor-help inline-block leading-none" 
+                                                    :title="`🚩 ${getPermitTypeLabel(user.daily_records[d.day])}`"
+                                                >🚩</span>
                                             </div>
                                             <!-- Jam Pulang (Bawah) -->
                                             <div class="text-[9px] font-mono leading-none tracking-tight mt-1 opacity-80 flex items-center justify-center gap-0.5">
@@ -711,6 +767,81 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination Matriks Bulanan -->
+                <div v-if="totalMonthlyRows > 0" class="p-4 border-t border-subtle flex flex-col sm:flex-row items-center justify-between gap-3 bg-card-subtle/30">
+                    <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                        <span>
+                            Menampilkan <strong class="text-slate-800 dark:text-slate-200">{{ paginationStart }}</strong> - <strong class="text-slate-800 dark:text-slate-200">{{ paginationEnd }}</strong> dari <strong class="text-slate-800 dark:text-slate-200">{{ totalMonthlyRows }}</strong> pegawai
+                        </span>
+                        <div class="flex items-center gap-1.5 ml-2 pl-3 border-l border-subtle">
+                            <span class="text-[11px]">Per halaman:</span>
+                            <select
+                                v-model="perPage"
+                                class="text-xs font-semibold rounded-lg border border-theme bg-sidebar px-2 py-1 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                            >
+                                <option v-for="opt in perPageOptions" :key="opt" :value="opt">{{ opt }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div v-if="totalMonthlyPages > 1" class="flex items-center gap-1">
+                        <button
+                            type="button"
+                            @click="goToPage(1)"
+                            :disabled="currentPage === 1"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-theme bg-sidebar hover:bg-card-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                            title="Halaman Pertama"
+                        >
+                            «
+                        </button>
+                        <button
+                            type="button"
+                            @click="goToPage(currentPage - 1)"
+                            :disabled="currentPage === 1"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-theme bg-sidebar hover:bg-card-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                            title="Sebelumnya"
+                        >
+                            ‹
+                        </button>
+
+                        <template v-for="(p, idx) in visiblePages" :key="idx">
+                            <span v-if="p === '...'" class="px-2 py-1 text-xs text-slate-400 font-bold select-none">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="goToPage(p)"
+                                :class="[
+                                    'min-w-[32px] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                                    currentPage === p
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'border border-theme bg-sidebar hover:bg-card-subtle text-slate-700 dark:text-slate-300'
+                                ]"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+
+                        <button
+                            type="button"
+                            @click="goToPage(currentPage + 1)"
+                            :disabled="currentPage === totalMonthlyPages"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-theme bg-sidebar hover:bg-card-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                            title="Berikutnya"
+                        >
+                            ›
+                        </button>
+                        <button
+                            type="button"
+                            @click="goToPage(totalMonthlyPages)"
+                            :disabled="currentPage === totalMonthlyPages"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-bold border border-theme bg-sidebar hover:bg-card-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                            title="Halaman Terakhir"
+                        >
+                            »
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- ── TABEL 2: DETAIL HARIAN (Saat Tab Harian Aktif) ──────────────── -->
@@ -750,13 +881,18 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 <th class="py-3 px-3">Jadwal Kerja</th>
                                 <th class="py-3 px-3">Jam Masuk</th>
                                 <th class="py-3 px-3">Jam Pulang</th>
-                                <th class="py-3 px-3">Status</th>
-                                <th class="py-3 px-4">Foto &amp; Keterangan</th>
-                                <th v-if="canEditAttendance" class="py-3 px-3 text-center w-28">Aksi</th>
+                                <th class="py-3 px-3">Status &amp; Persetujuan</th>
+                                <th class="py-3 px-4">Bukti &amp; Keterangan</th>
+                                <th class="py-3 px-3 text-center min-w-[140px]">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-subtle">
-                            <tr v-for="item in dailyReportData" :key="item.user_id" class="hover:bg-card-subtle/50 transition-colors">
+                            <tr v-for="item in dailyReportData" :key="item.user_id" 
+                                :class="[
+                                    'transition-colors',
+                                    item.approval_status === 'pending' ? 'bg-amber-50/40 dark:bg-amber-950/20 hover:bg-amber-50/70' : 'hover:bg-card-subtle/50'
+                                ]"
+                            >
                                 <!-- Info Pegawai -->
                                 <td class="py-3.5 px-4">
                                     <div class="flex items-center gap-3">
@@ -812,68 +948,197 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     </template>
                                 </td>
 
-                                <!-- Status Badge -->
+                                <!-- Status & Approval Badge -->
                                 <td class="py-3.5 px-3">
-                                    <div class="flex flex-wrap items-center gap-1.5">
-                                        <span 
-                                            :class="[
-                                                'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider',
-                                                item.status === 'hadir' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
-                                                item.status === 'terlambat' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
-                                                item.status === 'dinas_luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
-                                                'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                                            ]"
-                                        >
-                                            {{ item.status === 'belum_hadir' ? 'Belum Hadir' : item.status.replace('_', ' ') }}
-                                        </span>
+                                    <div class="flex flex-col gap-1 items-start">
+                                        <div class="flex flex-wrap items-center gap-1">
+                                            <span 
+                                                :class="[
+                                                    'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider',
+                                                    item.status === 'hadir' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
+                                                    item.status === 'terlambat' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                                                    item.status === 'dinas_luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                                                    item.status === 'izin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                                                    item.status === 'sakit' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
+                                                    'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                                                ]"
+                                            >
+                                                {{ item.status === 'belum_hadir' ? 'Belum Hadir' : item.status.replace('_', ' ') }}
+                                            </span>
 
-                                        <span 
-                                            v-if="item.is_pulang_cepat" 
-                                            class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
-                                            title="Pulang mendahului jadwal pulang kerja"
-                                        >
-                                            Pulang Cepat
-                                        </span>
+                                            <span 
+                                                v-if="item.is_early_departure" 
+                                                class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
+                                                title="Pulang mendahului jadwal pulang kerja"
+                                            >
+                                                Pulang Cepat
+                                            </span>
+
+                                            <!-- Flag Khusus Permohonan Izin / Sakit / Pulang Cepat -->
+                                            <span 
+                                                v-if="hasPermitOrEarlyDeparture(item)"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700 shadow-2xs"
+                                                :title="`Pegawai mengajukan: ${getPermitTypeLabel(item)}`"
+                                            >
+                                                <span>🚩</span>
+                                                <span>{{ getPermitTypeLabel(item) }}</span>
+                                            </span>
+                                        </div>
+
+                                        <!-- Status Persetujuan Admin (Hanya jika mengajukan izin/pulang cepat) -->
+                                        <div v-if="item.attendance_id && hasPermitOrEarlyDeparture(item)">
+                                            <span 
+                                                v-if="item.approval_status === 'pending'"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse border border-amber-300"
+                                            >
+                                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                Menunggu Review
+                                            </span>
+                                            <span 
+                                                v-else-if="item.approval_status === 'approved'"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
+                                            >
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                Disetujui
+                                            </span>
+                                            <span 
+                                                v-else-if="item.approval_status === 'rejected'"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300"
+                                            >
+                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                                Ditolak
+                                            </span>
+                                        </div>
                                     </div>
                                 </td>
 
                                 <!-- Foto & Keterangan -->
                                 <td class="py-3.5 px-4">
-                                    <div class="flex items-center gap-2">
-                                        <!-- Thumbnail Foto Masuk jika ada -->
-                                        <button 
-                                            v-if="item.photo_in" 
-                                            type="button" 
-                                            @click="openCellDetail(item, { date: selectedDate, day: '' }, item)"
-                                            class="w-7 h-7 rounded-lg overflow-hidden border border-theme hover:scale-110 transition-transform flex-shrink-0 cursor-pointer"
-                                            title="Lihat Foto Masuk (Selfie)"
-                                        >
-                                            <img :src="`/storage/${item.photo_in}`" class="w-full h-full object-cover" />
-                                        </button>
+                                    <div class="space-y-1.5">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <!-- Thumbnail Foto Masuk jika ada -->
+                                            <button 
+                                                v-if="item.photo_in" 
+                                                type="button" 
+                                                @click="openCellDetail(item, { date: selectedDate, day: '' }, item)"
+                                                class="w-7 h-7 rounded-lg overflow-hidden border border-theme hover:scale-110 transition-transform flex-shrink-0 cursor-pointer"
+                                                title="Lihat Foto Masuk (Selfie)"
+                                            >
+                                                <img :src="`/storage/${item.photo_in}`" class="w-full h-full object-cover" />
+                                            </button>
 
-                                        <!-- Keterangan Catatan & Lembur -->
-                                        <div class="text-[11px] truncate max-w-xs">
-                                            <span class="text-slate-600 dark:text-slate-400">{{ item.notes || '-' }}</span>
-                                            <div v-if="item.is_overtime && item.overtime_activity" class="text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate mt-0.5" :title="item.overtime_activity">
-                                                ⚡ Lembur: {{ item.overtime_activity }}
+                                            <!-- Thumbnail Dokumen Lampiran Izin/Sakit jika ada -->
+                                            <a 
+                                                v-if="item.attachment" 
+                                                :href="`/storage/${item.attachment}`" 
+                                                target="_blank"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[10px] font-bold text-purple-700 dark:text-purple-300 hover:underline"
+                                                title="Buka lampiran berkas"
+                                            >
+                                                <span>📎 Lampiran</span>
+                                            </a>
+                                        </div>
+
+                                        <!-- Keterangan Catatan Pegawai -->
+                                        <div class="text-[11px] text-slate-700 dark:text-slate-300 max-w-xs">
+                                            <span>{{ item.notes || '-' }}</span>
+                                        </div>
+
+                                        <!-- Catatan Alasan Keterlambatan & Foto Terlambat -->
+                                        <div v-if="item.late_reason || item.status === 'terlambat'" class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[10px] text-amber-800 dark:text-amber-200 space-y-1">
+                                            <div class="flex items-center gap-1 font-bold uppercase text-[9px] text-amber-700 dark:text-amber-300">
+                                                <span>⚠️</span>
+                                                <span>Alasan Terlambat:</span>
                                             </div>
+                                            <p class="font-medium text-amber-900 dark:text-amber-100">
+                                                "{{ item.late_reason || 'Tidak ada catatan alasan terlambat' }}"
+                                            </p>
+                                            <div v-if="item.late_photo" class="pt-0.5">
+                                                <a 
+                                                    :href="`/storage/${item.late_photo}`" 
+                                                    target="_blank" 
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700 text-[10px] font-bold text-amber-800 dark:text-amber-200 hover:underline"
+                                                    title="Lihat foto bukti keterlambatan"
+                                                >
+                                                    <span>📷 Bukti Foto Terlambat</span>
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <!-- Keterangan Pulang Mendahului -->
+                                        <div v-if="item.is_early_departure && item.early_departure_reason" class="text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+                                            Alasan Pulang Cepat: "{{ item.early_departure_reason }}"
+                                        </div>
+
+                                        <!-- Alasan Penolakan jika permohonan ditolak -->
+                                        <div v-if="item.approval_status === 'rejected' && item.rejection_note" class="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-[10px] text-rose-700 dark:text-rose-300">
+                                            <span class="font-bold block uppercase text-[9px]">Alasan Penolakan:</span>
+                                            "{{ item.rejection_note }}"
+                                        </div>
+
+                                        <!-- Lembur -->
+                                        <div v-if="item.is_overtime && item.overtime_activity" class="text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate" :title="item.overtime_activity">
+                                            ⚡ Lembur: {{ item.overtime_activity }}
                                         </div>
                                     </div>
                                 </td>
 
-                                <!-- Aksi Edit Khusus Superadmin -->
-                                <td v-if="canEditAttendance" class="py-3.5 px-3 text-center">
-                                    <button 
-                                        type="button" 
-                                        @click="openCellDetail(item, { date: selectedDate, day: '' }, item)"
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
-                                        title="Edit Presensi Masuk & Pulang (Superadmin)"
-                                    >
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        <span>Edit</span>
-                                    </button>
+                                <!-- Aksi Persetujuan & Edit Superadmin -->
+                                <td class="py-3.5 px-3 text-center">
+                                    <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                        <!-- Tombol Cepat Setujui & Tolak HANYA jika Pegawai Mengajukan Izin/Pulang Cepat & Status Pending -->
+                                        <template v-if="hasPermitOrEarlyDeparture(item) && item.approval_status === 'pending'">
+                                            <button 
+                                                type="button" 
+                                                @click="handleQuickApprove(item)"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+                                                title="Setujui permohonan ini"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                <span>Setujui</span>
+                                            </button>
+
+                                            <button 
+                                                type="button" 
+                                                @click="openRejectModal(item)"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+                                                title="Tolak permohonan ini dengan keterangan"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                <span>Tolak</span>
+                                            </button>
+                                        </template>
+
+                                        <!-- Jika sudah Ditolak, beri opsi untuk ubah status jika diperlukan -->
+                                        <template v-else-if="hasPermitOrEarlyDeparture(item) && item.approval_status === 'rejected'">
+                                            <button 
+                                                type="button" 
+                                                @click="openRejectModal(item)"
+                                                class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 hover:bg-rose-100 text-[10px] font-bold border border-rose-200 dark:border-rose-800 cursor-pointer"
+                                                title="Ubah alasan penolakan"
+                                            >
+                                                <span>Ubah Alasan</span>
+                                            </button>
+                                        </template>
+
+                                        <!-- Tombol Edit Presensi Masuk & Pulang (Superadmin) -->
+                                        <button 
+                                            v-if="canEditAttendance"
+                                            type="button" 
+                                            @click="openCellDetail(item, { date: selectedDate, day: '' }, item)"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-card-subtle hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-300 text-[11px] font-bold border border-theme transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                                            title="Buka rincian & koreksi jam presensi (Superadmin)"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span>Detail / Edit</span>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
 
@@ -884,171 +1149,6 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <!-- ── MODAL 1: ATUR TITIK LOKASI SEKOLAH & MINI MAP (LEAFLET) ──────── -->
-            <div 
-                v-if="isLocationModalOpen" 
-                class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto"
-                @click="closeLocationModal"
-            >
-                <div class="relative bg-sidebar max-w-2xl w-full rounded-3xl overflow-hidden shadow-2xl border border-theme my-8" @click.stop>
-                    <div class="p-5 border-b border-subtle flex items-center justify-between">
-                        <div>
-                            <h3 class="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span>Atur Titik Lokasi Sekolah &amp; Radius Geofencing</span>
-                            </h3>
-                            <p class="text-xs text-slate-400 mt-0.5">Klik di peta atau geser pin hijau untuk menentukan titik koordinat presensi sekolah.</p>
-                        </div>
-                        <button 
-                            type="button" 
-                            @click="closeLocationModal"
-                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                        >
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <form @submit.prevent="submitLocation">
-                        <div class="p-5 space-y-4">
-
-                            <!-- Petunjuk & Tombol Ambil Lokasi GPS Saya Saat Ini -->
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-lg">🗺️</span>
-                                    <p class="text-xs text-emerald-900 dark:text-emerald-200 font-medium leading-tight">
-                                        Klik langsung pada peta untuk memindahkan titik sekolah atau geser pin.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    @click="getAdminCurrentGps"
-                                    :disabled="isLocatingAdmin"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold shadow-2xs hover:bg-emerald-50 transition-all active:scale-95 cursor-pointer disabled:opacity-50 flex-shrink-0"
-                                >
-                                    <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': isLocatingAdmin }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span>{{ isLocatingAdmin ? 'Mendeteksi...' : 'Ambil Lokasi Saya Saat Ini' }}</span>
-                                </button>
-                            </div>
-
-                            <!-- ── Container Leaflet Mini Map ── -->
-                            <div class="rounded-2xl overflow-hidden border border-theme relative shadow-inner bg-slate-100 dark:bg-slate-900">
-                                <div id="office-mini-map" class="h-64 sm:h-72 w-full z-10" />
-                            </div>
-
-                            <!-- Input Koordinat & Radius -->
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Latitude</label>
-                                    <input 
-                                        type="text" 
-                                        v-model="locationForm.latitude" 
-                                        @change="handleManualCoordChange"
-                                        class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 font-mono"
-                                        placeholder="-7.7956000"
-                                        required
-                                    />
-                                    <p v-if="locationForm.errors.latitude" class="text-[10px] text-rose-500 mt-0.5">{{ locationForm.errors.latitude }}</p>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Longitude</label>
-                                    <input 
-                                        type="text" 
-                                        v-model="locationForm.longitude" 
-                                        @change="handleManualCoordChange"
-                                        class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 font-mono"
-                                        placeholder="110.3695000"
-                                        required
-                                    />
-                                    <p v-if="locationForm.errors.longitude" class="text-[10px] text-rose-500 mt-0.5">{{ locationForm.errors.longitude }}</p>
-                                </div>
-                                <div>
-                                    <div class="flex items-center justify-between mb-1">
-                                        <label class="block text-[10px] font-bold uppercase text-slate-500">Radius Sekolah</label>
-                                        <span class="text-xs font-black text-emerald-600">{{ locationForm.radius_meters }} meter</span>
-                                    </div>
-                                    <input 
-                                        type="range" 
-                                        v-model="locationForm.radius_meters" 
-                                        min="10" 
-                                        max="1000" 
-                                        step="10"
-                                        class="w-full accent-emerald-600 cursor-pointer"
-                                    />
-                                    <p class="text-[9px] text-slate-400">Lingkaran hijau di peta membesar sesuai radius.</p>
-                                </div>
-                            </div>
-
-                            <!-- Pengaturan Jam Kerja Global Default Sekolah -->
-                            <div class="p-3.5 rounded-2xl bg-card-subtle border border-theme/60 space-y-2">
-                                <label class="block text-xs font-black text-slate-700 dark:text-slate-200">
-                                    Jam Kerja Global (Default Sekolah)
-                                </label>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <div>
-                                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Jam Masuk</label>
-                                        <input 
-                                            type="time" 
-                                            v-model="locationForm.work_start" 
-                                            class="w-full text-xs rounded-xl border border-theme bg-sidebar px-2.5 py-1.5 text-slate-800 dark:text-slate-200"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Toleransi Telat</label>
-                                        <div class="relative">
-                                            <input 
-                                                type="number" 
-                                                v-model="locationForm.late_tolerance" 
-                                                min="0" 
-                                                max="120"
-                                                class="w-full text-xs rounded-xl border border-theme bg-sidebar px-2 py-1.5 pr-7 text-slate-800 dark:text-slate-200"
-                                            />
-                                            <span class="absolute inset-y-0 right-2 flex items-center text-[10px] text-slate-400">mnt</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">Jam Pulang</label>
-                                        <input 
-                                            type="time" 
-                                            v-model="locationForm.work_end" 
-                                            class="w-full text-xs rounded-xl border border-theme bg-sidebar px-2.5 py-1.5 text-slate-800 dark:text-slate-200"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <div class="p-4 border-t border-subtle bg-card-subtle flex items-center justify-end gap-2.5">
-                            <button 
-                                type="button" 
-                                @click="closeLocationModal"
-                                class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 transition-colors cursor-pointer"
-                            >
-                                Batal
-                            </button>
-                            <button 
-                                type="submit" 
-                                :disabled="locationForm.processing"
-                                class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md hover:shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-                            >
-                                <svg v-if="locationForm.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                <span>Simpan Titik Lokasi &amp; Radius</span>
-                            </button>
-                        </div>
-                    </form>
                 </div>
             </div>
 
@@ -1092,6 +1192,29 @@ const getCellClass = (record, isWeekend, isFuture) => {
                     <form v-if="canEditAttendance" @submit.prevent="submitEditAttendance">
                         <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
 
+                            <!-- Flag Khusus Permohonan Izin / Sakit / Pulang Cepat -->
+                            <div v-if="hasPermitOrEarlyDeparture(selectedDetailModal.record)" class="p-3.5 rounded-2xl bg-purple-50/80 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-between gap-2 shadow-2xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">🚩</span>
+                                    <div>
+                                        <p class="text-xs font-black text-purple-900 dark:text-purple-200">
+                                            Pengajuan: {{ getPermitTypeLabel(selectedDetailModal.record) }}
+                                        </p>
+                                        <p class="text-[10px] text-purple-600 dark:text-purple-400">
+                                            Pegawai ini mengajukan permohonan izin / pulang cepat.
+                                        </p>
+                                    </div>
+                                </div>
+                                <span :class="[
+                                    'px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider',
+                                    selectedDetailModal.record?.approval_status === 'approved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                                    selectedDetailModal.record?.approval_status === 'rejected' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                                    'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                                ]">
+                                    {{ selectedDetailModal.record?.approval_status === 'approved' ? 'Disetujui' : selectedDetailModal.record?.approval_status === 'rejected' ? 'Ditolak' : 'Menunggu Review' }}
+                                </span>
+                            </div>
+
                             <!-- Jadwal Kerja Pegawai -->
                             <div class="flex items-center justify-between p-3 rounded-2xl bg-card-subtle border border-theme/60 text-xs">
                                 <div>
@@ -1116,8 +1239,8 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                             class="w-full text-sm font-mono font-bold rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
                                         />
                                     </div>
-                                    <span v-if="selectedDetailModal.record?.distance_in !== null" class="block text-[10px] text-emerald-600 mt-1 font-semibold">
-                                        📍 Masuk: {{ selectedDetailModal.record.distance_in }}m
+                                    <span v-if="selectedDetailModal.record?.distance_in != null" class="block text-[10px] text-emerald-600 mt-1 font-semibold">
+                                        📍 Masuk: {{ selectedDetailModal.record?.distance_in }}m
                                     </span>
                                     <p v-if="editForm.errors.time_in" class="text-[10px] text-rose-500 mt-0.5">{{ editForm.errors.time_in }}</p>
                                 </div>
@@ -1133,8 +1256,8 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                             class="w-full text-sm font-mono font-bold rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
                                         />
                                     </div>
-                                    <span v-if="selectedDetailModal.record?.distance_out !== null" class="block text-[10px] text-rose-600 mt-1 font-semibold">
-                                        📍 Pulang: {{ selectedDetailModal.record.distance_out }}m
+                                    <span v-if="selectedDetailModal.record?.distance_out != null" class="block text-[10px] text-rose-600 mt-1 font-semibold">
+                                        📍 Pulang: {{ selectedDetailModal.record?.distance_out }}m
                                     </span>
                                     <p v-if="editForm.errors.time_out" class="text-[10px] text-rose-500 mt-0.5">{{ editForm.errors.time_out }}</p>
                                 </div>
@@ -1174,11 +1297,103 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 <p v-if="editForm.errors.notes" class="text-[10px] text-rose-500 mt-0.5">{{ editForm.errors.notes }}</p>
                             </div>
 
+                            <!-- Catatan Alasan Keterlambatan & Foto Terlambat -->
+                            <div v-if="selectedDetailModal.record?.late_reason || selectedDetailModal.record?.status === 'terlambat'" class="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 space-y-2">
+                                <div class="flex items-center gap-1 font-bold uppercase text-[10px] text-amber-700 dark:text-amber-300">
+                                    <span>⚠️</span>
+                                    <span>Alasan Keterlambatan Pegawai:</span>
+                                </div>
+                                <p class="text-xs text-amber-900 dark:text-amber-100 font-medium">
+                                    "{{ selectedDetailModal.record?.late_reason || 'Tidak ada catatan alasan terlambat' }}"
+                                </p>
+                                <div v-if="selectedDetailModal.record?.late_photo" class="mt-2">
+                                    <p class="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 mb-1">Bukti Foto Keterlambatan:</p>
+                                    <div class="rounded-xl overflow-hidden border border-amber-300 dark:border-amber-700 bg-black/20 flex items-center justify-center p-1 max-w-[220px]">
+                                        <a :href="`/storage/${selectedDetailModal.record?.late_photo}`" target="_blank" title="Lihat foto bukti keterlambatan">
+                                            <img :src="`/storage/${selectedDetailModal.record?.late_photo}`" class="max-h-40 w-auto rounded-lg object-contain hover:scale-105 transition-transform" />
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Foto Selfie (jika sebelumnya ada dinas luar) -->
                             <div v-if="selectedDetailModal.record?.photo_in" class="p-3 rounded-2xl bg-card-subtle border border-theme/60 space-y-1.5">
                                 <p class="text-[10px] font-bold uppercase text-slate-400">Bukti Foto Selfie Masuk:</p>
                                 <div class="rounded-xl overflow-hidden border border-theme bg-black/20 flex items-center justify-center p-1">
-                                    <img :src="`/storage/${selectedDetailModal.record.photo_in}`" class="max-h-40 w-auto rounded-lg object-contain" />
+                                    <img :src="`/storage/${selectedDetailModal.record?.photo_in}`" class="max-h-40 w-auto rounded-lg object-contain" />
+                                </div>
+                            </div>
+
+                            <!-- Box Review Persetujuan Izin / Pulang Cepat (Hanya jika mengajukan) -->
+                            <div 
+                                v-if="hasPermitOrEarlyDeparture(selectedDetailModal.record)"
+                                class="p-3.5 rounded-2xl border transition-all"
+                                :class="[
+                                    selectedDetailModal.record?.approval_status === 'pending'
+                                        ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800'
+                                        : selectedDetailModal.record?.approval_status === 'approved'
+                                            ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800'
+                                            : 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800'
+                                ]"
+                            >
+                                <div class="flex items-center justify-between gap-2 mb-2">
+                                    <span class="text-xs font-black text-slate-800 dark:text-slate-100">
+                                        Persetujuan Izin / Pulang Cepat
+                                    </span>
+                                    <span 
+                                        :class="[
+                                            'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider',
+                                            selectedDetailModal.record?.approval_status === 'approved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                                            selectedDetailModal.record?.approval_status === 'rejected' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                                            'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                                        ]"
+                                    >
+                                        {{ selectedDetailModal.record?.approval_status === 'approved' ? 'Disetujui' : selectedDetailModal.record?.approval_status === 'rejected' ? 'Ditolak' : 'Menunggu Review' }}
+                                    </span>
+                                </div>
+
+                                <div v-if="selectedDetailModal.record?.attachment" class="mb-2">
+                                    <a 
+                                        :href="`/storage/${selectedDetailModal.record?.attachment}`" 
+                                        target="_blank"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-theme text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline"
+                                    >
+                                        📎 Buka Berkas Lampiran Surat Izin / Sakit
+                                    </a>
+                                </div>
+
+                                <div v-if="selectedDetailModal.record?.is_early_departure && selectedDetailModal.record?.early_departure_reason" class="text-xs text-purple-700 dark:text-purple-300 mb-2">
+                                    <span class="font-bold block text-[10px] uppercase">Alasan Pulang Mendahului:</span>
+                                    "{{ selectedDetailModal.record?.early_departure_reason }}"
+                                </div>
+
+                                <div v-if="selectedDetailModal.record?.approval_status === 'rejected' && selectedDetailModal.record?.rejection_note" class="p-2 rounded-xl bg-rose-100/80 dark:bg-rose-950/60 border border-rose-300 text-xs text-rose-800 dark:text-rose-200 mb-2">
+                                    <span class="font-bold block uppercase text-[10px]">Alasan Penolakan Admin:</span>
+                                    "{{ selectedDetailModal.record?.rejection_note }}"
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex items-center gap-2 mt-3 pt-2 border-t border-theme/40">
+                                    <button 
+                                        type="button" 
+                                        @click="handleQuickApprove(selectedDetailModal)"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition-all active:scale-95"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>Setujui Permohonan</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="openRejectModal(selectedDetailModal)"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer transition-all active:scale-95"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        <span>{{ selectedDetailModal.record?.approval_status === 'rejected' ? 'Ubah Alasan Tolak' : 'Tolak Permohonan' }}</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1230,6 +1445,29 @@ const getCellClass = (record, isWeekend, isFuture) => {
                     <!-- ══════════ TAMPILAN NON-SUPERADMIN: READ ONLY ══════════ -->
                     <div v-else>
                         <div class="p-5 space-y-4">
+                            <!-- Flag Khusus Permohonan Izin / Sakit / Pulang Cepat -->
+                            <div v-if="hasPermitOrEarlyDeparture(selectedDetailModal.record)" class="p-3.5 rounded-2xl bg-purple-50/80 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 flex items-center justify-between gap-2 shadow-2xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">🚩</span>
+                                    <div>
+                                        <p class="text-xs font-black text-purple-900 dark:text-purple-200">
+                                            Pengajuan: {{ getPermitTypeLabel(selectedDetailModal.record) }}
+                                        </p>
+                                        <p class="text-[10px] text-purple-600 dark:text-purple-400">
+                                            Pegawai ini mengajukan permohonan izin / pulang cepat.
+                                        </p>
+                                    </div>
+                                </div>
+                                <span :class="[
+                                    'px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider',
+                                    selectedDetailModal.record?.approval_status === 'approved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                                    selectedDetailModal.record?.approval_status === 'rejected' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                                    'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                                ]">
+                                    {{ selectedDetailModal.record?.approval_status === 'approved' ? 'Disetujui' : selectedDetailModal.record?.approval_status === 'rejected' ? 'Ditolak' : 'Menunggu Review' }}
+                                </span>
+                            </div>
+
                             <!-- Status Badge -->
                             <div class="flex items-center justify-between p-3 rounded-2xl bg-card-subtle border border-theme/60">
                                 <span class="text-xs text-slate-500 font-bold">Status Kehadiran</span>
@@ -1240,13 +1478,15 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                             selectedDetailModal.record?.status === 'hadir' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
                                             selectedDetailModal.record?.status === 'terlambat' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
                                             selectedDetailModal.record?.status === 'dinas_luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                                            selectedDetailModal.record?.status === 'izin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                                            selectedDetailModal.record?.status === 'sakit' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
                                             'bg-rose-100 text-rose-700'
                                         ]"
                                     >
                                         {{ (selectedDetailModal.record?.status || 'belum_hadir').replace('_', ' ') }}
                                     </span>
                                     <span 
-                                        v-if="selectedDetailModal.record?.is_pulang_cepat" 
+                                        v-if="selectedDetailModal.record?.is_pulang_cepat || selectedDetailModal.record?.is_early_departure" 
                                         class="px-2.5 py-1 rounded-full text-xs font-black uppercase bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
                                     >
                                         Pulang Cepat
@@ -1261,8 +1501,8 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     <p class="text-base font-black text-slate-800 dark:text-slate-100 mt-0.5">
                                         {{ selectedDetailModal.record?.time_in || '--:--' }}
                                     </p>
-                                    <p v-if="selectedDetailModal.record?.distance_in !== null" class="text-[10px] text-emerald-600 mt-1 font-semibold">
-                                        📍 Jarak: {{ selectedDetailModal.record.distance_in }}m
+                                    <p v-if="selectedDetailModal.record?.distance_in != null" class="text-[10px] text-emerald-600 mt-1 font-semibold">
+                                        📍 Jarak: {{ selectedDetailModal.record?.distance_in }}m
                                     </p>
                                 </div>
                                 <div class="p-3.5 rounded-2xl bg-card-subtle border border-theme/60">
@@ -1270,8 +1510,8 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     <p class="text-base font-black text-slate-800 dark:text-slate-100 mt-0.5">
                                         {{ selectedDetailModal.record?.time_out || '--:--' }}
                                     </p>
-                                    <p v-if="selectedDetailModal.record?.distance_out !== null" class="text-[10px] text-rose-600 mt-1 font-semibold">
-                                        📍 Jarak: {{ selectedDetailModal.record.distance_out }}m
+                                    <p v-if="selectedDetailModal.record?.distance_out != null" class="text-[10px] text-rose-600 mt-1 font-semibold">
+                                        📍 Jarak: {{ selectedDetailModal.record?.distance_out }}m
                                     </p>
                                 </div>
                             </div>
@@ -1280,14 +1520,109 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             <div v-if="selectedDetailModal.record?.photo_in" class="space-y-1.5">
                                 <p class="text-xs font-bold text-slate-600 dark:text-slate-300">Foto Selfie Bukti Presensi (Luar Radius):</p>
                                 <div class="rounded-2xl overflow-hidden border border-theme bg-black/30 flex items-center justify-center p-2">
-                                    <img :src="`/storage/${selectedDetailModal.record.photo_in}`" class="max-h-56 w-auto rounded-xl object-contain" />
+                                    <img :src="`/storage/${selectedDetailModal.record?.photo_in}`" class="max-h-56 w-auto rounded-xl object-contain" />
                                 </div>
                             </div>
 
-                            <!-- Catatan / Alasan Dinas Luar -->
+                            <!-- Dokumen Lampiran Izin / Sakit jika ada -->
+                            <div v-if="selectedDetailModal.record?.attachment" class="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                                <p class="text-[10px] font-bold uppercase text-purple-600 mb-1">Dokumen Lampiran Izin/Sakit:</p>
+                                <a 
+                                    :href="`/storage/${selectedDetailModal.record?.attachment}`" 
+                                    target="_blank"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-colors"
+                                >
+                                    <span>📎 Unduh / Buka Dokumen Berkas</span>
+                                </a>
+                            </div>
+
+                            <!-- Catatan / Alasan Pegawai -->
                             <div v-if="selectedDetailModal.record?.notes" class="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
-                                <p class="text-[10px] font-bold uppercase text-blue-600 mb-0.5">Catatan Pegawai:</p>
-                                <p class="text-xs text-slate-700 dark:text-slate-300">{{ selectedDetailModal.record.notes }}</p>
+                                <p class="text-[10px] font-bold uppercase text-blue-600 mb-0.5">Catatan / Keterangan Pegawai:</p>
+                                <p class="text-xs text-slate-700 dark:text-slate-300">{{ selectedDetailModal.record?.notes }}</p>
+                            </div>
+
+                            <!-- Catatan Alasan Keterlambatan & Foto Terlambat -->
+                            <div v-if="selectedDetailModal.record?.late_reason || selectedDetailModal.record?.status === 'terlambat'" class="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 space-y-2">
+                                <div class="flex items-center gap-1 font-bold uppercase text-[10px] text-amber-700 dark:text-amber-300">
+                                    <span>⚠️</span>
+                                    <span>Alasan Keterlambatan Pegawai:</span>
+                                </div>
+                                <p class="text-xs text-amber-900 dark:text-amber-100 font-medium">
+                                    "{{ selectedDetailModal.record?.late_reason || 'Tidak ada catatan alasan terlambat' }}"
+                                </p>
+                                <div v-if="selectedDetailModal.record?.late_photo" class="mt-2">
+                                    <p class="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 mb-1">Bukti Foto Keterlambatan:</p>
+                                    <div class="rounded-xl overflow-hidden border border-amber-300 dark:border-amber-700 bg-black/20 flex items-center justify-center p-1 max-w-[220px]">
+                                        <a :href="`/storage/${selectedDetailModal.record?.late_photo}`" target="_blank" title="Lihat foto bukti keterlambatan">
+                                            <img :src="`/storage/${selectedDetailModal.record?.late_photo}`" class="max-h-40 w-auto rounded-lg object-contain hover:scale-105 transition-transform" />
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Keterangan Pulang Cepat -->
+                            <div v-if="selectedDetailModal.record?.is_early_departure && selectedDetailModal.record?.early_departure_reason" class="p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                                <p class="text-[10px] font-bold uppercase text-purple-600 mb-0.5">Alasan Pulang Mendahului:</p>
+                                <p class="text-xs text-purple-800 dark:text-purple-200">{{ selectedDetailModal.record?.early_departure_reason }}</p>
+                            </div>
+
+                            <!-- Box Persetujuan Admin (HANYA tampil jika pegawai mengajukan izin/pulang cepat) -->
+                            <div 
+                                v-if="hasPermitOrEarlyDeparture(selectedDetailModal.record)"
+                                class="p-3.5 rounded-2xl border transition-all"
+                                :class="[
+                                    selectedDetailModal.record?.approval_status === 'pending'
+                                        ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800'
+                                        : selectedDetailModal.record?.approval_status === 'approved'
+                                            ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800'
+                                            : 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800'
+                                ]"
+                            >
+                                <div class="flex items-center justify-between gap-2 mb-2">
+                                    <span class="text-xs font-black text-slate-800 dark:text-slate-100">
+                                        Persetujuan Izin / Pulang Cepat
+                                    </span>
+                                    <span 
+                                        :class="[
+                                            'px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider',
+                                            selectedDetailModal.record?.approval_status === 'approved' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                                            selectedDetailModal.record?.approval_status === 'rejected' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300' :
+                                            'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                                        ]"
+                                    >
+                                        {{ selectedDetailModal.record?.approval_status === 'approved' ? 'Disetujui' : selectedDetailModal.record?.approval_status === 'rejected' ? 'Ditolak' : 'Menunggu Review' }}
+                                    </span>
+                                </div>
+
+                                <div v-if="selectedDetailModal.record?.approval_status === 'rejected' && selectedDetailModal.record?.rejection_note" class="p-2 rounded-xl bg-rose-100/80 dark:bg-rose-950/60 border border-rose-300 text-xs text-rose-800 dark:text-rose-200 mb-2">
+                                    <span class="font-bold block uppercase text-[10px]">Alasan Penolakan:</span>
+                                    "{{ selectedDetailModal.record?.rejection_note }}"
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex items-center gap-2 mt-3 pt-2 border-t border-theme/40">
+                                    <button 
+                                        type="button" 
+                                        @click="handleQuickApprove(selectedDetailModal)"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition-all active:scale-95"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>Setujui Permohonan</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="openRejectModal(selectedDetailModal)"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer transition-all active:scale-95"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        <span>{{ selectedDetailModal.record?.approval_status === 'rejected' ? 'Ubah Alasan Tolak' : 'Tolak Permohonan' }}</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1301,6 +1636,89 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ── MODAL 3: PENOLAKAN PERMOHONAN DENGAN KETERANGAN ALASAN WAJIB ── -->
+            <div 
+                v-if="isRejectModalOpen" 
+                class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto"
+                @click="isRejectModalOpen = false"
+            >
+                <div class="relative bg-sidebar max-w-lg w-full rounded-3xl overflow-hidden shadow-2xl border border-theme my-8" @click.stop>
+                    <div class="p-5 border-b border-subtle flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950 flex items-center justify-center text-rose-600 border border-rose-200 dark:border-rose-900">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-slate-800 dark:text-slate-100">Tolak Permohonan</h3>
+                                <p class="text-xs text-slate-400">Pegawai: <strong class="text-slate-700 dark:text-slate-200">{{ selectedRejectItem?.name || selectedRejectItem?.userName }}</strong></p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button" 
+                            @click="isRejectModalOpen = false"
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitRejectApproval">
+                        <div class="p-5 space-y-4">
+                            <div class="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-800 dark:text-rose-200 space-y-1">
+                                <p class="font-bold flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <span>Pemberitahuan Wajib:</span>
+                                </p>
+                                <p>Silakan cantumkan alasan mengapa permohonan izin / sakit / pulang mendahului ini ditolak agar dapat dibaca oleh pegawai terkait.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                                    Keterangan Alasan Penolakan <span class="text-rose-500">*</span>
+                                </label>
+                                <textarea 
+                                    v-model="approvalForm.rejection_note" 
+                                    rows="4"
+                                    required
+                                    placeholder="Contoh: Dokumen surat sakit kurang lengkap / Jadwal rapat penting belum selesai..."
+                                    class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                                ></textarea>
+                                <p v-if="approvalForm.errors.rejection_note" class="text-[10px] text-rose-500 mt-1 font-semibold">
+                                    {{ approvalForm.errors.rejection_note }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border-t border-subtle bg-card-subtle flex items-center justify-end gap-2">
+                            <button 
+                                type="button" 
+                                @click="isRejectModalOpen = false"
+                                class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 transition-colors cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="approvalForm.processing || !approvalForm.rejection_note.trim()"
+                                class="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md hover:shadow-rose-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                <svg v-if="approvalForm.processing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                <span>Konfirmasi Penolakan</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 

@@ -45,10 +45,16 @@ class AttendanceReportController extends Controller
         $statusFilter = $request->input('status');
         $search = $request->input('search');
 
-        // Query seluruh user pegawai
-        $userQuery = User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['user', 'admin']);
-        });
+        // Helper format tanggal Y-m-d untuk mencocokkan Carbon object dan string
+        $formatDate = function ($date) {
+            if ($date instanceof \Carbon\Carbon) {
+                return $date->format('Y-m-d');
+            }
+            return substr((string) $date, 0, 10);
+        };
+
+        // Query seluruh user pegawai & admin
+        $userQuery = User::query();
 
         if ($divisionFilter) {
             $userQuery->where('divisi', $divisionFilter);
@@ -61,7 +67,7 @@ class AttendanceReportController extends Controller
         $allUsers = $userQuery->orderBy('name')->get();
 
         // Ambil semua data presensi di bulan ini
-        $monthlyAttendances = Attendance::whereBetween('date', [$startOfMonth, $endOfMonth])
+        $monthlyAttendances = Attendance::with('approver')->whereBetween('date', [$startOfMonth, $endOfMonth])
             ->whereIn('user_id', $allUsers->pluck('id'))
             ->get();
 
@@ -76,16 +82,17 @@ class AttendanceReportController extends Controller
             $dateObj = Carbon::parse($currentMonth . '-' . str_pad($d, 2, '0', STR_PAD_LEFT));
             $isWeekend = $dateObj->isWeekend();
             $isPastOrToday = ($d <= $effectiveEndDay);
+            $targetDateStr = $dateObj->format('Y-m-d');
             
             if (!$isWeekend && $isPastOrToday) {
                 $workdaysCount++;
             }
 
             // Hitung total hadir di tanggal tersebut
-            $dayAtts = $monthlyAttendances->where('date', $dateObj->format('Y-m-d'));
+            $dayAtts = $monthlyAttendances->filter(fn($a) => $formatDate($a->date) === $targetDateStr);
             $daysList[] = [
                 'day'         => $d,
-                'date'        => $dateObj->format('Y-m-d'),
+                'date'        => $targetDateStr,
                 'day_name'    => $dateObj->locale('id')->isoFormat('dd'),
                 'is_weekend'  => $isWeekend,
                 'is_today'    => $dateObj->isToday(),
@@ -97,8 +104,8 @@ class AttendanceReportController extends Controller
         $effectiveWorkdays = max(1, $workdaysCount);
 
         // Rekap Matriks Bulanan per User
-        $monthlyReportData = $allUsers->map(function ($u) use ($monthlyAttendances, $effectiveWorkdays, $daysInMonth, $currentMonth) {
-            $userAtts = $monthlyAttendances->where('user_id', $u->id)->keyBy('date');
+        $monthlyReportData = $allUsers->map(function ($u) use ($monthlyAttendances, $effectiveWorkdays, $daysInMonth, $currentMonth, $formatDate) {
+            $userAtts = $monthlyAttendances->where('user_id', $u->id)->keyBy(fn($a) => $formatDate($a->date));
             $schedule = $u->getEffectiveWorkSchedule();
 
             $hadirCount = 0;
@@ -129,19 +136,27 @@ class AttendanceReportController extends Controller
                     }
 
                     $dailyRecords[$d] = [
-                        'id'                => $att->id,
-                        'date'              => $dateKey,
-                        'time_in'           => $att->time_in ? substr($att->time_in, 0, 5) : null,
-                        'time_out'          => $att->time_out ? substr($att->time_out, 0, 5) : null,
-                        'status'            => $att->status,
-                        'is_pulang_cepat'   => $isPulangCepat,
-                        'is_overtime'       => (bool) $att->is_overtime,
-                        'overtime_minutes'  => $att->overtime_minutes,
-                        'overtime_activity' => $att->overtime_activity,
-                        'distance_in'       => $att->distance_in,
-                        'distance_out'      => $att->distance_out,
-                        'photo_in'          => $att->photo_in,
-                        'notes'             => $att->notes,
+                        'id'                     => $att->id,
+                        'date'                   => $dateKey,
+                        'time_in'                => $att->time_in ? substr($att->time_in, 0, 5) : null,
+                        'time_out'               => $att->time_out ? substr($att->time_out, 0, 5) : null,
+                        'status'                 => $att->status,
+                        'is_pulang_cepat'        => $isPulangCepat,
+                        'is_early_departure'     => (bool) ($att->is_early_departure || $isPulangCepat),
+                        'early_departure_reason' => $att->early_departure_reason,
+                        'approval_status'        => $att->approval_status ?? 'approved',
+                        'approval_type'          => $att->approval_type ?? 'none',
+                        'rejection_note'         => $att->rejection_note,
+                        'attachment'             => $att->attachment,
+                        'is_overtime'            => (bool) $att->is_overtime,
+                        'overtime_minutes'       => $att->overtime_minutes,
+                        'overtime_activity'      => $att->overtime_activity,
+                        'distance_in'            => $att->distance_in,
+                        'distance_out'           => $att->distance_out,
+                        'photo_in'               => $att->photo_in,
+                        'notes'                  => $att->notes,
+                        'late_reason'            => $att->late_reason,
+                        'late_photo'             => $att->late_photo,
                     ];
                 } else {
                     $dailyRecords[$d] = null;
@@ -175,7 +190,7 @@ class AttendanceReportController extends Controller
         });
 
         // Detail Harian pada Tanggal Terpilih ($selectedDate)
-        $dailyAttendances = $monthlyAttendances->where('date', $selectedDate)->keyBy('user_id');
+        $dailyAttendances = $monthlyAttendances->filter(fn($a) => $formatDate($a->date) === $selectedDate)->keyBy('user_id');
         $dailyReportData = $allUsers->map(function ($u) use ($dailyAttendances, $selectedDate) {
             $att = $dailyAttendances->get($u->id);
             $schedule = $u->getEffectiveWorkSchedule($selectedDate);
@@ -190,57 +205,74 @@ class AttendanceReportController extends Controller
             }
 
             return [
-                'user_id'            => $u->id,
-                'name'               => $u->name,
-                'nip'                => $u->nip,
-                'divisi'             => $u->divisi,
-                'avatar'             => $u->avatar,
-                'work_schedule'      => $schedule['work_start'] . ' - ' . $schedule['work_end'],
-                'work_start'         => $schedule['work_start'],
-                'work_end'           => $schedule['work_end'],
-                'late_tolerance'     => $schedule['late_tolerance'],
-                'is_custom_schedule' => $schedule['is_custom'],
-                'attendance_id'      => $att?->id,
-                'time_in'            => $att?->time_in ? substr($att->time_in, 0, 5) : null,
-                'time_out'           => $att?->time_out ? substr($att->time_out, 0, 5) : null,
-                'distance_in'        => $att?->distance_in,
-                'distance_out'       => $att?->distance_out,
-                'status'            => $att ? $att->status : 'belum_hadir',
-                'is_pulang_cepat'   => $isPulangCepat,
-                'is_overtime'       => (bool) $att?->is_overtime,
-                'overtime_minutes'  => $att?->overtime_minutes,
-                'overtime_activity' => $att?->overtime_activity,
-                'photo_in'          => $att?->photo_in,
-                'photo_out'         => $att?->photo_out,
-                'notes'             => $att?->notes,
+                'user_id'                => $u->id,
+                'name'                   => $u->name,
+                'nip'                    => $u->nip,
+                'divisi'                 => $u->divisi,
+                'avatar'                 => $u->avatar,
+                'work_schedule'          => $schedule['work_start'] . ' - ' . $schedule['work_end'],
+                'work_start'             => $schedule['work_start'],
+                'work_end'               => $schedule['work_end'],
+                'late_tolerance'         => $schedule['late_tolerance'],
+                'is_custom_schedule'     => $schedule['is_custom'],
+                'attendance_id'          => $att?->id,
+                'time_in'                => $att?->time_in ? substr($att->time_in, 0, 5) : null,
+                'time_out'               => $att?->time_out ? substr($att->time_out, 0, 5) : null,
+                'distance_in'            => $att?->distance_in,
+                'distance_out'           => $att?->distance_out,
+                'status'                 => $att ? $att->status : 'belum_hadir',
+                'is_pulang_cepat'        => $isPulangCepat,
+                'is_early_departure'     => (bool) ($att?->is_early_departure || $isPulangCepat),
+                'early_departure_reason' => $att?->early_departure_reason,
+                'approval_status'        => $att?->approval_status ?? 'approved',
+                'approval_type'          => $att?->approval_type ?? 'none',
+                'rejection_note'         => $att?->rejection_note,
+                'attachment'             => $att?->attachment,
+                'approved_by_name'       => $att?->approver?->name,
+                'is_overtime'            => (bool) $att?->is_overtime,
+                'overtime_minutes'       => $att?->overtime_minutes,
+                'overtime_activity'      => $att?->overtime_activity,
+                'photo_in'               => $att?->photo_in,
+                'photo_out'              => $att?->photo_out,
+                'notes'                  => $att?->notes,
+                'late_reason'            => $att?->late_reason,
+                'late_photo'             => $att?->late_photo,
             ];
         });
 
         if ($statusFilter) {
-            $dailyReportData = $dailyReportData->where('status', $statusFilter)->values();
+            if ($statusFilter === 'pending') {
+                $dailyReportData = $dailyReportData->where('approval_status', 'pending')->values();
+            } else {
+                $dailyReportData = $dailyReportData->where('status', $statusFilter)->values();
+            }
         }
 
         // Statistik Bulanan
         $totalUsers = $allUsers->count();
         $avgAttendanceRate = $totalUsers > 0 ? round($monthlyReportData->avg('attendance_rate')) : 0;
         $monthlyStats = [
-            'total_pegawai'           => $totalUsers,
-            'avg_attendance_rate'     => $avgAttendanceRate,
-            'total_hadir_sebulan'     => $monthlyAttendances->where('status', 'hadir')->count(),
-            'total_terlambat_sebulan' => $monthlyAttendances->where('status', 'terlambat')->count(),
-            'total_dinas_luar_sebulan'=> $monthlyAttendances->where('status', 'dinas_luar')->count(),
+            'total_pegawai'              => $totalUsers,
+            'avg_attendance_rate'        => $avgAttendanceRate,
+            'total_hadir_sebulan'        => $monthlyAttendances->where('status', 'hadir')->count(),
+            'total_terlambat_sebulan'    => $monthlyAttendances->where('status', 'terlambat')->count(),
+            'total_dinas_luar_sebulan'   => $monthlyAttendances->where('status', 'dinas_luar')->count(),
+            'total_izin_sakit_sebulan'   => $monthlyAttendances->whereIn('status', ['izin', 'sakit'])->count(),
             'total_pulang_cepat_sebulan' => $monthlyReportData->sum('total_pulang_cepat'),
-            'effective_workdays'      => $effectiveWorkdays,
+            'total_pending_approval'     => $monthlyAttendances->where('approval_status', 'pending')->count(),
+            'effective_workdays'         => $effectiveWorkdays,
         ];
 
         // Statistik Harian pada Tanggal Terpilih
         $dailyStats = [
-            'total_pegawai' => $totalUsers,
-            'hadir'         => $dailyAttendances->where('status', 'hadir')->count(),
-            'terlambat'     => $dailyAttendances->where('status', 'terlambat')->count(),
-            'dinas_luar'    => $dailyAttendances->where('status', 'dinas_luar')->count(),
-            'pulang_cepat'  => $dailyReportData->where('is_pulang_cepat', true)->count(),
-            'belum_hadir'   => max(0, $totalUsers - $dailyAttendances->count()),
+            'total_pegawai'    => $totalUsers,
+            'hadir'            => $dailyAttendances->where('status', 'hadir')->count(),
+            'terlambat'        => $dailyAttendances->where('status', 'terlambat')->count(),
+            'dinas_luar'       => $dailyAttendances->where('status', 'dinas_luar')->count(),
+            'izin_sakit'       => $dailyAttendances->whereIn('status', ['izin', 'sakit'])->count(),
+            'pulang_cepat'     => $dailyReportData->where('is_pulang_cepat', true)->count(),
+            'pending_approval' => $dailyAttendances->where('approval_status', 'pending')->count(),
+            'belum_hadir'      => max(0, $totalUsers - $dailyAttendances->count()),
         ];
 
         $divisions = Division::orderBy('name')->get();
@@ -288,9 +320,7 @@ class AttendanceReportController extends Controller
         $date = $request->input('date', Carbon::today()->format('Y-m-d'));
         $divisionFilter = $request->input('division');
 
-        $userQuery = User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['user', 'admin']);
-        });
+        $userQuery = User::query();
 
         if ($divisionFilter) {
             $userQuery->where('divisi', $divisionFilter);
@@ -299,7 +329,7 @@ class AttendanceReportController extends Controller
         $allUsers = $userQuery->orderBy('name')->get();
 
         if ($type === 'daily') {
-            $attendances = Attendance::where('date', $date)
+            $attendances = Attendance::whereDate('date', $date)
                 ->whereIn('user_id', $allUsers->pluck('id'))
                 ->get()
                 ->keyBy('user_id');
@@ -309,9 +339,18 @@ class AttendanceReportController extends Controller
                 $schedule = $u->getEffectiveWorkSchedule($date);
 
                 $notes = $att?->notes;
+                if ($att?->is_early_departure && $att?->early_departure_reason) {
+                    $edText = "Izin Pulang Mendahului: {$att->early_departure_reason}";
+                    $notes = $notes ? "{$notes} | {$edText}" : $edText;
+                }
                 if ($att?->is_overtime) {
                     $otText = "Lembur {$att->overtime_minutes}m: {$att->overtime_activity}";
                     $notes = $notes ? "{$notes} | {$otText}" : $otText;
+                }
+                if ($att?->approval_status === 'pending') {
+                    $notes = $notes ? "{$notes} (Menunggu Persetujuan)" : "(Menunggu Persetujuan)";
+                } elseif ($att?->approval_status === 'rejected') {
+                    $notes = $notes ? "{$notes} (Ditolak: {$att->rejection_note})" : "(Ditolak: {$att->rejection_note})";
                 }
 
                 return [
@@ -360,8 +399,8 @@ class AttendanceReportController extends Controller
         }
         $effectiveWorkdays = max(1, $workdaysCount);
 
-        $monthlyReportData = $allUsers->map(function ($u) use ($monthlyAttendances, $effectiveWorkdays, $daysInMonth, $currentMonth) {
-            $userAtts = $monthlyAttendances->where('user_id', $u->id)->keyBy('date');
+        $monthlyReportData = $allUsers->map(function ($u) use ($monthlyAttendances, $effectiveWorkdays, $daysInMonth, $currentMonth, $formatDate) {
+            $userAtts = $monthlyAttendances->where('user_id', $u->id)->keyBy(fn($a) => $formatDate($a->date));
             $schedule = $u->getEffectiveWorkSchedule();
 
             $hadirCount = 0;
@@ -518,6 +557,32 @@ class AttendanceReportController extends Controller
         $attendance->delete();
 
         return redirect()->back()->with('success', "Data presensi {$userName} pada {$formattedDate} berhasil dihapus.");
+    }
+
+    /**
+     * Menyetujui atau Menolak Permohonan Izin / Sakit / Pulang Mendahului
+     */
+    public function updateApproval(Request $request)
+    {
+        $data = $request->validate([
+            'attendance_id'   => 'required|exists:attendances,id',
+            'approval_status' => 'required|in:approved,rejected',
+            'rejection_note'  => 'required_if:approval_status,rejected|nullable|string|max:1000',
+        ], [
+            'rejection_note.required_if' => 'Keterangan alasan penolakan wajib diisi jika izin ditolak.',
+        ]);
+
+        $attendance = Attendance::findOrFail($data['attendance_id']);
+        $attendance->update([
+            'approval_status' => $data['approval_status'],
+            'rejection_note'  => $data['approval_status'] === 'rejected' ? $data['rejection_note'] : null,
+            'approved_by'     => auth()->id(),
+            'approved_at'     => Carbon::now(),
+        ]);
+
+        $statusText = $data['approval_status'] === 'approved' ? 'disetujui' : 'ditolak';
+        $userName = $attendance->user?->name ?? 'Pegawai';
+        return redirect()->back()->with('success', "Permohonan izin {$userName} berhasil {$statusText}.");
     }
 }
 

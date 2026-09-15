@@ -44,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/presensi', [\App\Http\Controllers\AttendanceController::class, 'index'])->name('attendance.index');
     Route::post('/presensi/check-in', [\App\Http\Controllers\AttendanceController::class, 'checkIn'])->name('attendance.check-in');
     Route::post('/presensi/check-out', [\App\Http\Controllers\AttendanceController::class, 'checkOut'])->name('attendance.check-out');
+    Route::post('/presensi/izin', [\App\Http\Controllers\AttendanceController::class, 'storePermit'])->name('attendance.store-permit');
 
     Route::post('/push-subscriptions', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.store');
 
@@ -51,6 +52,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {
 
         Route::get('/presensi', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'index'])->name('admin.attendance.index');
+        Route::post('/presensi/approval', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateApproval'])->name('admin.attendance.approval');
         Route::post('/presensi/location', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateLocation'])->name('admin.attendance.location');
         Route::post('/presensi/record', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateRecord'])->name('admin.attendance.update-record');
         Route::delete('/presensi/record/{id}', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'deleteRecord'])->name('admin.attendance.delete-record');
@@ -97,6 +99,7 @@ Route::middleware('auth')->group(function () {
     // ─── Superadmin Only Routes ─────────────────────────────────────────────
     Route::middleware('role:superadmin')->prefix('admin')->group(function () {
         Route::get('/login-logs', [\App\Http\Controllers\Admin\LoginLogController::class, 'index'])->name('admin.login-logs');
+        Route::post('/settings/clean-photos', [\App\Http\Controllers\Admin\SettingController::class, 'cleanPhotos'])->name('admin.settings.clean-photos');
     });
 
     // ─── Maintenance Mode Controls (Khusus Super Admin) ─────────────────────
