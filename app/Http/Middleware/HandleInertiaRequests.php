@@ -49,6 +49,10 @@ class HandleInertiaRequests extends Middleware
                 'is_adding_account' => $request->session()->get('is_adding_account', false),
             ],
             'global_settings' => $settings,
+            'webpush' => [
+                'vapid_public_key' => config('webpush.vapid.public_key'),
+                'is_active' => ($settings['push_notifications_active'] ?? '0') === '1' || ($settings['push_notifications_active'] ?? 'false') === 'true',
+            ],
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error'   => $request->session()->get('error'),

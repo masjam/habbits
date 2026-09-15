@@ -46,7 +46,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/presensi/check-out', [\App\Http\Controllers\AttendanceController::class, 'checkOut'])->name('attendance.check-out');
     Route::post('/presensi/izin', [\App\Http\Controllers\AttendanceController::class, 'storePermit'])->name('attendance.store-permit');
 
+    // Web Push Subscriptions & Test
     Route::post('/push-subscriptions', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.store');
+    Route::post('/push-subscriptions/destroy', [\App\Http\Controllers\PushSubscriptionController::class, 'destroy'])->name('push.destroy');
+    Route::get('/push-subscriptions/status', [\App\Http\Controllers\PushSubscriptionController::class, 'status'])->name('push.status');
+    Route::get('/push-subscriptions/vapid-public-key', [\App\Http\Controllers\PushSubscriptionController::class, 'vapidPublicKey'])->name('push.vapid-key');
+    Route::post('/push-subscriptions/test', [\App\Http\Controllers\PushSubscriptionController::class, 'sendTest'])->name('push.test');
 
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {

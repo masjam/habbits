@@ -6,6 +6,19 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Http\Middleware\HandleCors;
 
+if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' && !getenv('OPENSSL_CONF')) {
+    $cnfCandidates = [
+        'H:/laragon/bin/php/php-8.3.30-Win32-vs16-x64/extras/ssl/openssl.cnf',
+        'C:/xampp/php/extras/ssl/openssl.cnf',
+    ];
+    foreach ($cnfCandidates as $candidate) {
+        if (file_exists($candidate)) {
+            putenv("OPENSSL_CONF={$candidate}");
+            break;
+        }
+    }
+}
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

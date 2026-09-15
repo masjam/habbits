@@ -348,7 +348,7 @@ class DashboardController extends Controller
         $startOfMonth = Carbon::now()->startOfMonth();
         $endOfMonth   = Carbon::now()->endOfMonth();
         
-        $totalPegawai = User::role('user')->count();
+        $totalPegawai = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))->count();
         if ($totalPegawai === 0) $totalPegawai = 1; // Prevent div by 0 just in case
 
         // Hitung Maksimal Skor (sehari) dinamis berdasarkan jumlah skor maksimal semua habit aktif (standar non-haid)
@@ -361,7 +361,7 @@ class DashboardController extends Controller
 
         // ─── GRAFIK HARIAN (Bulan Berjalan) ───────────────────────────────
         $dailyRaw = HabitLog::whereHas('user', function($q) {
-                $q->role('user');
+                $q->whereDoesntHave('roles', fn($rq) => $rq->whereIn('name', ['admin', 'superadmin']));
             })
             ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
             ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total_skor'))
@@ -399,7 +399,7 @@ class DashboardController extends Controller
         ];
 
         $monthlyRaw = HabitLog::whereHas('user', function($q) {
-                $q->role('user');
+                $q->whereDoesntHave('roles', fn($rq) => $rq->whereIn('name', ['admin', 'superadmin']));
             })
             ->whereYear('tanggal', $currentYear)
             ->whereMonth('tanggal', '>=', $startMonth)
@@ -434,7 +434,7 @@ class DashboardController extends Controller
         $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
         $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
         
-        $usersSkor = User::role('user')
+        $usersSkor = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
             ->withSum(
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'

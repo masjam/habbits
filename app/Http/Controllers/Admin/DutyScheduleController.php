@@ -16,14 +16,18 @@ class DutyScheduleController extends Controller
      */
     public function index()
     {
-        // Ambil jadwal piket yang sudah tersimpan dengan relasi user
-        $schedules = DutySchedule::with(['users:id,name,email,avatar,divisi,nip'])
+        // Ambil jadwal piket yang sudah tersimpan dengan relasi user (kecuali admin & superadmin)
+        $schedules = DutySchedule::with(['users' => function ($q) {
+            $q->select('users.id', 'users.name', 'users.email', 'users.avatar', 'users.divisi', 'users.nip')
+              ->whereDoesntHave('roles', fn ($rq) => $rq->whereIn('name', ['admin', 'superadmin']));
+        }])
             ->orderBy('day_of_week')
             ->get()
             ->keyBy('day_of_week');
 
-        // Daftar semua pegawai aktif untuk dipilih
+        // Daftar semua pegawai aktif untuk dipilih (hanya non-admin)
         $employees = User::select('id', 'name', 'email', 'avatar', 'divisi', 'nip')
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['admin', 'superadmin']))
             ->orderBy('name')
             ->get();
 
@@ -108,7 +112,15 @@ class DutyScheduleController extends Controller
             ]
         );
 
-        $schedule->users()->sync($validated['user_ids'] ?? []);
+        $validUserIds = [];
+        if (!empty($validated['user_ids'])) {
+            $validUserIds = User::whereIn('id', $validated['user_ids'])
+                ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['admin', 'superadmin']))
+                ->pluck('id')
+                ->toArray();
+        }
+
+        $schedule->users()->sync($validUserIds);
 
         return redirect()->back()->with('success', "Jadwal piket hari {$schedule->day_name} berhasil disimpan.");
     }

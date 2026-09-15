@@ -41,8 +41,9 @@ class LaporanController extends Controller
             ->sum('skor_maksimal') ?: 100;
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
 
-        // Ambil data semua pegawai (role user) beserta pencarian dan pagination
-        $usersQuery = User::role('user')->with('badges')
+        // Ambil data semua pegawai (bukan admin/superadmin) beserta pencarian dan pagination
+        $usersQuery = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+            ->with('badges')
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
             })
@@ -164,7 +165,7 @@ class LaporanController extends Controller
         $settingTarget = Setting::where('key', 'monthly_target_score')->first();
         $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
 
-        $users = User::role('user')
+        $users = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
             })
@@ -281,8 +282,8 @@ class LaporanController extends Controller
      */
     public function detail(User $user, Request $request)
     {
-        // Pastikan yg dibuka adalah user
-        if (!$user->hasRole('user')) {
+        // Pastikan yg dibuka bukan admin/superadmin
+        if ($user->hasAnyRole(['admin', 'superadmin'])) {
             abort(404);
         }
 

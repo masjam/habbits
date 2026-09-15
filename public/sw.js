@@ -124,23 +124,31 @@ async function networkFirstWithOfflineFallback(request) {
 self.addEventListener('push', function (e) {
     if (!(self.Notification && self.Notification.permission === 'granted')) return;
 
-    let data = {};
+    let payload = {};
     if (e.data) {
-        try { data = e.data.json(); } catch (err) { data = { title: 'Pengingat Habit' }; }
+        try {
+            payload = e.data.json();
+        } catch (err) {
+            try {
+                payload = { body: e.data.text() };
+            } catch (e2) {
+                payload = {};
+            }
+        }
     }
 
-    const title = data.title || 'Pengingat Habit';
+    const title = payload.title || 'Habit SDAM 🔔';
     const options = {
-        body:   data.body  || 'Jangan lupa isi form ibadah Anda hari ini! 📿',
-        icon:   '/img/gh.png',
-        badge:  '/img/gh.png',
+        body: payload.body || 'Pengingat ibadah & aktivitas harian Anda.',
+        icon: payload.icon || '/img/gh.png',
+        badge: payload.badge || '/img/gh.png',
         vibrate: [200, 100, 200],
-        tag:    'habit-reminder',
+        tag: payload.tag || 'habit-notification',
         renotify: true,
-        data: { url: data.url || '/habit/form' },
-        actions: [
-            { action: 'open', title: '📝 Isi Sekarang' },
-            { action: 'dismiss', title: 'Nanti Saja' },
+        data: payload.data || { url: '/dashboard' },
+        actions: payload.actions || [
+            { action: 'open', title: '📱 Buka Aplikasi' },
+            { action: 'dismiss', title: 'Tutup' },
         ],
     };
 
@@ -151,11 +159,9 @@ self.addEventListener('push', function (e) {
 self.addEventListener('notificationclick', function (e) {
     e.notification.close();
 
-    const targetUrl = e.action === 'open'
-        ? (e.notification.data?.url || '/habit/form')
-        : null;
+    if (e.action === 'dismiss') return;
 
-    if (!targetUrl) return;
+    const targetUrl = e.notification.data?.url || '/dashboard';
 
     e.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {

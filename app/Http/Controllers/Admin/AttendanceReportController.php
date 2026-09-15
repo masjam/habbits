@@ -53,8 +53,10 @@ class AttendanceReportController extends Controller
             return substr((string) $date, 0, 10);
         };
 
-        // Query seluruh user pegawai & admin
-        $userQuery = User::query();
+        // Query seluruh user pegawai (kecuali admin & superadmin)
+        $userQuery = User::whereDoesntHave('roles', function ($q) {
+            $q->whereIn('name', ['admin', 'superadmin']);
+        });
 
         if ($divisionFilter) {
             $userQuery->where('divisi', $divisionFilter);
@@ -306,7 +308,7 @@ class AttendanceReportController extends Controller
             'formattedMonth'    => $monthCarbon->locale('id')->isoFormat('MMMM Y'),
             'formattedDate'     => Carbon::parse($selectedDate)->locale('id')->isoFormat('dddd, D MMMM Y'),
             'divisions'         => $divisions,
-            'isSuperadmin'      => auth()->user()->isActualSuperadmin() || auth()->user()->hasRole('superadmin'),
+            'isSuperadmin'      => (bool) (auth()->user()?->isActualSuperadmin() || auth()->user()?->hasRole('superadmin')),
         ]);
     }
 
@@ -320,7 +322,9 @@ class AttendanceReportController extends Controller
         $date = $request->input('date', Carbon::today()->format('Y-m-d'));
         $divisionFilter = $request->input('division');
 
-        $userQuery = User::query();
+        $userQuery = User::whereDoesntHave('roles', function ($q) {
+            $q->whereIn('name', ['admin', 'superadmin']);
+        });
 
         if ($divisionFilter) {
             $userQuery->where('divisi', $divisionFilter);

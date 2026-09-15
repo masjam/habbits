@@ -23,8 +23,48 @@ const closeSidebar  = () => { isSidebarOpen.value  = false }
 const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value }
 
 // ─── PWA ───────────────────────────────────────────────────────────────────
-const { isOffline, isInstallable, promptInstall, listenInstallPrompt, listenNetworkStatus } = usePWA()
+const { 
+    isOffline, 
+    isInstallable, 
+    isPushSupported, 
+    isPushSubscribed, 
+    pushPermission, 
+    isSubscribingPush, 
+    subscribeToPush, 
+    promptInstall, 
+    listenInstallPrompt, 
+    listenNetworkStatus 
+} = usePWA()
+
 const offlineDismissed = ref(false)
+const pushBannerDismissed = ref(false)
+
+const showPushBanner = computed(() => {
+    if (pushBannerDismissed.value) return false
+    if (!page.props.webpush?.is_active) return false
+    if (!isPushSupported.value) return false
+    if (isPushSubscribed.value) return false
+    if (pushPermission.value === 'denied') return false
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('habit_push_banner_dismissed')) return false
+    return true
+})
+
+const enablePushFromBanner = async () => {
+    try {
+        const vapidKey = page.props.webpush?.vapid_public_key || ''
+        await subscribeToPush(vapidKey)
+        pushBannerDismissed.value = true
+    } catch (err) {
+        alert(err.message || 'Gagal mengaktifkan notifikasi.')
+    }
+}
+
+const dismissPushBanner = () => {
+    pushBannerDismissed.value = true
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('habit_push_banner_dismissed', '1')
+    }
+}
 
 onMounted(() => {
     listenInstallPrompt()
@@ -53,11 +93,52 @@ onMounted(() => {
                     </svg>
                     <span>Anda sedang offline. Data mungkin belum terbaru.</span>
                 </div>
-                <button @click="offlineDismissed = true" class="ml-4 opacity-80 hover:opacity-100 flex-shrink-0">
+                <button @click="offlineDismissed = true" class="ml-4 opacity-80 hover:opacity-100 flex-shrink-0 cursor-pointer">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
+            </div>
+        </Transition>
+
+        <!-- ═══ PUSH NOTIFICATION PROMPT BANNER ══════════════════════ -->
+        <Transition
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="-translate-y-full opacity-0"
+            enter-to-class="translate-y-0 opacity-100"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="translate-y-0 opacity-100"
+            leave-to-class="-translate-y-full opacity-0"
+        >
+            <div v-if="showPushBanner && !isOffline"
+                class="fixed top-0 inset-x-0 z-[95] bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white px-4 py-2 flex items-center justify-between shadow-md text-xs sm:text-sm font-medium"
+            >
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0 text-xs">
+                        🔔
+                    </div>
+                    <span class="truncate">Aktifkan pengingat ibadah & presensi harian langsung ke layar perangkat Anda.</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-3">
+                    <button 
+                        type="button"
+                        @click="enablePushFromBanner" 
+                        :disabled="isSubscribingPush" 
+                        class="px-3 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                        {{ isSubscribingPush ? 'Memproses...' : 'Aktifkan' }}
+                    </button>
+                    <button 
+                        type="button"
+                        @click="dismissPushBanner" 
+                        class="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                        title="Tutup banner"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </Transition>
 

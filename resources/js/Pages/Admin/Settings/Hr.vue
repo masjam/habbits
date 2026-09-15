@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { Head, useForm, router, Link } from '@inertiajs/vue3'
+import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { usePWA } from '@/Composables/usePWA'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -285,11 +286,93 @@ watch(activeTab, (newTab) => {
     }
 })
 
+// ─── PWA WEB PUSH NOTIFICATIONS ─────────────────────────────────────────────
+const {
+    isPushSupported,
+    isPushSubscribed,
+    pushPermission,
+    isSubscribingPush,
+    subscribeToPush,
+    unsubscribeFromPush,
+    sendTestPush,
+    checkPushSubscription,
+} = usePWA()
+
+const pushStatus = ref({
+    vapid_configured: true,
+    total_system_subscriptions: 0,
+    user_subscriptions_count: 0,
+    loading: false,
+})
+
+const pushTestLoading = ref(false)
+const pushTestMessage = ref('')
+const pushTestStatus = ref('') // 'success' | 'error'
+
+const loadPushStatus = async () => {
+    try {
+        pushStatus.value.loading = true
+        const res = await fetch('/push-subscriptions/status')
+        if (res.ok) {
+            const data = await res.json()
+            pushStatus.value = { ...pushStatus.value, ...data, loading: false }
+        }
+    } catch (e) {
+        console.warn('Load push status error:', e)
+    } finally {
+        pushStatus.value.loading = false
+    }
+}
+
+const handleSubscribeThisDevice = async () => {
+    pushTestMessage.value = ''
+    try {
+        const page = usePage()
+        const vapidKey = page.props.webpush?.vapid_public_key || ''
+        await subscribeToPush(vapidKey)
+        await loadPushStatus()
+        pushTestStatus.value = 'success'
+        pushTestMessage.value = 'Perangkat ini berhasil didaftarkan untuk Push Notification!'
+    } catch (e) {
+        pushTestStatus.value = 'error'
+        pushTestMessage.value = e.message || 'Gagal mendaftarkan perangkat.'
+    }
+}
+
+const handleUnsubscribeThisDevice = async () => {
+    pushTestMessage.value = ''
+    try {
+        await unsubscribeFromPush()
+        await loadPushStatus()
+        pushTestStatus.value = 'success'
+        pushTestMessage.value = 'Perangkat ini telah dinonaktifkan dari Push Notification.'
+    } catch (e) {
+        pushTestStatus.value = 'error'
+        pushTestMessage.value = e.message || 'Gagal mematikan notifikasi di perangkat ini.'
+    }
+}
+
+const handleSendTestPush = async () => {
+    pushTestLoading.value = true
+    pushTestMessage.value = ''
+    try {
+        const res = await sendTestPush()
+        pushTestStatus.value = 'success'
+        pushTestMessage.value = res.message || 'Notifikasi berhasil dikirim ke perangkat Anda! Silakan periksa notifikasi di layar Anda.'
+    } catch (e) {
+        pushTestStatus.value = 'error'
+        pushTestMessage.value = e.message || 'Gagal mengirimkan tes notifikasi.'
+    } finally {
+        pushTestLoading.value = false
+    }
+}
+
 onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
     if (activeTab.value === 'presensi' && form.feature_presensi) {
         nextTick(() => initHrMap())
     }
+    loadPushStatus()
 })
 
 onUnmounted(() => {
@@ -1070,24 +1153,120 @@ const submit = () => {
                             </div>
 
                             <!-- 2. Push Notifications -->
-                            <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-2xs">
-                                <div class="flex items-start gap-3.5">
-                                    <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 shrink-0 shadow-xs mt-0.5">
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                                        </svg>
+                            <div class="p-5 sm:p-6 rounded-2xl border border-slate-150 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-2xs space-y-4">
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="flex items-start gap-3.5 min-w-0">
+                                        <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 shrink-0 shadow-xs mt-0.5">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                                            </svg>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Push Notifications (PWA)</h4>
+                                                <span v-if="pushStatus.vapid_configured" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                                    ● VAPID Siap
+                                                </span>
+                                                <span v-else class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                                                    ○ VAPID Belum Siap
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                Kirimkan notifikasi pengingat ibadah, mutaba'ah harian, dan pengumuman langsung ke layar smartphone/laptop pengguna.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Push Notifications (PWA)</h4>
-                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                            Kirimkan notifikasi pengingat ibadah dan pengumuman langsung ke layar smartphone.
-                                        </p>
+                                    <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
+                                        <input type="checkbox" v-model="form.push_notifications_active" class="sr-only peer" />
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                                    </label>
+                                </div>
+
+                                <!-- Sub-Panel: Kontrol & Pengujian Push (Tampil jika sistem aktif) -->
+                                <div v-if="form.push_notifications_active" class="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 space-y-3">
+                                    <!-- Status Bar Info -->
+                                    <div class="flex flex-wrap items-center justify-between gap-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-xs">
+                                        <div class="flex items-center gap-2 text-indigo-900 dark:text-indigo-200">
+                                            <span class="font-bold">Total Terdaftar di Sistem:</span>
+                                            <span class="font-black px-2 py-0.5 rounded-md bg-indigo-200/70 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-100">
+                                                {{ pushStatus.total_system_subscriptions }} Perangkat
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-slate-500 dark:text-slate-400">Status Perangkat Ini:</span>
+                                            <span v-if="isPushSubscribed" class="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                Terdaftar
+                                            </span>
+                                            <span v-else class="font-bold text-amber-600 dark:text-amber-400">
+                                                Belum Didaftarkan
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Feedback Alert -->
+                                    <div v-if="pushTestMessage" :class="[
+                                        'p-3 rounded-xl text-xs flex items-center justify-between gap-2 font-medium',
+                                        pushTestStatus === 'success' 
+                                            ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
+                                            : 'bg-rose-50 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
+                                    ]">
+                                        <span>{{ pushTestMessage }}</span>
+                                        <button type="button" @click="pushTestMessage = ''" class="text-slate-400 hover:text-slate-600 cursor-pointer">✕</button>
+                                    </div>
+
+                                    <!-- Tombol Aksi Registrasi & Pengujian -->
+                                    <div class="flex flex-wrap items-center gap-2.5">
+                                        <!-- Tombol 1: Izinkan & Daftarkan Browser Ini -->
+                                        <button
+                                            v-if="!isPushSubscribed"
+                                            type="button"
+                                            @click="handleSubscribeThisDevice"
+                                            :disabled="isSubscribingPush"
+                                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                                        >
+                                            <svg v-if="isSubscribingPush" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                            </svg>
+                                            <span>{{ isSubscribingPush ? 'Meminta Izin...' : '🔔 Daftarkan Perangkat Ini' }}</span>
+                                        </button>
+
+                                        <!-- Tombol 2: Kirim Tes Notifikasi PWA -->
+                                        <button
+                                            v-if="isPushSubscribed"
+                                            type="button"
+                                            @click="handleSendTestPush"
+                                            :disabled="pushTestLoading"
+                                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                                        >
+                                            <svg v-if="pushTestLoading" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                            </svg>
+                                            <span>{{ pushTestLoading ? 'Mengirim Notifikasi...' : '🚀 Kirim Tes Notifikasi PWA' }}</span>
+                                        </button>
+
+                                        <!-- Tombol 3: Hapus Subscription Perangkat Ini -->
+                                        <button
+                                            v-if="isPushSubscribed"
+                                            type="button"
+                                            @click="handleUnsubscribeThisDevice"
+                                            :disabled="isSubscribingPush"
+                                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+                                        >
+                                            <span>Nonaktifkan di Perangkat Ini</span>
+                                        </button>
                                     </div>
                                 </div>
-                                <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
-                                    <input type="checkbox" v-model="form.push_notifications_active" class="sr-only peer" />
-                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
-                                </label>
                             </div>
 
                             <!-- 3. Custom Habit per Divisi -->
