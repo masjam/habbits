@@ -403,8 +403,8 @@ class AttendanceReportController extends Controller
         }
         $effectiveWorkdays = max(1, $workdaysCount);
 
-        $monthlyReportData = $allUsers->map(function ($u) use ($monthlyAttendances, $effectiveWorkdays, $daysInMonth, $currentMonth, $formatDate) {
-            $userAtts = $monthlyAttendances->where('user_id', $u->id)->keyBy(fn($a) => $formatDate($a->date));
+        $monthlyReportData = $allUsers->map(function ($u) use ($monthlyAttendances, $effectiveWorkdays, $daysInMonth, $currentMonth) {
+            $userAtts = $monthlyAttendances->where('user_id', $u->id)->keyBy(fn($a) => \Carbon\Carbon::parse($a->date)->format('Y-m-d'));
             $schedule = $u->getEffectiveWorkSchedule();
 
             $hadirCount = 0;
