@@ -157,7 +157,7 @@ class PushSubscriptionController extends Controller
             'target.required' => 'Pilih target penerima notifikasi.',
         ]);
 
-        $query = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']));
+        $query = User::query();
 
         if ($validated['target'] === 'division' && !empty($validated['division'])) {
             $query->where('divisi', $validated['division']);
@@ -165,13 +165,14 @@ class PushSubscriptionController extends Controller
             $query->where('id', $validated['user_id']);
         }
 
-        // Ambil target pengguna yang sudah memiliki langganan push aktif
-        $targetUsers = $query->with('pushSubscriptions')->whereHas('pushSubscriptions')->get();
+        // Ambil semua target pengguna (tidak dibatasi hanya yang memiliki push subscription lagi)
+        // karena sekarang notifikasi juga disimpan ke database in-app.
+        $targetUsers = $query->with('pushSubscriptions')->get();
 
         if ($targetUsers->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ditemukan perangkat terdaftar pada target penerima yang Anda pilih.',
+                'message' => 'Tidak ada target pegawai yang cocok dengan filter yang dipilih.',
             ], 422);
         }
 

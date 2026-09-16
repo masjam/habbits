@@ -637,7 +637,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         <thead>
                             <tr class="border-b border-subtle bg-card-subtle text-slate-600 dark:text-slate-300">
                                 <!-- Sticky Header Pegawai di Kiri -->
-                                <th class="py-3 px-4 font-bold sticky left-0 bg-card-subtle z-20 min-w-[210px] border-r border-subtle shadow-xs">
+                                <th class="py-2 sm:py-3 px-2 sm:px-4 font-bold sticky left-0 bg-card-subtle z-20 min-w-[120px] sm:min-w-[210px] border-r border-subtle shadow-xs">
                                     Pegawai
                                 </th>
 
@@ -647,7 +647,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     :key="d.day"
                                     @click="selectDateAndSwitch(d.date)"
                                     :class="[
-                                        'py-2 px-1 text-center min-w-[54px] max-w-[62px] border-r border-subtle/70 transition-colors cursor-pointer select-none group',
+                                        'py-1 sm:py-2 px-0.5 sm:px-1 text-center min-w-[34px] sm:min-w-[54px] max-w-[40px] sm:max-w-[62px] border-r border-subtle/70 transition-colors cursor-pointer select-none group',
                                         d.is_today ? 'bg-emerald-100/60 dark:bg-emerald-950/50' : 
                                         d.is_weekend ? 'bg-slate-100/50 dark:bg-slate-800/30' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                                     ]"
@@ -676,15 +676,15 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         <tbody class="divide-y divide-subtle">
                             <tr v-for="user in paginatedMonthlyData" :key="user.user_id" class="hover:bg-card-subtle/30 transition-colors">
                                 <!-- Sticky Info Pegawai -->
-                                <td class="py-2.5 px-4 sticky left-0 bg-sidebar z-10 border-r border-subtle shadow-xs">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center font-bold text-xs text-emerald-700 dark:text-emerald-400 flex-shrink-0 overflow-hidden border border-emerald-200 dark:border-emerald-800">
+                                <td class="py-2 sm:py-2.5 px-2 sm:px-4 sticky left-0 bg-sidebar z-10 border-r border-subtle shadow-xs">
+                                    <div class="flex items-center gap-1.5 sm:gap-2.5">
+                                        <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center font-bold text-[10px] sm:text-xs text-emerald-700 dark:text-emerald-400 flex-shrink-0 overflow-hidden border border-emerald-200 dark:border-emerald-800">
                                             <img v-if="user.avatar" :src="user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`" class="w-full h-full object-cover" />
                                             <span v-else>{{ user.name.charAt(0).toUpperCase() }}</span>
                                         </div>
-                                        <div class="truncate max-w-[150px]">
-                                            <p class="font-bold text-slate-800 dark:text-slate-100 text-xs truncate" :title="user.name">{{ user.name }}</p>
-                                            <p class="text-[10px] text-slate-400 truncate">
+                                        <div class="truncate max-w-[80px] sm:max-w-[150px]">
+                                            <p class="font-bold text-slate-800 dark:text-slate-100 text-[10px] sm:text-xs truncate" :title="user.name">{{ user.name }}</p>
+                                            <p class="text-[8px] sm:text-[10px] text-slate-400 truncate">
                                                 {{ user.divisi || 'Tanpa Divisi' }}
                                             </p>
                                         </div>
@@ -697,7 +697,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     :key="d.day"
                                     @click="openCellDetail(user, d, user.daily_records?.[d.day])"
                                     :class="[
-                                        'py-1.5 px-0.5 text-center border-r border-subtle/60 transition-all cursor-pointer select-none',
+                                        'py-1 sm:py-1.5 px-0.5 text-center border-r border-subtle/60 transition-all cursor-pointer select-none',
                                         d.is_today ? 'bg-emerald-50/20' : '',
                                         canEditAttendance && !user.daily_records?.[d.day] && !d.is_future ? 'hover:bg-emerald-100/50 dark:hover:bg-emerald-950/40' : ''
                                     ]"
@@ -705,30 +705,30 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 >
                                     <div 
                                         :class="[
-                                            'rounded-lg py-1 px-1 transition-all mx-auto max-w-[56px]',
+                                            'rounded-md sm:rounded-lg py-0.5 sm:py-1 px-0.5 sm:px-1 transition-all mx-auto max-w-[34px] sm:max-w-[56px]',
                                             getCellClass(user.daily_records?.[d.day], d.is_weekend, d.is_future)
                                         ]"
                                     >
                                         <template v-if="user.daily_records?.[d.day]">
                                             <!-- Jam Masuk (Atas) -->
-                                            <div class="text-[10px] font-black font-mono leading-none tracking-tight flex items-center justify-center gap-0.5">
+                                            <div class="text-[8px] sm:text-[10px] font-black font-mono leading-none tracking-tight flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
                                                 <span>{{ user.daily_records[d.day].time_in || '--:--' }}</span>
                                                 <span 
                                                     v-if="hasPermitOrEarlyDeparture(user.daily_records[d.day])" 
-                                                    class="text-[9px] cursor-help inline-block leading-none" 
+                                                    class="text-[7px] sm:text-[9px] cursor-help inline-block leading-none mt-0.5 sm:mt-0" 
                                                     :title="`🚩 ${getPermitTypeLabel(user.daily_records[d.day])}`"
                                                 >🚩</span>
                                             </div>
                                             <!-- Jam Pulang (Bawah) -->
-                                            <div class="text-[9px] font-mono leading-none tracking-tight mt-1 opacity-80 flex items-center justify-center gap-0.5">
+                                            <div class="text-[7px] sm:text-[9px] font-mono leading-none tracking-tight mt-0.5 sm:mt-1 opacity-80 flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
                                                 <span>{{ user.daily_records[d.day].time_out || '--:--' }}</span>
-                                                <span v-if="user.daily_records[d.day].is_overtime" class="text-[8px] text-amber-500 font-black" :title="`Lembur: ${user.daily_records[d.day].overtime_minutes}m`">⚡</span>
+                                                <span v-if="user.daily_records[d.day].is_overtime" class="text-[6px] sm:text-[8px] text-amber-500 font-black mt-0.5 sm:mt-0" :title="`Lembur: ${user.daily_records[d.day].overtime_minutes}m`">⚡</span>
                                             </div>
                                         </template>
                                         <template v-else>
                                             <span 
                                                 :class="[
-                                                    'text-[10px] font-bold block py-1 transition-all',
+                                                    'text-[8px] sm:text-[10px] font-bold block py-1 transition-all',
                                                     canEditAttendance && !d.is_future ? 'text-slate-400 dark:text-slate-500 hover:text-emerald-600 hover:scale-125 font-black' : 'text-slate-300 dark:text-slate-600'
                                                 ]"
                                             >

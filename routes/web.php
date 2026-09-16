@@ -40,6 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/dzikir', [\App\Http\Controllers\DzikirController::class, 'index'])->name('dzikir.index');
     Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qibla.index');
 
+    // Notifikasi / Pesan
+    Route::get('/pesan', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/pesan/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+    Route::post('/pesan/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+
     // Presensi Pegawai
     Route::get('/presensi', [\App\Http\Controllers\AttendanceController::class, 'index'])->name('attendance.index');
     Route::post('/presensi/check-in', [\App\Http\Controllers\AttendanceController::class, 'checkIn'])->name('attendance.check-in');

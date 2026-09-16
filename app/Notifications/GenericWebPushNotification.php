@@ -20,7 +20,7 @@ class GenericWebPushNotification extends Notification
 
     public function via($notifiable): array
     {
-        return [WebPushChannel::class];
+        return ['database', WebPushChannel::class];
     }
 
     public function toWebPush($notifiable, $notification): WebPushMessage
@@ -32,5 +32,15 @@ class GenericWebPushNotification extends Notification
             ->badge('/img/gh.png')
             ->data(['url' => $this->url ?: '/dashboard'])
             ->action('Buka Aplikasi', 'open');
+    }
+
+    public function toArray($notifiable): array
+    {
+        return [
+            'title' => $this->title,
+            'body' => $this->body,
+            'url' => $this->url ?: '/dashboard',
+            'icon' => $this->icon ?: '/img/gh.png',
+        ];
     }
 }

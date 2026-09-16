@@ -1,8 +1,14 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { Link, usePage, router } from '@inertiajs/vue3'
 import { useDarkMode } from '@/Composables/useDarkMode'
 import ThemeSelector from '@/Components/ThemeSelector.vue'
+import dayjs from 'dayjs'
+import 'dayjs/locale/id'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
+dayjs.locale('id')
 
 const props = defineProps({
     user: {
@@ -21,7 +27,28 @@ const page = usePage()
 
 const isDropdownOpen = ref(false)
 const closeDropdown = () => { isDropdownOpen.value = false }
-const toggleDropdown = () => { isDropdownOpen.value = !isDropdownOpen.value }
+const toggleDropdown = () => { 
+    isDropdownOpen.value = !isDropdownOpen.value; 
+    if(isDropdownOpen.value) isNotificationOpen.value = false;
+}
+
+const isNotificationOpen = ref(false)
+const closeNotification = () => { isNotificationOpen.value = false }
+const toggleNotification = () => { 
+    isNotificationOpen.value = !isNotificationOpen.value; 
+    if(isNotificationOpen.value) isDropdownOpen.value = false;
+}
+
+const markAsRead = (id, url) => {
+    router.post(route('notifications.mark-as-read', id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (url) {
+                window.location.href = url
+            }
+        }
+    })
+}
 
 const { isDark, toggle: toggleDark } = useDarkMode()
 
@@ -84,6 +111,85 @@ const userAvatarUrl = computed(() => {
                     <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
             </button>
+
+            <!-- Notification Bell -->
+            <div class="relative">
+                <button
+                    @click="toggleNotification"
+                    class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-primary-100/60 dark:hover:bg-primary-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    <!-- Badge -->
+                    <span 
+                        v-if="$page.props.notifications?.unread_count > 0"
+                        class="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 ring-2 ring-topbar"
+                    ></span>
+                </button>
+
+                <!-- Transparent Backdrop -->
+                <div
+                    v-if="isNotificationOpen"
+                    class="fixed inset-0 z-10"
+                    aria-hidden="true"
+                    @click="closeNotification"
+                />
+
+                <!-- Dropdown Panel -->
+                <Transition
+                    enter-active-class="transition duration-150 ease-out"
+                    enter-from-class="opacity-0 scale-95 translate-y-1"
+                    enter-to-class="opacity-100 scale-100 translate-y-0"
+                    leave-active-class="transition duration-100 ease-in"
+                    leave-from-class="opacity-100 scale-100 translate-y-0"
+                    leave-to-class="opacity-0 scale-95 translate-y-1"
+                >
+                    <div
+                        v-if="isNotificationOpen"
+                        class="absolute right-0 sm:-right-20 top-full mt-2 w-[320px] sm:w-[360px] origin-top-right bg-sidebar rounded-xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
+                    >
+                        <div class="flex items-center justify-between px-4 py-3 bg-card-subtle border-b border-theme">
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Notifikasi</h3>
+                            <Link :href="route('notifications.index')" class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300" @click="closeNotification">Lihat Semua</Link>
+                        </div>
+
+                        <div class="max-h-[340px] overflow-y-auto">
+                            <div v-if="!$page.props.notifications?.latest || $page.props.notifications.latest.length === 0" class="p-6 text-center">
+                                <p class="text-sm text-slate-500 dark:text-slate-400">Belum ada notifikasi baru.</p>
+                            </div>
+                            
+                            <div v-else class="divide-y divide-subtle">
+                                <div 
+                                    v-for="notif in $page.props.notifications.latest" 
+                                    :key="notif.id"
+                                    @click="markAsRead(notif.id, notif.data.url)"
+                                    :class="[
+                                        'p-3 hover:bg-card-subtle transition-colors cursor-pointer group relative',
+                                        notif.read_at === null ? 'bg-primary-50/50 dark:bg-primary-900/20' : ''
+                                    ]"
+                                >
+                                    <div class="flex gap-3">
+                                        <div :class="[
+                                            'w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center border',
+                                            notif.read_at === null ? 'bg-primary-100 border-primary-200 dark:bg-primary-900 dark:border-primary-700' : 'bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700'
+                                        ]">
+                                            <img v-if="notif.data.icon" :src="notif.data.icon" class="w-4 h-4 object-contain" />
+                                            <svg v-else class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <h4 :class="['text-[13px] font-bold truncate pr-3', notif.read_at === null ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300']">{{ notif.data.title || 'Pemberitahuan' }}</h4>
+                                            <p :class="['text-[11px] mt-0.5 line-clamp-2 leading-tight', notif.read_at === null ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-500 dark:text-slate-400']">{{ notif.data.body }}</p>
+                                            <p class="text-[10px] text-slate-400 mt-1 font-medium">{{ dayjs(notif.created_at).fromNow() }}</p>
+                                        </div>
+                                    </div>
+                                    <span v-if="notif.read_at === null" class="absolute top-4 right-3 w-1.5 h-1.5 rounded-full bg-primary-500"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
 
             <!-- User Dropdown -->
             <div class="relative">

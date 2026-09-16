@@ -139,7 +139,22 @@ const featureEnabled = (key) => {
                 >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
                 </svg>
-                <span>Dzikir Pagi &amp; Petang</span>
+                <span>Dzikir Pagi - Petang</span>
+            </Link>
+
+            <!-- Pesan & Notifikasi — Semua Role -->
+            <Link
+                :href="route('notifications.index')"
+                :class="navLinkClass('notifications.index')"
+                @click="closeSidebar"
+            >
+                <svg
+                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('notifications.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span>Pesan &amp; Notifikasi</span>
             </Link>
 
             <!-- Presensi GPS — Semua Role (bisa diakses pegawai & admin) -->
@@ -166,7 +181,7 @@ const featureEnabled = (key) => {
             <template v-if="hasRole('user')">
                 <div class="pt-3 pb-1">
                     <p class="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                        Ibadah Saya
+                        Catatan Ibadahku
                     </p>
                 </div>
                  <Link
@@ -182,7 +197,7 @@ const featureEnabled = (key) => {
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    <span>Presensi</span>
+                    <span>Mobile Presensi</span>
                 </Link>
 
                 <Link
@@ -268,7 +283,7 @@ const featureEnabled = (key) => {
                     >
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    <span>Rekap Presensi</span>
+                    <span>Rekap Presensi </span>
                 </Link>
 
                 <Link
