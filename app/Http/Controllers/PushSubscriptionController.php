@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Notifications\GenericWebPushNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use NotificationChannels\WebPush\PushSubscription;
 
 class PushSubscriptionController extends Controller
@@ -127,5 +129,74 @@ class PushSubscriptionController extends Controller
                 'message' => 'Gagal mengirim push: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Kirim siaran push notification ke pegawai oleh Admin atau Superadmin.
+     */
+    public function sendBroadcast(Request $request)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser || (!$currentUser->isActualSuperadmin() && !$currentUser->hasAnyRole(['admin', 'superadmin']))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya Admin dan Superadmin yang berhak menyiarkan notifikasi push.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'title'    => 'required|string|max:100',
+            'body'     => 'required|string|max:255',
+            'target'   => 'required|in:all,division,user',
+            'division' => 'nullable|string|max:100',
+            'user_id'  => 'nullable|exists:users,id',
+            'url'      => 'nullable|string|max:255',
+        ], [
+            'title.required'  => 'Judul notifikasi wajib diisi.',
+            'body.required'   => 'Isi pesan notifikasi wajib diisi.',
+            'target.required' => 'Pilih target penerima notifikasi.',
+        ]);
+
+        $query = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']));
+
+        if ($validated['target'] === 'division' && !empty($validated['division'])) {
+            $query->where('divisi', $validated['division']);
+        } elseif ($validated['target'] === 'user' && !empty($validated['user_id'])) {
+            $query->where('id', $validated['user_id']);
+        }
+
+        // Ambil target pengguna yang sudah memiliki langganan push aktif
+        $targetUsers = $query->with('pushSubscriptions')->whereHas('pushSubscriptions')->get();
+
+        if ($targetUsers->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ditemukan perangkat terdaftar pada target penerima yang Anda pilih.',
+            ], 422);
+        }
+
+        $title = $validated['title'];
+        $body  = $validated['body'];
+        $url   = !empty($validated['url']) ? $validated['url'] : route('dashboard');
+
+        $successUsers = 0;
+        $totalDevices = 0;
+
+        foreach ($targetUsers as $targetUser) {
+            try {
+                $targetUser->notify(new GenericWebPushNotification($title, $body, $url));
+                $successUsers++;
+                $totalDevices += $targetUser->pushSubscriptions->count();
+            } catch (\Throwable $e) {
+                Log::warning("Gagal mengirim notifikasi push ke user ID {$targetUser->id}: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success'      => true,
+            'sent_users'   => $successUsers,
+            'sent_devices' => $totalDevices,
+            'message'      => "Notifikasi push berhasil disiarkan ke {$successUsers} pegawai ({$totalDevices} perangkat terdaftar).",
+        ]);
     }
 }

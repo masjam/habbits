@@ -52,6 +52,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/push-subscriptions/status', [\App\Http\Controllers\PushSubscriptionController::class, 'status'])->name('push.status');
     Route::get('/push-subscriptions/vapid-public-key', [\App\Http\Controllers\PushSubscriptionController::class, 'vapidPublicKey'])->name('push.vapid-key');
     Route::post('/push-subscriptions/test', [\App\Http\Controllers\PushSubscriptionController::class, 'sendTest'])->name('push.test');
+    Route::post('/push-subscriptions/broadcast', [\App\Http\Controllers\PushSubscriptionController::class, 'sendBroadcast'])->name('push.broadcast')->middleware('role:admin|superadmin');
 
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {

@@ -146,7 +146,7 @@ const featureEnabled = (key) => {
            
 
             <!-- Arah Kiblat (Hanya Mobile) -->
-            <Link
+            <!-- <Link
                 :href="route('qibla.index')"
                 :class="[...navLinkClass('qibla.index'), 'md:hidden']"
                 @click="closeSidebar"
@@ -160,7 +160,7 @@ const featureEnabled = (key) => {
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 12L15 8" />
                 </svg>
                 <span>Arah Kiblat</span>
-            </Link>
+            </Link> -->
 
             <!-- B. Menu Khusus Pegawai (role: user) -->
             <template v-if="hasRole('user')">
@@ -224,7 +224,7 @@ const featureEnabled = (key) => {
                     >
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <span>Jurnal Kajian</span>
+                    <span>Jurnal Kajian & Hadits</span>
                 </Link>
 
                 <Link
@@ -268,7 +268,7 @@ const featureEnabled = (key) => {
                     >
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    <span>Rekap Presensi GPS</span>
+                    <span>Rekap Presensi</span>
                 </Link>
 
                 <Link
@@ -282,7 +282,7 @@ const featureEnabled = (key) => {
                     >
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
-                    <span>Laporan &amp; Leaderboard</span>
+                    <span>Rekap Habits</span>
                 </Link>
 
                 <Link
@@ -317,6 +317,7 @@ const featureEnabled = (key) => {
                     <div class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5">
                         <!-- Submenu Jadwal Piket -->
                         <Link
+                            v-if="featureEnabled('feature_presensi')"
                             :href="route('admin.duty-schedules.index')"
                             :class="[...navLinkClass('admin.duty-schedules.index'), 'text-xs py-2']"
                             @click="closeSidebar"
@@ -373,6 +374,9 @@ const featureEnabled = (key) => {
                         </svg>
                         <span>Fitur HR & Lanjutan</span>
                     </Link>
+                </template>
+
+                <template v-if="hasRole('superadmin')">
                     <Link
                         :href="route('admin.login-logs')"
                         :class="navLinkClass('admin.login-logs')"

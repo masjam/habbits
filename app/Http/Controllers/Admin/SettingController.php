@@ -15,9 +15,16 @@ class SettingController extends Controller
     public function index()
     {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $divisions = \App\Models\Division::orderBy('name')->pluck('name');
+        $employees = \App\Models\User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+            ->select('id', 'name', 'divisi')
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('Admin/Settings/Index', [
-            'settings' => $settings,
+            'settings'  => $settings,
+            'divisions' => $divisions,
+            'employees' => $employees,
         ]);
     }
 
@@ -37,6 +44,7 @@ class SettingController extends Controller
             'settings'        => $settings,
             'photoStats'      => $photoStats,
             'cleaningOptions' => $cleaningOptions,
+            'isSuperAdmin'    => $isSuperAdmin,
         ]);
     }
 
@@ -88,9 +96,11 @@ class SettingController extends Controller
             'popup_text' => 'nullable|string',
             'youtube_link' => 'nullable|string',
             'running_text' => 'nullable|string',
+            'push_notifications_active' => 'boolean',
         ];
 
-        $isSuperAdmin = auth()->user()->isActualSuperadmin() || auth()->user()->hasRole('superadmin');
+        $user = auth()->user();
+        $isSuperAdmin = $user && ($user->isActualSuperadmin() || $user->hasRole('superadmin'));
 
         if ($isSuperAdmin) {
             $rules['feature_presensi'] = 'boolean';
@@ -102,7 +112,6 @@ class SettingController extends Controller
             $rules['presensi_work_end'] = 'nullable|string|max:10';
 
             $rules['gamification_active'] = 'boolean';
-            $rules['push_notifications_active'] = 'boolean';
             $rules['dark_mode_active'] = 'boolean';
             $rules['auto_warning_active'] = 'boolean';
             $rules['custom_habit_divisions_active'] = 'boolean';
