@@ -590,7 +590,7 @@ onUnmounted(() => {
         <div class="max-w-7xl mx-auto space-y-6">
 
             <!-- ── Header Banner Waktu & Status Presensi ──────────────────────── -->
-            <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden">
+            <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl sm:rounded-3xl p-4 sm:p-7 text-white shadow-xl relative overflow-hidden">
                 <!-- Background Pattern Deco -->
                 <div class="absolute -right-6 -bottom-6 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
                 <div class="absolute right-6 top-6 opacity-15">
@@ -600,23 +600,23 @@ onUnmounted(() => {
                     </svg>
                 </div>
 
-                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-5">
                     <div>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold mb-2.5 tracking-wide">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2.5 tracking-wide">
                             <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                            Presensi Berbasis GPS &amp; Waktu
+                            Presensi GPS &amp; Waktu
                         </span>
-                        <h1 class="text-2xl sm:text-3xl font-black tracking-tight">Presensi Kehadiran</h1>
+                        <h1 class="text-xl sm:text-3xl font-black tracking-tight">Presensi Kehadiran</h1>
                         <p class="text-emerald-100 text-xs sm:text-sm mt-0.5">{{ serverDate }}</p>
                     </div>
 
                     <!-- Digital Live Clock Display -->
-                    <div class="bg-black/25 backdrop-blur-md px-6 py-3.5 rounded-2xl border border-white/15 flex flex-col items-center justify-center self-start md:self-auto shadow-inner">
-                        <span class="text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-0.5">Waktu Server (WIB)</span>
+                    <div class="bg-black/25 backdrop-blur-md px-4 py-2 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl border border-white/15 flex flex-col items-center justify-center self-start md:self-auto shadow-inner w-full md:w-auto">
+                        <span class="text-[9px] sm:text-[10px] font-bold text-emerald-200 uppercase tracking-widest mb-0.5">Waktu Server (WIB)</span>
                         <div class="text-3xl sm:text-4xl font-black font-mono tracking-widest text-white leading-none">
                             {{ currentTime }}
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-100 font-medium">
+                        <div class="flex items-center gap-1.5 mt-1 text-[10px] sm:text-[11px] text-emerald-100 font-medium">
                             <span>Jadwal: {{ schedule?.work_start }} - {{ schedule?.work_end }}</span>
                             <span v-if="schedule?.is_piket" class="bg-amber-400 text-amber-950 px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 shadow-xs">
                                 <span>🛡️ PIKET HARI INI</span>
@@ -631,16 +631,16 @@ onUnmounted(() => {
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
                 <!-- ── KOLOM KIRI (7 Kolom): Status Presensi Hari Ini + Rekap 4 Statistik Terpadu ── -->
-                <div class="lg:col-span-7 space-y-6">
-                    <div class="bg-sidebar rounded-3xl p-6 sm:p-7 border border-theme shadow-xs flex flex-col justify-between">
+                <div class="lg:col-span-7 space-y-4 sm:space-y-6">
+                    <div class="bg-sidebar rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-theme shadow-xs flex flex-col justify-between">
                         
                         <!-- Header Status Hari Ini -->
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-subtle gap-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-2 sm:pb-3.5 border-b border-subtle gap-2">
                             <div>
-                                <h2 class="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                <h2 class="text-sm sm:text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                     <span>Status Presensi Hari Ini</span>
                                 </h2>
-                                <p class="text-xs text-slate-400 mt-0.5">
+                                <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5">
                                     Jadwal: {{ schedule?.work_start }} - {{ schedule?.work_end }}
                                     <span v-if="schedule?.is_piket" class="text-amber-600 dark:text-amber-400 font-bold ml-1">({{ schedule?.piket_name || 'Petugas Piket' }})</span>
                                 </p>
@@ -754,63 +754,133 @@ onUnmounted(() => {
 
                         <!-- ── Kondisi B: Presensi Reguler (Masuk & Pulang) ── -->
                         <template v-else>
-                            <!-- Ringkasan Jam Masuk & Pulang -->
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-4">
-                                <!-- Kartu Masuk -->
-                                <div class="p-4 rounded-2xl bg-card-subtle border border-theme/60 flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
-                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Presensi Masuk</p>
-                                            <p class="text-lg font-black text-slate-800 dark:text-slate-100">
-                                                {{ todayAttendance?.time_in ? todayAttendance.time_in.substring(0, 5) : '-- : --' }}
-                                            </p>
-                                        </div>
+                            <!-- Ringkasan Jam Masuk, Pulang, dan Tombol Presensi (3 Kolom) -->
+                            <div class="grid grid-cols-3 gap-1.5 sm:gap-3.5 my-3">
+                                <!-- Kartu Masuk (Kolom 1) -->
+                                <div class="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-card-subtle border border-theme/60 flex flex-col items-center justify-center text-center relative">
+                                    <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-full sm:rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center mb-1.5 sm:mb-2">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                        </svg>
                                     </div>
-                                    <div v-if="todayAttendance?.distance_in !== null && todayAttendance?.distance_in !== undefined" class="text-right">
-                                        <span class="text-[10px] font-semibold text-slate-400">Jarak</span>
-                                        <p class="text-xs font-bold text-emerald-600">{{ todayAttendance.distance_in }}m</p>
+                                    <p class="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Masuk</p>
+                                    <p class="text-sm sm:text-lg font-black text-slate-800 dark:text-slate-100 leading-none mb-1">
+                                        {{ todayAttendance?.time_in ? todayAttendance.time_in.substring(0, 5) : '--:--' }}
+                                    </p>
+                                    <div v-if="todayAttendance?.distance_in !== null && todayAttendance?.distance_in !== undefined" class="text-[9px] sm:text-xs font-bold text-emerald-600">
+                                        {{ todayAttendance.distance_in }}m
                                     </div>
                                 </div>
 
-                                <!-- Kartu Pulang -->
-                                <div class="p-4 rounded-2xl bg-card-subtle border border-theme/60 flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-600 flex items-center justify-center">
-                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Presensi Pulang</p>
-                                            <div class="flex items-center gap-1.5 flex-wrap">
-                                                <p class="text-lg font-black text-slate-800 dark:text-slate-100">
-                                                    {{ todayAttendance?.time_out ? todayAttendance.time_out.substring(0, 5) : '-- : --' }}
-                                                </p>
-                                                <span v-if="todayAttendance?.is_early_departure" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200">
-                                                    Pulang Cepat
-                                                </span>
-                                                <span v-else-if="todayAttendance?.is_overtime" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                                                    ⚡ Lembur {{ todayAttendance.overtime_minutes }}m
-                                                </span>
-                                            </div>
-                                            <p v-if="todayAttendance?.is_early_departure && todayAttendance?.early_departure_reason" class="text-[10px] text-purple-600 dark:text-purple-400 font-medium italic mt-0.5 truncate max-w-[180px]" :title="todayAttendance.early_departure_reason">
-                                                "{{ todayAttendance.early_departure_reason }}"
-                                            </p>
-                                            <p v-else-if="todayAttendance?.is_overtime && todayAttendance?.overtime_activity" class="text-[10px] text-amber-600 dark:text-amber-400 font-medium italic mt-0.5 truncate max-w-[180px]" :title="todayAttendance.overtime_activity">
-                                                "{{ todayAttendance.overtime_activity }}"
-                                            </p>
-                                        </div>
+                                <!-- Kartu Pulang (Kolom 2) -->
+                                <div class="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-card-subtle border border-theme/60 flex flex-col items-center justify-center text-center relative">
+                                    <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-full sm:rounded-xl bg-rose-500/15 text-rose-600 flex items-center justify-center mb-1.5 sm:mb-2">
+                                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
                                     </div>
-                                    <div v-if="todayAttendance?.distance_out !== null && todayAttendance?.distance_out !== undefined" class="text-right">
-                                        <span class="text-[10px] font-semibold text-slate-400">Jarak</span>
-                                        <p class="text-xs font-bold text-rose-600">{{ todayAttendance.distance_out }}m</p>
+                                    <p class="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Pulang</p>
+                                    <p class="text-sm sm:text-lg font-black text-slate-800 dark:text-slate-100 leading-none mb-1">
+                                        {{ todayAttendance?.time_out ? todayAttendance.time_out.substring(0, 5) : '--:--' }}
+                                    </p>
+                                    <div v-if="todayAttendance?.distance_out !== null && todayAttendance?.distance_out !== undefined" class="text-[9px] sm:text-xs font-bold text-rose-600">
+                                        {{ todayAttendance.distance_out }}m
+                                    </div>
+                                    <div v-if="todayAttendance?.is_early_departure" class="px-1.5 py-0.5 mt-0.5 rounded text-[8px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200">
+                                        Awal
+                                    </div>
+                                    <div v-else-if="todayAttendance?.is_overtime" class="px-1.5 py-0.5 mt-0.5 rounded text-[8px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                                        Lembur
                                     </div>
                                 </div>
+
+                                <!-- Kolom 3: Tombol Presensi -->
+                                <div class="flex flex-col h-full">
+                                    <template v-if="!todayAttendance || !todayAttendance.time_in">
+                                        <button
+                                            v-if="isInsideRadius"
+                                            type="button"
+                                            @click="handleCheckInDirect"
+                                            :disabled="checkInForm.processing || isGpsLoading"
+                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center"
+                                        >
+                                            <svg v-if="checkInForm.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            <svg v-else class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span>ABSEN MASUK</span>
+                                        </button>
+                                        <button
+                                            v-else
+                                            type="button"
+                                            @click="openCameraModal('checkin')"
+                                            :disabled="isGpsLoading"
+                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center"
+                                        >
+                                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            <span>FOTO MASUK</span>
+                                        </button>
+                                    </template>
+                                    <template v-else-if="!todayAttendance.time_out">
+                                        <button
+                                            v-if="isInsideRadius"
+                                            type="button"
+                                            @click="handleCheckOutDirect"
+                                            :disabled="checkOutForm.processing || isGpsLoading"
+                                            :class="[
+                                                'h-full w-full rounded-xl sm:rounded-2xl text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center',
+                                                isBeforeWorkEnd ? 'bg-purple-600 hover:bg-purple-700' : 'bg-rose-600 hover:bg-rose-700'
+                                            ]"
+                                        >
+                                            <svg v-if="checkOutForm.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            <svg v-else class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                            </svg>
+                                            <span v-if="isBeforeWorkEnd">IJIN PULANG</span>
+                                            <span v-else>ABSEN PULANG</span>
+                                        </button>
+                                        <button
+                                            v-else
+                                            type="button"
+                                            @click="openCameraModal('checkout')"
+                                            :disabled="isGpsLoading"
+                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center"
+                                        >
+                                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            <span v-if="isBeforeWorkEnd">FOTO IJIN</span>
+                                            <span v-else>FOTO PULANG</span>
+                                        </button>
+                                    </template>
+                                    <div v-else class="h-full w-full rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-[10px] sm:text-sm flex flex-col items-center justify-center p-2 text-center gap-1.5">
+                                        <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>SELESAI</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tombol Izin (Hanya Jika Belum Presensi Sama Sekali) -->
+                            <div v-if="!todayAttendance || !todayAttendance.time_in" class="mb-3">
+                                <button
+                                    type="button"
+                                    @click="openPermitModal('izin')"
+                                    class="w-full py-2.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-bold text-[10px] sm:text-xs hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <span>📋 Berhalangan hadir? Klik untuk ajukan Izin/Sakit</span>
+                                </button>
                             </div>
 
                             <!-- Alert Pulang Mendahului Status (Jika ada) -->
@@ -833,122 +903,28 @@ onUnmounted(() => {
                             </div>
                         </template>
 
-                        <!-- Tombol Aksi Dinamis Sesuai Tahapan (Hanya jika bukan izin/sakit) -->
-                        <template v-if="!todayAttendance || !['izin', 'sakit'].includes(todayAttendance.status)">
-                            <!-- 1. Belum Masuk -->
-                            <div v-if="!todayAttendance || !todayAttendance.time_in" class="space-y-2 mb-4">
-                                <button
-                                    v-if="isInsideRadius"
-                                    type="button"
-                                    @click="handleCheckInDirect"
-                                    :disabled="checkInForm.processing || isGpsLoading"
-                                    class="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base shadow-md hover:shadow-emerald-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                                >
-                                    <svg v-if="checkInForm.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                    <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span>PRESENSI MASUK SEKARANG</span>
-                                </button>
-
-                                <div v-else class="space-y-1.5">
-                                    <button
-                                        type="button"
-                                        @click="openCameraModal('checkin')"
-                                        :disabled="isGpsLoading"
-                                        class="w-full py-3.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-sm sm:text-base shadow-md hover:shadow-amber-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                                    >
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        <span>PRESENSI DINAS LUAR (FOTO SELFIE)</span>
-                                    </button>
-                                    <p class="text-[11px] text-center text-slate-400">Posisi di luar area sekolah, sistem mewajibkan verifikasi foto selfie &amp; catatan.</p>
-                                </div>
-
-                                <!-- Tombol Alternatif: Berhalangan / Izin -->
-                                <button
-                                    type="button"
-                                    @click="openPermitModal('izin')"
-                                    class="w-full py-2.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                    <span>📋 Berhalangan hadir hari ini? Klik untuk ajukan Izin atau Sakit</span>
-                                </button>
-                            </div>
-
-                            <!-- 2. Sudah Masuk, Belum Pulang -->
-                            <div v-else-if="!todayAttendance.time_out" class="space-y-2 mb-4">
-                                <button
-                                    v-if="isInsideRadius"
-                                    type="button"
-                                    @click="handleCheckOutDirect"
-                                    :disabled="checkOutForm.processing || isGpsLoading"
-                                    :class="[
-                                        'w-full py-3.5 rounded-2xl text-white font-black text-sm sm:text-base shadow-md active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50',
-                                        isBeforeWorkEnd ? 'bg-purple-600 hover:bg-purple-700 hover:shadow-purple-500/20' : 'bg-rose-600 hover:bg-rose-700 hover:shadow-rose-500/20'
-                                    ]"
-                                >
-                                    <svg v-if="checkOutForm.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                    <svg v-else class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                    </svg>
-                                    <span v-if="isBeforeWorkEnd">PRESENSI PULANG (IJIN PULANG MENDAHULUI)</span>
-                                    <span v-else>PRESENSI PULANG SEKARANG</span>
-                                </button>
-
-                                <button
-                                    v-else
-                                    type="button"
-                                    @click="openCameraModal('checkout')"
-                                    :disabled="isGpsLoading"
-                                    class="w-full py-3.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-sm sm:text-base shadow-md hover:shadow-amber-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                                >
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span v-if="isBeforeWorkEnd">PULANG MENDAHULUI DI LUAR AREA (FOTO SELFIE)</span>
-                                    <span v-else>PRESENSI PULANG DI LUAR AREA (FOTO SELFIE)</span>
-                                </button>
-                            </div>
-
-                            <!-- 3. Sudah Selesai Lengkap -->
-                            <div v-else class="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center mb-4">
-                                <p class="text-emerald-800 dark:text-emerald-200 font-bold text-xs sm:text-sm">
-                                    🎉 Alhamdulillah, presensi hari ini telah lengkap (Masuk &amp; Pulang).
-                                </p>
-                            </div>
-                        </template>
-
                         <!-- ── Rekap Akumulasi Bulanan (Disatukan di Card Ini) ── -->
-                        <div class="pt-4 border-t border-subtle">
+                        <div class="pt-3 border-t border-subtle">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Rekap Kehadiran Bulan Ini</span>
-                                <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">{{ selectedMonth }}</span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rekap Bulan Ini</span>
+                                <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">{{ selectedMonth }}</span>
                             </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                                <div class="p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Tepat Waktu</p>
-                                    <p class="text-lg font-black text-emerald-600 mt-0.5">{{ stats?.total_hadir || 0 }}</p>
+                            <div class="grid grid-cols-4 gap-1.5 sm:gap-2.5">
+                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
+                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Tepat<br class="sm:hidden" /> Waktu</p>
+                                    <p class="text-sm sm:text-lg font-black text-emerald-600 leading-none">{{ stats?.total_hadir || 0 }}</p>
                                 </div>
-                                <div class="p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Terlambat</p>
-                                    <p class="text-lg font-black text-amber-600 mt-0.5">{{ stats?.total_terlambat || 0 }}</p>
+                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
+                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5"><span class="sm:hidden">Telat</span><span class="hidden sm:inline">Terlambat</span></p>
+                                    <p class="text-sm sm:text-lg font-black text-amber-600 leading-none">{{ stats?.total_terlambat || 0 }}</p>
                                 </div>
-                                <div class="p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Dinas Luar</p>
-                                    <p class="text-lg font-black text-blue-600 mt-0.5">{{ stats?.total_dinas_luar || 0 }}</p>
+                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
+                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Dinas<br class="sm:hidden" /> Luar</p>
+                                    <p class="text-sm sm:text-lg font-black text-blue-600 leading-none">{{ stats?.total_dinas_luar || 0 }}</p>
                                 </div>
-                                <div class="p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Izin / Sakit</p>
-                                    <p class="text-lg font-black text-purple-600 mt-0.5">{{ stats?.total_izin_sakit || 0 }}</p>
+                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
+                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Izin /<br class="sm:hidden" /> Sakit</p>
+                                    <p class="text-sm sm:text-lg font-black text-purple-600 leading-none">{{ stats?.total_izin_sakit || 0 }}</p>
                                 </div>
                             </div>
                         </div>
