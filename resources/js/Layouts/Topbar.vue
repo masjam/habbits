@@ -147,7 +147,7 @@ const userAvatarUrl = computed(() => {
                 >
                     <div
                         v-if="isNotificationOpen"
-                        class="absolute right-0 sm:-right-20 top-full mt-2 w-[320px] sm:w-[360px] origin-top-right bg-sidebar rounded-xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
+                        class="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-auto sm:-right-16 sm:top-full sm:mt-2 sm:w-[360px] origin-top sm:origin-top-right bg-sidebar rounded-xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
                     >
                         <div class="flex items-center justify-between px-4 py-3 bg-card-subtle border-b border-theme">
                             <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Notifikasi</h3>
