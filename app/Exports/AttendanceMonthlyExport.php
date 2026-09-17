@@ -46,7 +46,8 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
             $headers[] = 'Tgl ' . $d;
         }
 
-        $headers[] = 'Tepat Waktu';
+        $headers[] = 'Ontime Reward';
+        $headers[] = 'Tepat Waktu ';
         $headers[] = 'Terlambat';
         $headers[] = 'Dinas Luar';
         $headers[] = 'Pulang Cepat';
@@ -86,6 +87,7 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
         }
 
         // Ringkasan
+        $data[] = $row['total_pure_ontime'] ?? 0;
         $data[] = $row['total_hadir'];
         $data[] = $row['total_terlambat'];
         $data[] = $row['total_dinas_luar'];
@@ -106,7 +108,7 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(11)->getColor()->setRGB('4B5563');
 
-                $lastColumnIndex = 5 + $this->daysInMonth + 6;
+                $lastColumnIndex = 5 + $this->daysInMonth + 7;
                 $lastColumnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastColumnIndex);
 
                 // Style Header Tabel (Baris 4)
