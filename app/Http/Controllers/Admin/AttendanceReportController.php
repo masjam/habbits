@@ -114,6 +114,7 @@ class AttendanceReportController extends Controller
             $terlambatCount = 0;
             $dinasLuarCount = 0;
             $pulangCepatCount = 0;
+            $pureOntimeCount = 0;
 
             $dailyRecords = [];
             for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -136,6 +137,16 @@ class AttendanceReportController extends Controller
                             $pulangCepatCount++;
                         }
                     }
+                    
+                    $isPureOntime = false;
+                    if ($att->status === 'hadir' && $att->time_in && !empty($daySchedule['work_start'])) {
+                        $inTime = substr($att->time_in, 0, 5);
+                        $startTime = substr($daySchedule['work_start'], 0, 5);
+                        if ($inTime <= $startTime) {
+                            $isPureOntime = true;
+                            $pureOntimeCount++;
+                        }
+                    }
 
                     $dailyRecords[$d] = [
                         'id'                     => $att->id,
@@ -144,6 +155,7 @@ class AttendanceReportController extends Controller
                         'time_out'               => $att->time_out ? substr($att->time_out, 0, 5) : null,
                         'status'                 => $att->status,
                         'is_pulang_cepat'        => $isPulangCepat,
+                        'is_pure_ontime'         => $isPureOntime,
                         'is_early_departure'     => (bool) ($att->is_early_departure || $isPulangCepat),
                         'early_departure_reason' => $att->early_departure_reason,
                         'approval_status'        => $att->approval_status ?? 'approved',
@@ -183,6 +195,7 @@ class AttendanceReportController extends Controller
                 'total_terlambat'    => $terlambatCount,
                 'total_dinas_luar'   => $dinasLuarCount,
                 'total_pulang_cepat' => $pulangCepatCount,
+                'total_pure_ontime'  => $pureOntimeCount,
                 'total_kehadiran'    => $totalKehadiran,
                 'total_belum_hadir'  => $belumHadirCount,
                 'total_hari_kerja'   => $effectiveWorkdays,
@@ -205,6 +218,15 @@ class AttendanceReportController extends Controller
                     $isPulangCepat = true;
                 }
             }
+            
+            $isPureOntime = false;
+            if ($att?->status === 'hadir' && $att?->time_in && !empty($schedule['work_start'])) {
+                $inTime = substr($att->time_in, 0, 5);
+                $startTime = substr($schedule['work_start'], 0, 5);
+                if ($inTime <= $startTime) {
+                    $isPureOntime = true;
+                }
+            }
 
             return [
                 'user_id'                => $u->id,
@@ -224,6 +246,7 @@ class AttendanceReportController extends Controller
                 'distance_out'           => $att?->distance_out,
                 'status'                 => $att ? $att->status : 'belum_hadir',
                 'is_pulang_cepat'        => $isPulangCepat,
+                'is_pure_ontime'         => $isPureOntime,
                 'is_early_departure'     => (bool) ($att?->is_early_departure || $isPulangCepat),
                 'early_departure_reason' => $att?->early_departure_reason,
                 'approval_status'        => $att?->approval_status ?? 'approved',
@@ -380,6 +403,44 @@ class AttendanceReportController extends Controller
             );
         }
 
+        if ($type === 'tugas_luar') {
+            $monthCarbon = Carbon::parse($currentMonth . '-01');
+            $startOfMonth = $monthCarbon->copy()->startOfMonth()->format('Y-m-d');
+            $endOfMonth = $monthCarbon->copy()->endOfMonth()->format('Y-m-d');
+
+            $attendances = Attendance::with('user')
+                ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                ->where('status', 'dinas_luar')
+                ->whereIn('user_id', $allUsers->pluck('id'))
+                ->orderBy('date')
+                ->get();
+
+            $reportData = collect();
+            foreach ($attendances as $att) {
+                $user = $att->user;
+                if (!$user) continue;
+
+                $reportData->push([
+                    'name' => $user->name,
+                    'divisi' => $user->divisi,
+                    'date_formatted' => Carbon::parse($att->date)->locale('id')->isoFormat('dddd, D MMMM Y'),
+                    'time_in' => $att->time_in ? substr($att->time_in, 0, 5) : null,
+                    'koordinat_in' => ($att->lat_in && $att->lng_in) ? '=HYPERLINK("https://maps.google.com/?q=' . $att->lat_in . ',' . $att->lng_in . '", "Lihat Peta")' : '-',
+                    'time_out' => $att->time_out ? substr($att->time_out, 0, 5) : null,
+                    'koordinat_out' => ($att->lat_out && $att->lng_out) ? '=HYPERLINK("https://maps.google.com/?q=' . $att->lat_out . ',' . $att->lng_out . '", "Lihat Peta")' : '-',
+                    'notes' => $att->notes ?: '-',
+                ]);
+            }
+
+            $formattedMonth = $monthCarbon->locale('id')->isoFormat('MMMM Y');
+            $fileName = "Rekap_Tugas_Luar_{$currentMonth}.xlsx";
+
+            return Excel::download(
+                new \App\Exports\AttendanceTugasLuarExport($reportData, $formattedMonth),
+                $fileName
+            );
+        }
+
         // Mode Rekap Bulanan Matriks (Default)
         $monthCarbon = Carbon::parse($currentMonth . '-01');
         $startOfMonth = $monthCarbon->copy()->startOfMonth()->format('Y-m-d');
@@ -411,6 +472,7 @@ class AttendanceReportController extends Controller
             $terlambatCount = 0;
             $dinasLuarCount = 0;
             $pulangCepatCount = 0;
+            $pureOntimeCount = 0;
 
             $dailyRecords = [];
             for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -432,12 +494,23 @@ class AttendanceReportController extends Controller
                             $pulangCepatCount++;
                         }
                     }
+                    
+                    $isPureOntime = false;
+                    if ($att->status === 'hadir' && $att->time_in && !empty($daySchedule['work_start'])) {
+                        $inTime = substr($att->time_in, 0, 5);
+                        $startTime = substr($daySchedule['work_start'], 0, 5);
+                        if ($inTime <= $startTime) {
+                            $isPureOntime = true;
+                            $pureOntimeCount++;
+                        }
+                    }
 
                     $dailyRecords[$d] = [
                         'time_in'         => $att->time_in ? substr($att->time_in, 0, 5) : null,
                         'time_out'        => $att->time_out ? substr($att->time_out, 0, 5) : null,
                         'status'          => $att->status,
                         'is_pulang_cepat' => $isPulangCepat,
+                        'is_pure_ontime'  => $isPureOntime,
                     ];
                 } else {
                     $dailyRecords[$d] = null;
@@ -456,6 +529,7 @@ class AttendanceReportController extends Controller
                 'total_terlambat'    => $terlambatCount,
                 'total_dinas_luar'   => $dinasLuarCount,
                 'total_pulang_cepat' => $pulangCepatCount,
+                'total_pure_ontime'  => $pureOntimeCount,
                 'total_kehadiran'    => $totalKehadiran,
                 'total_hari_kerja'   => $effectiveWorkdays,
                 'attendance_rate'    => min(100, $rate),

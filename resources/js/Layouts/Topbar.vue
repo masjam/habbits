@@ -76,7 +76,7 @@ const userAvatarUrl = computed(() => {
         <!-- Left: Hamburger (mobile only) -->
         <div class="flex items-center gap-3">
             <button
-                class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-primary-100/60 dark:hover:bg-primary-900/30 active:bg-primary-100 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-primary-100/60 dark:hover:bg-primary-900/30 active:bg-primary-100 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
                 aria-label="Toggle menu"
                 @click="emit('toggleSidebar')"
             >

@@ -194,6 +194,8 @@ class AttendanceController extends Controller
             'is_overtime'            => 'nullable|boolean',
             'overtime_activity'      => 'nullable|string|max:1000',
             'early_departure_reason' => 'nullable|string|max:1000',
+            'is_dinas_luar'          => 'nullable|boolean',
+            'dinas_luar_notes'       => 'nullable|string|max:1000',
         ]);
 
         $settings = Setting::all()->pluck('value', 'key')->toArray();
@@ -228,7 +230,17 @@ class AttendanceController extends Controller
         $approvalStatus = $attendance->approval_status ?? 'approved';
         $approvalType = $attendance->approval_type ?? 'none';
 
-        if (!empty($schedule['work_end'])) {
+        $status = $attendance->status;
+        $notes = $attendance->notes;
+
+        $isDinasLuar = $request->boolean('is_dinas_luar') && $distance > $officeRadius;
+        if ($isDinasLuar) {
+            $status = 'dinas_luar';
+            $newNote = "Tugas Luar (Pulang): " . $request->input('dinas_luar_notes');
+            $notes = $notes ? $notes . ' | ' . $newNote : $newNote;
+        }
+
+        if (!empty($schedule['work_end']) && !$isDinasLuar) {
             $workEndTime = Carbon::parse($today . ' ' . $schedule['work_end']);
             
             // 1. Cek jika pulang lebih cepat dari jadwal kerja seharusnya (Ijin Pulang Mendahului)
@@ -260,6 +272,8 @@ class AttendanceController extends Controller
             'lng_out'                => $request->longitude,
             'distance_out'           => $distance,
             'photo_out'              => $photoPath,
+            'status'                 => $status,
+            'notes'                  => $notes,
             'is_overtime'            => $isOvertime,
             'overtime_minutes'       => $overtimeMinutes,
             'overtime_activity'      => $overtimeActivity,
@@ -270,7 +284,9 @@ class AttendanceController extends Controller
         ]);
 
         $msg = "Presensi pulang berhasil dicatat pada " . $now->format('H:i');
-        if ($isEarlyDeparture) {
+        if ($isDinasLuar) {
+            $msg .= " (Tercatat sebagai Tugas Luar).";
+        } elseif ($isEarlyDeparture) {
             $msg .= " (Izin pulang mendahului tercatat dan menunggu persetujuan).";
         } elseif ($isOvertime) {
             $msg .= " (Lembur {$overtimeMinutes} menit).";

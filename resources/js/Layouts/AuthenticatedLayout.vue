@@ -18,7 +18,7 @@ const user    = computed(() => page.props.auth?.user ?? {})
 const roles   = computed(() => page.props.auth?.roles ?? [])
 
 // ─── UI State ───────────────────────────────────────────────────────────────
-const isSidebarOpen  = ref(false)
+const isSidebarOpen  = ref(true) // Default to open on desktop
 const closeSidebar  = () => { isSidebarOpen.value  = false }
 const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value }
 
@@ -67,6 +67,9 @@ const dismissPushBanner = () => {
 }
 
 onMounted(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        isSidebarOpen.value = false
+    }
     listenInstallPrompt()
     listenNetworkStatus()
 })

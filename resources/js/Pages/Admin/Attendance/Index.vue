@@ -162,6 +162,16 @@ const exportExcel = () => {
     window.location.href = `${route('admin.attendance.export')}?${params.toString()}`
 }
 
+// Ekspor laporan Tugas Luar khusus
+const exportTugasLuar = () => {
+    const params = new URLSearchParams({
+        type: 'tugas_luar',
+        month: selectedMonth.value,
+        division: selectedDivision.value,
+    })
+    window.location.href = `${route('admin.attendance.export')}?${params.toString()}`
+}
+
 // ─── HELPER CEK PENGAJUAN IZIN / PULANG CEPAT ───────────────────────────────
 const hasPermitOrEarlyDeparture = (record) => {
     if (!record) return false
@@ -365,6 +375,20 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         <span>⚙️ Pengaturan Default &amp; Cleansing</span>
                     </Link>
 
+                    <!-- Tombol Ekspor Tugas Luar -->
+                    <button
+                        type="button"
+                        @click="exportTugasLuar"
+                        v-if="activeTab === 'monthly'"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black shadow-md hover:shadow-sky-600/20 active:scale-95 transition-all cursor-pointer"
+                        title="Ekspor Laporan Tugas Luar (.xlsx)"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span class="hidden sm:inline">Ekspor Tugas Luar</span>
+                    </button>
+
                     <!-- Tombol Ekspor Excel -->
                     <button
                         type="button"
@@ -375,7 +399,8 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <span>Ekspor Excel (.xlsx)</span>
+                        <span class="hidden sm:inline">Ekspor Excel (.xlsx)</span>
+                        <span class="sm:hidden">Excel</span>
                     </button>
                 </div>
             </div>
@@ -626,6 +651,9 @@ const getCellClass = (record, isWeekend, isFuture) => {
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800">
                             <span class="w-1.5 h-1.5 rounded-full bg-purple-500" /> Pulang Mendahului
                         </span>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-yellow-50 text-yellow-800 border border-yellow-200 dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800" title="Tidak menggunakan toleransi keterlambatan">
+                            <span>⭐</span> Tepat Waktu Murni
+                        </span>
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-400" /> Weekend / Libur
                         </span>
@@ -664,6 +692,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 </th>
 
                                 <!-- Kolom Ringkasan Akumulasi di Kanan -->
+                                <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-yellow-600 border-r border-subtle/70" title="Tepat Waktu Murni">⭐</th>
                                 <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-emerald-600 border-r border-subtle/70" title="Tepat Waktu">H</th>
                                 <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-amber-600 border-r border-subtle/70" title="Terlambat">T</th>
                                 <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-blue-600 border-r border-subtle/70" title="Tugas Luar">DL</th>
@@ -718,6 +747,11 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                                     class="text-[7px] sm:text-[9px] cursor-help inline-block leading-none mt-0.5 sm:mt-0" 
                                                     :title="`🚩 ${getPermitTypeLabel(user.daily_records[d.day])}`"
                                                 >🚩</span>
+                                                <span 
+                                                    v-if="user.daily_records[d.day].is_pure_ontime" 
+                                                    class="text-[7px] sm:text-[9px] cursor-help inline-block leading-none mt-0.5 sm:mt-0 text-yellow-500" 
+                                                    title="⭐ Tepat Waktu Murni (Tanpa Toleransi)"
+                                                >⭐</span>
                                             </div>
                                             <!-- Jam Pulang (Bawah) -->
                                             <div class="text-[7px] sm:text-[9px] font-mono leading-none tracking-tight mt-0.5 sm:mt-1 opacity-80 flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
@@ -739,6 +773,9 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 </td>
 
                                 <!-- Ringkasan Hitungan Sebulan -->
+                                <td class="py-2.5 px-2.5 text-center font-bold text-yellow-600 border-r border-subtle/60 text-xs">
+                                    {{ user.total_pure_ontime || 0 }}
+                                </td>
                                 <td class="py-2.5 px-2.5 text-center font-bold text-emerald-600 border-r border-subtle/60 text-xs">
                                     {{ user.total_hadir }}
                                 </td>
@@ -920,8 +957,15 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 <!-- Jam Masuk -->
                                 <td class="py-3.5 px-3 font-mono">
                                     <template v-if="item.time_in">
-                                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ item.time_in }}</span>
-                                        <span v-if="item.distance_in !== null" class="block text-[10px] text-slate-400">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ item.time_in }}</span>
+                                            <span 
+                                                v-if="item.is_pure_ontime" 
+                                                class="text-[10px] cursor-help inline-block leading-none text-yellow-500" 
+                                                title="⭐ Tepat Waktu Murni (Tanpa Toleransi)"
+                                            >⭐</span>
+                                        </div>
+                                        <span v-if="item.distance_in !== null" class="block text-[10px] text-slate-400 mt-0.5">
                                             📍 {{ item.distance_in }}m
                                         </span>
                                     </template>
@@ -1239,7 +1283,18 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                             class="w-full text-sm font-mono font-bold rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
                                         />
                                     </div>
-                                    <span v-if="selectedDetailModal.record?.distance_in != null" class="block text-[10px] text-emerald-600 mt-1 font-semibold">
+                                    <a 
+                                        v-if="selectedDetailModal.record?.distance_in != null && selectedDetailModal.record?.lat_in && selectedDetailModal.record?.lng_in" 
+                                        :href="`https://maps.google.com/?q=${selectedDetailModal.record.lat_in},${selectedDetailModal.record.lng_in}`"
+                                        target="_blank"
+                                        class="inline-block text-[10px] text-emerald-600 mt-1 font-semibold hover:underline"
+                                    >
+                                        📍 Masuk: {{ selectedDetailModal.record?.distance_in }}m (Lihat Peta)
+                                    </a>
+                                    <span 
+                                        v-else-if="selectedDetailModal.record?.distance_in != null" 
+                                        class="block text-[10px] text-emerald-600 mt-1 font-semibold"
+                                    >
                                         📍 Masuk: {{ selectedDetailModal.record?.distance_in }}m
                                     </span>
                                     <p v-if="editForm.errors.time_in" class="text-[10px] text-rose-500 mt-0.5">{{ editForm.errors.time_in }}</p>
@@ -1256,7 +1311,18 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                             class="w-full text-sm font-mono font-bold rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
                                         />
                                     </div>
-                                    <span v-if="selectedDetailModal.record?.distance_out != null" class="block text-[10px] text-rose-600 mt-1 font-semibold">
+                                    <a 
+                                        v-if="selectedDetailModal.record?.distance_out != null && selectedDetailModal.record?.lat_out && selectedDetailModal.record?.lng_out" 
+                                        :href="`https://maps.google.com/?q=${selectedDetailModal.record.lat_out},${selectedDetailModal.record.lng_out}`"
+                                        target="_blank"
+                                        class="inline-block text-[10px] text-rose-600 mt-1 font-semibold hover:underline"
+                                    >
+                                        📍 Pulang: {{ selectedDetailModal.record?.distance_out }}m (Lihat Peta)
+                                    </a>
+                                    <span 
+                                        v-else-if="selectedDetailModal.record?.distance_out != null" 
+                                        class="block text-[10px] text-rose-600 mt-1 font-semibold"
+                                    >
                                         📍 Pulang: {{ selectedDetailModal.record?.distance_out }}m
                                     </span>
                                     <p v-if="editForm.errors.time_out" class="text-[10px] text-rose-500 mt-0.5">{{ editForm.errors.time_out }}</p>

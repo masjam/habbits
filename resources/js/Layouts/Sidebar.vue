@@ -76,9 +76,9 @@ const featureEnabled = (key) => {
             'fixed inset-y-0 left-0 z-40 flex w-64 flex-col',
             'bg-sidebar shadow-xs',
             'border-r border-theme',
-            'transition-transform duration-300 ease-in-out',
-            isOpen ? 'translate-x-0' : '-translate-x-full',
-            'md:relative md:z-auto md:flex-shrink-0 md:translate-x-0',
+            'transition-all duration-300 ease-in-out',
+            isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:-ml-64',
+            'md:relative md:z-auto md:flex-shrink-0',
         ]"
     >
         <!-- ── Sidebar Header / Brand ─────────────────────────── -->

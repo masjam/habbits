@@ -394,6 +394,8 @@ const checkOutForm = useForm({
     is_overtime: false,
     overtime_activity: '',
     early_departure_reason: '',
+    is_dinas_luar: false,
+    dinas_luar_notes: '',
 })
 
 // ─── Pengajuan Izin / Sakit Pegawai ─────────────────────────────────────────
@@ -502,6 +504,12 @@ const initiateCheckOut = (photo = null) => {
 
     pendingCheckoutPhoto.value = photo
 
+    // Jika pegawai menandai sedang tugas luar, lewati validasi izin pulang awal/lembur
+    if (checkOutForm.is_dinas_luar) {
+        submitFinalCheckOut()
+        return
+    }
+
     // 1. Jika pulang lebih awal dari jadwal seharusnya (Izin Pulang Mendahului)
     if (isBeforeWorkEnd.value) {
         checkOutForm.early_departure_reason = ''
@@ -554,6 +562,10 @@ const handleCheckOutDirect = () => {
 const handleCheckOutWithFace = () => {
     if (!capturedPhoto.value) {
         alert('Silakan ambil foto selfie terlebih dahulu.')
+        return
+    }
+    if (checkOutForm.is_dinas_luar && !checkOutForm.dinas_luar_notes.trim()) {
+        alert('Mohon isi keterangan tugas luar.')
         return
     }
     initiateCheckOut(capturedPhoto.value)
@@ -1235,6 +1247,25 @@ onUnmounted(() => {
                         />
                     </div>
 
+                    <!-- Pulang Tugas Luar (jika checkout di luar area) -->
+                    <div v-if="actionType === 'checkout' && !isInsideRadius" class="space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            <input
+                                type="checkbox"
+                                v-model="checkOutForm.is_dinas_luar"
+                                class="rounded border-theme text-emerald-600 focus:ring-emerald-500 bg-card-subtle w-4 h-4 cursor-pointer"
+                            />
+                            Saya pulang dari Tugas Luar (Dinas Luar)
+                        </label>
+                        <textarea
+                            v-if="checkOutForm.is_dinas_luar"
+                            v-model="checkOutForm.dinas_luar_notes"
+                            rows="2"
+                            placeholder="Contoh: Pulang setelah kunjungan ke Dinas Pendidikan..."
+                            class="w-full text-xs rounded-xl border border-theme bg-card-subtle p-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 mt-2"
+                        />
+                    </div>
+
                     <!-- Tombol Ambil Foto / Ulangi -->
                     <div class="flex items-center gap-2">
                         <button
@@ -1262,7 +1293,7 @@ onUnmounted(() => {
                             <button
                                 type="button"
                                 @click="actionType === 'checkin' ? handleCheckInWithFace() : handleCheckOutWithFace()"
-                                :disabled="checkInForm.processing || checkOutForm.processing || (actionType === 'checkin' && !checkInForm.notes)"
+                                :disabled="checkInForm.processing || checkOutForm.processing || (actionType === 'checkin' && !checkInForm.notes) || (actionType === 'checkout' && checkOutForm.is_dinas_luar && !checkOutForm.dinas_luar_notes)"
                                 class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                             >
                                 <span>KIRIM PRESENSI</span>
