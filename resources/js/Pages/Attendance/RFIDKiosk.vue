@@ -229,7 +229,7 @@ const handleScan = async () => {
                              <div class="flex flex-col items-center group relative cursor-default">
                                  <div class="absolute -inset-4 bg-emerald-500/10 rounded-[3rem] animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                                  <div class="relative w-64 h-48 md:w-72 md:h-56 bg-white/70 border border-emerald-200/50 rounded-[2rem] flex items-center justify-center shadow-lg z-10 overflow-hidden backdrop-blur-xl mb-4 transition-all duration-500 group-hover:shadow-[0_10px_40px_-10px_rgba(16,185,129,0.3)]">
-                                     <div class="absolute top-4 left-4 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-black tracking-widest z-20 shadow-sm border border-emerald-200/50">ENTER</div>
+                                     <div class="absolute top-4 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-black tracking-widest z-20 shadow-sm border border-emerald-200/50 -translate-x-1/2" style="left: 75%;">ENTER</div>
                                      <svg viewBox="0 0 400 300" class="w-full h-full drop-shadow-sm group-hover:scale-105 transition-transform duration-500">
                                          <defs>
                                              <filter id="glow">
@@ -283,9 +283,8 @@ const handleScan = async () => {
                              <div class="flex flex-col items-center group relative cursor-default">
                                  <div class="absolute -inset-4 bg-rose-500/10 rounded-[3rem] animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                                  <div class="relative w-64 h-48 md:w-72 md:h-56 bg-white/70 border border-rose-200/50 rounded-[2rem] flex items-center justify-center shadow-lg z-10 overflow-hidden backdrop-blur-xl mb-4 transition-all duration-500 group-hover:shadow-[0_10px_40px_-10px_rgba(244,63,94,0.3)]">
-                                     <div class="absolute top-4 left-4 bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-xs font-black tracking-widest z-20 shadow-sm border border-rose-200/50">EXIT</div>
-                                     <!-- Mirrored SVG for Exit (Walking out) -->
-                                     <svg viewBox="0 0 400 300" class="w-full h-full drop-shadow-sm group-hover:scale-105 transition-transform duration-500" style="transform: scaleX(-1);">
+                                     <div class="absolute top-4 bg-rose-100 text-rose-700 px-3 py-1 rounded-lg text-xs font-black tracking-widest z-20 shadow-sm border border-rose-200/50 -translate-x-1/2" style="left: 25%;">EXIT</div>
+                                     <svg viewBox="0 0 400 300" class="w-full h-full drop-shadow-sm group-hover:scale-105 transition-transform duration-500">
                                          <defs>
                                              <filter id="glow-exit">
                                                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -299,32 +298,32 @@ const handleScan = async () => {
                                          <!-- Floor -->
                                          <line x1="0" y1="240" x2="400" y2="240" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round" />
                                          
-                                         <!-- Wall / Door frame -->
-                                         <path d="M260 80 L340 80 L340 240 L260 240 Z" fill="#f8fafc" stroke="#94a3b8" stroke-width="4" stroke-linejoin="round" />
+                                         <!-- Wall / Door frame (Left Side) -->
+                                         <path d="M60 80 L140 80 L140 240 L60 240 Z" fill="#f8fafc" stroke="#94a3b8" stroke-width="4" stroke-linejoin="round" />
                                          
-                                         <!-- Door Leaf -->
-                                         <rect class="anim-door" x="262" y="82" width="76" height="156" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2" style="transform-origin: 262px 82px;" />
+                                         <!-- Door Leaf (Hinge on right at 138) -->
+                                         <rect class="anim-door-exit" x="62" y="82" width="76" height="156" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2" style="transform-origin: 138px 82px;" />
                                          
-                                         <!-- RFID Reader -->
-                                         <rect x="230" y="140" width="14" height="28" rx="3" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2" />
+                                         <!-- RFID Reader (Right of door) -->
+                                         <rect x="160" y="140" width="14" height="28" rx="3" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2" />
                                          <!-- Reader Screen/Light -->
-                                         <rect class="anim-reader" x="233" y="143" width="8" height="8" rx="2" fill="#ef4444" />
+                                         <rect class="anim-reader-exit" x="163" y="143" width="8" height="8" rx="2" fill="#ef4444" />
 
                                          <!-- Person Group -->
-                                         <g class="anim-person">
+                                         <g class="anim-person-exit" style="transform-origin: 150px 238px;">
                                              <!-- Head -->
                                              <circle cx="150" cy="110" r="16" fill="none" stroke="#475569" stroke-width="5" />
                                              <!-- Body -->
                                              <line x1="150" y1="126" x2="150" y2="175" stroke="#475569" stroke-width="6" stroke-linecap="round" />
                                              <!-- Legs -->
                                              <g>
-                                                 <line class="anim-leg1" x1="150" y1="175" x2="140" y2="238" stroke="#475569" stroke-width="5" stroke-linecap="round" style="transform-origin: 150px 175px;" />
-                                                 <line class="anim-leg2" x1="150" y1="175" x2="160" y2="238" stroke="#475569" stroke-width="5" stroke-linecap="round" style="transform-origin: 150px 175px;" />
+                                                 <line class="anim-leg1-exit" x1="150" y1="175" x2="140" y2="238" stroke="#475569" stroke-width="5" stroke-linecap="round" style="transform-origin: 150px 175px;" />
+                                                 <line class="anim-leg2-exit" x1="150" y1="175" x2="160" y2="238" stroke="#475569" stroke-width="5" stroke-linecap="round" style="transform-origin: 150px 175px;" />
                                              </g>
-                                             <!-- Static Arm (Back) -->
-                                             <line x1="150" y1="135" x2="140" y2="165" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" />
+                                             <!-- Static Arm (Back) now animated for dance -->
+                                             <line class="anim-arm2-exit" x1="150" y1="135" x2="140" y2="165" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" style="transform-origin: 150px 135px;" />
                                              <!-- Moving Arm (Front) -->
-                                             <g class="anim-arm" style="transform-origin: 150px 135px;">
+                                             <g class="anim-arm-exit" style="transform-origin: 150px 135px;">
                                                  <line x1="150" y1="135" x2="160" y2="175" stroke="#475569" stroke-width="5" stroke-linecap="round" />
                                                  <!-- Access Card -->
                                                  <rect x="153" y="171" width="14" height="10" rx="2" fill="#10b981" transform="rotate(-15 153 171)" style="filter: url(#glow-exit);" />
@@ -594,5 +593,125 @@ const handleScan = async () => {
     0%, 32% { transform: scaleX(1); fill: #e2e8f0; }
     36%, 55% { transform: scaleX(0.15); fill: #f1f5f9; }
     60%, 100% { transform: scaleX(1); fill: #e2e8f0; }
+}
+
+.anim-person-exit { animation: personMoveExit 5s infinite cubic-bezier(0.4, 0, 0.2, 1); }
+.anim-leg1-exit { animation: leg1MoveExit 5s infinite linear; }
+.anim-leg2-exit { animation: leg2MoveExit 5s infinite linear; }
+.anim-arm-exit { animation: armMoveExit 5s infinite ease-in-out; }
+.anim-arm2-exit { animation: arm2MoveExit 5s infinite ease-in-out; }
+.anim-reader-exit { animation: readerLightExit 5s infinite step-end; }
+.anim-door-exit { animation: doorOpenExit 5s infinite ease-in-out; }
+
+@keyframes personMoveExit {
+    0%, 5% { transform: translate(-50px, 0); opacity: 0; }
+    10% { transform: translate(-50px, 0); opacity: 1; }
+    20%, 30% { transform: translate(-25px, 0) rotate(0deg); opacity: 1; }
+    
+    /* DANCE WHILE WALKING from 30% to 90% */
+    35% { transform: translate(2px, -20px) rotate(15deg); opacity: 1; }
+    40% { transform: translate(29px, 0) rotate(-15deg); opacity: 1; }
+    45% { transform: translate(56px, -20px) rotate(15deg); opacity: 1; }
+    50% { transform: translate(83px, 0) rotate(-15deg); opacity: 1; }
+    55% { transform: translate(110px, -20px) rotate(15deg); opacity: 1; }
+    60% { transform: translate(137px, 0) rotate(-15deg); opacity: 1; }
+    65% { transform: translate(164px, -20px) rotate(15deg); opacity: 1; }
+    70% { transform: translate(191px, 0) rotate(-15deg); opacity: 1; }
+    75% { transform: translate(218px, -20px) rotate(15deg); opacity: 1; }
+    80% { transform: translate(245px, 0) rotate(-15deg); opacity: 1; }
+    85% { transform: translate(272px, -20px) rotate(15deg); opacity: 1; }
+    90% { transform: translate(300px, 0) rotate(0deg); opacity: 1; }
+    
+    95%, 100% { transform: translate(300px, 0) rotate(0deg); opacity: 0; }
+}
+
+@keyframes leg1MoveExit {
+    0%, 10% { transform: rotate(0deg); }
+    15% { transform: rotate(25deg); }
+    20%, 30% { transform: rotate(0deg); }
+    
+    /* DANCE LEGS */
+    35% { transform: rotate(45deg); }
+    40% { transform: rotate(-20deg); }
+    45% { transform: rotate(45deg); }
+    50% { transform: rotate(-20deg); }
+    55% { transform: rotate(45deg); }
+    60% { transform: rotate(-20deg); }
+    65% { transform: rotate(45deg); }
+    70% { transform: rotate(-20deg); }
+    75% { transform: rotate(45deg); }
+    80% { transform: rotate(-20deg); }
+    85% { transform: rotate(45deg); }
+    90%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes leg2MoveExit {
+    0%, 10% { transform: rotate(0deg); }
+    15% { transform: rotate(-25deg); }
+    20%, 30% { transform: rotate(0deg); }
+    
+    /* DANCE LEGS */
+    35% { transform: rotate(-45deg); }
+    40% { transform: rotate(20deg); }
+    45% { transform: rotate(-45deg); }
+    50% { transform: rotate(20deg); }
+    55% { transform: rotate(-45deg); }
+    60% { transform: rotate(20deg); }
+    65% { transform: rotate(-45deg); }
+    70% { transform: rotate(20deg); }
+    75% { transform: rotate(-45deg); }
+    80% { transform: rotate(20deg); }
+    85% { transform: rotate(-45deg); }
+    90%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes armMoveExit {
+    0%, 20% { transform: rotate(0deg); }
+    23%, 28% { transform: rotate(-55deg); }
+    30% { transform: rotate(0deg); }
+    
+    /* DANCE ARMS */
+    35% { transform: rotate(-140deg); }
+    40% { transform: rotate(-30deg); }
+    45% { transform: rotate(-140deg); }
+    50% { transform: rotate(-30deg); }
+    55% { transform: rotate(-140deg); }
+    60% { transform: rotate(-30deg); }
+    65% { transform: rotate(-140deg); }
+    70% { transform: rotate(-30deg); }
+    75% { transform: rotate(-140deg); }
+    80% { transform: rotate(-30deg); }
+    85% { transform: rotate(-140deg); }
+    90%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes arm2MoveExit {
+    0%, 30% { transform: rotate(0deg); }
+    
+    /* DANCE ARMS */
+    35% { transform: rotate(140deg); }
+    40% { transform: rotate(30deg); }
+    45% { transform: rotate(140deg); }
+    50% { transform: rotate(30deg); }
+    55% { transform: rotate(140deg); }
+    60% { transform: rotate(30deg); }
+    65% { transform: rotate(140deg); }
+    70% { transform: rotate(30deg); }
+    75% { transform: rotate(140deg); }
+    80% { transform: rotate(30deg); }
+    85% { transform: rotate(140deg); }
+    90%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes readerLightExit {
+    0%, 24% { fill: #ef4444; filter: none; }
+    25%, 85% { fill: #10b981; filter: url(#glow-exit); }
+    86%, 100% { fill: #ef4444; filter: none; }
+}
+
+@keyframes doorOpenExit {
+    0%, 5% { transform: scaleX(1); fill: #e2e8f0; }
+    10%, 40% { transform: scaleX(0.15); fill: #f1f5f9; }
+    45%, 100% { transform: scaleX(1); fill: #e2e8f0; }
 }
 </style>
