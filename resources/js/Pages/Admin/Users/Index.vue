@@ -49,6 +49,8 @@ const form = useForm({
     work_start: '',
     work_end: '',
     late_tolerance: '',
+    rfid_uid: '',
+    fingerprint_id: '',
 })
 
 const resetForm = useForm({
@@ -107,7 +109,9 @@ const openEditModal = (user) => {
     form.can_multi_login = !!user.can_multi_login
     form.work_start = user.work_start || ''
     form.work_end = user.work_end || ''
-    form.late_tolerance = user.late_tolerance !== null && user.late_tolerance !== undefined ? user.late_tolerance : ''
+    form.late_tolerance = user.late_tolerance !== null ? String(user.late_tolerance) : ''
+    form.rfid_uid = user.rfid_uid || ''
+    form.fingerprint_id = user.fingerprint_id || ''
     
     isModalOpen.value = true
 }
@@ -530,6 +534,20 @@ const canEditUser = (user) => {
                                     </div>
                                     <div v-else-if="!isEditing" class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                                         <p class="text-xs text-slate-500 font-medium">Pengguna baru akan otomatis didaftarkan sebagai <strong>Pegawai</strong>.</p>
+                                    </div>
+
+                                    <!-- ── Presensi Multi-Mode IDs ── -->
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">RFID UID <span class="text-[10px] normal-case font-normal">(Opsional)</span></label>
+                                            <input type="text" v-model="form.rfid_uid" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Contoh: 0012345678" />
+                                            <p v-if="form.errors.rfid_uid" class="text-xs text-rose-500 mt-1">{{ form.errors.rfid_uid }}</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Fingerprint ID <span class="text-[10px] normal-case font-normal">(Opsional)</span></label>
+                                            <input type="text" v-model="form.fingerprint_id" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="ID Mesin ZKTeco" />
+                                            <p v-if="form.errors.fingerprint_id" class="text-xs text-rose-500 mt-1">{{ form.errors.fingerprint_id }}</p>
+                                        </div>
                                     </div>
 
                                     <!-- ── Pengaturan Jam Kerja Perseorangan (Opsional) ── -->

@@ -11,6 +11,10 @@ Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])
     ->middleware('throttle:10,1')
     ->name('login.attempt');
 
+// Kiosk RFID
+Route::get('/kiosk-rfid', [\App\Http\Controllers\AttendanceRFIDController::class, 'kiosk'])->name('attendance.rfid.kiosk');
+Route::post('/kiosk-rfid/scan', [\App\Http\Controllers\AttendanceRFIDController::class, 'processScan'])->name('attendance.rfid.scan');
+
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
     
@@ -50,6 +54,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/presensi/check-in', [\App\Http\Controllers\AttendanceController::class, 'checkIn'])->name('attendance.check-in');
     Route::post('/presensi/check-out', [\App\Http\Controllers\AttendanceController::class, 'checkOut'])->name('attendance.check-out');
     Route::post('/presensi/izin', [\App\Http\Controllers\AttendanceController::class, 'storePermit'])->name('attendance.store-permit');
+    
+    // Kiosk RFID (Bisa diakses public atau admin khusus, ditaruh di dalam auth sbg fallback admin Kiosk, namun lebih baik ditaruh di luar middleware auth jika Kiosk dibiarkan tanpa login. Mari biarkan di auth dulu jika kiosK di-login pakai akun dummy). Tapi wait, Kiosk RFID idealnya terbuka tanpa auth.
+    // Mari saya letakkan di luar auth agar bisa dipakai tanpa login.
+    
 
     // Web Push Subscriptions & Test
     Route::post('/push-subscriptions', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.store');

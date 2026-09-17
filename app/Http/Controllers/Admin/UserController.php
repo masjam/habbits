@@ -59,6 +59,8 @@ class UserController extends Controller
                 'work_start'       => $user->work_start ? substr($user->work_start, 0, 5) : null,
                 'work_end'         => $user->work_end ? substr($user->work_end, 0, 5) : null,
                 'late_tolerance'   => $user->late_tolerance,
+                'rfid_uid'         => $user->rfid_uid,
+                'fingerprint_id'   => $user->fingerprint_id,
                 'created_at'       => $user->created_at->format('Y-m-d H:i:s'),
                 'badges'           => $user->badges,
             ];
@@ -95,6 +97,8 @@ class UserController extends Controller
             'work_start'       => 'nullable|string|max:10',
             'work_end'         => 'nullable|string|max:10',
             'late_tolerance'   => 'nullable|integer|min:0|max:120',
+            'rfid_uid'         => 'nullable|string|max:255|unique:'.User::class,
+            'fingerprint_id'   => 'nullable|string|max:255|unique:'.User::class,
         ];
 
         // Jika superadmin, validasi pilihan role & multi login
@@ -154,6 +158,8 @@ class UserController extends Controller
             'work_start'         => 'nullable|string|max:10',
             'work_end'           => 'nullable|string|max:10',
             'late_tolerance'     => 'nullable|integer|min:0|max:120',
+            'rfid_uid'           => 'nullable|string|max:255|unique:'.User::class.',rfid_uid,'.$user->id,
+            'fingerprint_id'     => 'nullable|string|max:255|unique:'.User::class.',fingerprint_id,'.$user->id,
         ];
 
         // Jika form mengirim password (opsional di edit)
@@ -186,6 +192,8 @@ class UserController extends Controller
             'work_start'         => !empty($validated['work_start']) ? $validated['work_start'] : null,
             'work_end'           => !empty($validated['work_end']) ? $validated['work_end'] : null,
             'late_tolerance'     => isset($validated['late_tolerance']) && $validated['late_tolerance'] !== '' ? $validated['late_tolerance'] : null,
+            'rfid_uid'           => $validated['rfid_uid'] ?? null,
+            'fingerprint_id'     => $validated['fingerprint_id'] ?? null,
         ];
 
         if ($isSuperadmin && array_key_exists('can_multi_login', $validated)) {

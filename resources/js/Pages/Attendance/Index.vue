@@ -600,6 +600,14 @@ onUnmounted(() => {
 
     <AuthenticatedLayout>
         <div class="max-w-7xl mx-auto space-y-6">
+            
+            <div v-if="!($page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true')" class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3">
+                <div class="text-amber-500 mt-0.5 text-xl">💡</div>
+                <div>
+                    <h3 class="font-bold text-amber-800 dark:text-amber-300 text-sm">Mode Presensi GPS Dinonaktifkan</h3>
+                    <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">Presensi saat ini hanya dapat dilakukan melalui Mesin Sidik Jari (Fingerprint) atau Kartu RFID di lokasi instansi. Data pada halaman ini hanya menampilkan riwayat kehadiran Anda.</p>
+                </div>
+            </div>
 
             <!-- ── Header Banner Waktu & Status Presensi ──────────────────────── -->
             <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl sm:rounded-3xl p-4 sm:p-7 text-white shadow-xl relative overflow-hidden">
@@ -643,7 +651,7 @@ onUnmounted(() => {
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
                 <!-- ── KOLOM KIRI (7 Kolom): Status Presensi Hari Ini + Rekap 4 Statistik Terpadu ── -->
-                <div class="lg:col-span-7 space-y-4 sm:space-y-6">
+                <div :class="($page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true') ? 'lg:col-span-7' : 'lg:col-span-12'" class="space-y-4 sm:space-y-6">
                     <div class="bg-sidebar rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-theme shadow-xs flex flex-col justify-between">
                         
                         <!-- Header Status Hari Ini -->
@@ -807,7 +815,7 @@ onUnmounted(() => {
                                 </div>
 
                                 <!-- Kolom 3: Tombol Presensi -->
-                                <div class="flex flex-col h-full">
+                                <div class="flex flex-col h-full" v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'">
                                     <template v-if="!todayAttendance || !todayAttendance.time_in">
                                         <button
                                             v-if="isInsideRadius"
@@ -882,6 +890,12 @@ onUnmounted(() => {
                                         <span>SELESAI</span>
                                     </div>
                                 </div>
+                                <div v-else class="flex flex-col h-full justify-center items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
+                                    <svg class="w-6 h-6 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase">Hanya Info</span>
+                                </div>
                             </div>
                             
                             <!-- Tombol Izin (Hanya Jika Belum Presensi Sama Sekali) -->
@@ -945,7 +959,7 @@ onUnmounted(() => {
                 </div>
 
                 <!-- ── KOLOM KANAN (5 Kolom): Radius Sekolah & Minimap GPS User + Titik Absen ── -->
-                <div class="lg:col-span-5 space-y-6">
+                <div v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'" class="lg:col-span-5 space-y-6">
                     <div class="bg-sidebar rounded-3xl p-5 sm:p-6 border border-theme shadow-xs space-y-3.5">
                         
                         <!-- Header Radar GPS -->

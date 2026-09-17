@@ -84,6 +84,11 @@ const form = useForm({
     presensi_work_start: props.settings.presensi_work_start || '07:00',
     presensi_late_tolerance: props.settings.presensi_late_tolerance || 15,
     presensi_work_end: props.settings.presensi_work_end || '15:00',
+    
+    // Multi-Mode Presensi
+    attendance_mode_gps: props.settings.attendance_mode_gps === '1' || props.settings.attendance_mode_gps === 'true' || props.settings.attendance_mode_gps === undefined, // default true if not set
+    attendance_mode_rfid: props.settings.attendance_mode_rfid === '1' || props.settings.attendance_mode_rfid === 'true',
+    attendance_mode_fingerprint: props.settings.attendance_mode_fingerprint === '1' || props.settings.attendance_mode_fingerprint === 'true',
 })
 
 // ─── MOBILE FLOATING TAB MENU ───────────────────────────────────────────────
@@ -569,7 +574,39 @@ const submit = () => {
                         </div>
 
                         <!-- Body Presensi (Jika Aktif) -->
-                        <div v-if="form.feature_presensi" class="mt-6 grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
+                        <div v-if="form.feature_presensi" class="mt-6 space-y-6">
+                            
+                            <!-- Pilih Metode Presensi Yang Aktif -->
+                            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
+                                <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200 mb-3 uppercase">Pilih Metode Presensi Yang Aktif:</h5>
+                                <div class="space-y-2.5">
+                                    <label class="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
+                                        <div>
+                                            <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi GPS (Selfie & Lokasi)</span>
+                                            <span class="block text-xs text-slate-500 mt-0.5">Pegawai dapat absen melalui smartphone mereka sendiri.</span>
+                                        </div>
+                                        <input type="checkbox" v-model="form.attendance_mode_gps" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
+                                    </label>
+                                    
+                                    <label class="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
+                                        <div>
+                                            <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi RFID (Mesin Scanner)</span>
+                                            <span class="block text-xs text-slate-500 mt-0.5">Menggunakan kartu RFID yang ditempel pada Kiosk.</span>
+                                        </div>
+                                        <input type="checkbox" v-model="form.attendance_mode_rfid" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
+                                    </label>
+
+                                    <label class="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
+                                        <div>
+                                            <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi Sidik Jari / Fingerprint</span>
+                                            <span class="block text-xs text-slate-500 mt-0.5">Menggunakan mesin Fingerprint ZKTeco / API Tarik Data.</span>
+                                        </div>
+                                        <input type="checkbox" v-model="form.attendance_mode_fingerprint" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
                             
                             <!-- ═══ KOLOM KIRI: PETA LEAFLET & KOORDINAT (XL: 8 COLS) ═══ -->
                             <div class="xl:col-span-8 space-y-4">
@@ -839,6 +876,8 @@ const submit = () => {
                                     </Link>
                                 </div>
                             </div>
+                        </div>
+
                         </div>
 
                         <!-- Jika Fitur Presensi Nonaktif -->

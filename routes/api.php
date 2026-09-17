@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\FormHabitController as ApiFormHabitController;
 
 Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
 
+// Endpoint Push Absensi Fingerprint (ADMS / Script Sync)
+Route::post('/fingerprint/sync', [\App\Http\Controllers\Api\FingerprintController::class, 'sync']);
 
 Route::middleware('api.token')->group(function () {
     Route::get('/user', function (Request $request) {

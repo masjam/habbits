@@ -111,6 +111,11 @@ class SettingController extends Controller
             $rules['presensi_late_tolerance'] = 'nullable|numeric|min:0|max:120';
             $rules['presensi_work_end'] = 'nullable|string|max:10';
 
+            // Multi-Mode Presensi
+            $rules['attendance_mode_gps'] = 'boolean';
+            $rules['attendance_mode_rfid'] = 'boolean';
+            $rules['attendance_mode_fingerprint'] = 'boolean';
+
             $rules['gamification_active'] = 'boolean';
             $rules['dark_mode_active'] = 'boolean';
             $rules['auto_warning_active'] = 'boolean';
