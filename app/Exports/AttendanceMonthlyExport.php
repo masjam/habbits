@@ -18,13 +18,15 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
     protected Collection $reportData;
     protected string $monthName;
     protected int $daysInMonth;
+    protected string $currentMonth;
     protected int $rowNumber = 0;
 
-    public function __construct(Collection $reportData, string $monthName, int $daysInMonth = 30)
+    public function __construct(Collection $reportData, string $monthName, int $daysInMonth = 30, string $currentMonth = '')
     {
         $this->reportData = $reportData;
         $this->monthName = $monthName;
         $this->daysInMonth = $daysInMonth;
+        $this->currentMonth = $currentMonth;
     }
 
     public function collection(): Collection
@@ -150,13 +152,44 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                     $sheet->getStyle("{$startDateCol}5:{$endDateCol}{$totalRows}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                     $sheet->getStyle("{$startDateCol}5:{$endDateCol}{$totalRows}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
+                    // Menentukan kolom weekend
+                    $weekendColumns = [];
+                    if ($this->currentMonth) {
+                        for ($d = 1; $d <= $this->daysInMonth; $d++) {
+                            $dateObj = \Carbon\Carbon::parse($this->currentMonth . '-' . str_pad($d, 2, '0', STR_PAD_LEFT));
+                            if ($dateObj->isWeekend()) {
+                                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + $d);
+                                $weekendColumns[$d] = $colLetter;
+                                
+                                // Warnai header untuk weekend menjadi merah
+                                $sheet->getStyle("{$colLetter}4")->applyFromArray([
+                                    'fill' => [
+                                        'fillType' => Fill::FILL_SOLID,
+                                        'startColor' => ['rgb' => 'EF4444'] // Red 500
+                                    ]
+                                ]);
+                            }
+                        }
+                    }
+
                     // Pewarnaan sel sesuai status kehadiran per tanggal
                     $rowIndex = 5;
                     foreach ($this->reportData as $row) {
                         for ($d = 1; $d <= $this->daysInMonth; $d++) {
+                            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + $d);
+                            
+                            // Jika hari ini weekend, berikan warna latar belakang abu-abu kemerahan
+                            if (isset($weekendColumns[$d])) {
+                                $sheet->getStyle("{$colLetter}{$rowIndex}")->applyFromArray([
+                                    'fill' => [
+                                        'fillType' => Fill::FILL_SOLID,
+                                        'startColor' => ['rgb' => 'FEE2E2'] // Red 50 (Sangat muda)
+                                    ]
+                                ]);
+                            }
+
                             $rec = $row['daily_records'][$d] ?? null;
                             if ($rec) {
-                                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + $d);
                                 $color = 'E8F5E9'; // Hadir (Hijau muda)
 
                                 if ($rec['is_pulang_cepat']) {

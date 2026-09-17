@@ -549,7 +549,7 @@ class AttendanceReportController extends Controller
         $fileName = "Rekap_Presensi_Bulanan_{$currentMonth}.xlsx";
 
         return Excel::download(
-            new AttendanceMonthlyExport($monthlyReportData, $formattedMonth, $daysInMonth),
+            new AttendanceMonthlyExport($monthlyReportData, $formattedMonth, $daysInMonth, $currentMonth),
             $fileName
         );
     }
