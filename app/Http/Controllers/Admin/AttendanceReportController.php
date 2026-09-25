@@ -172,6 +172,7 @@ class AttendanceReportController extends Controller
                         'lat_out'                => $att->lat_out,
                         'lng_out'                => $att->lng_out,
                         'photo_in'               => $att->photo_in,
+                        'photo_out'              => $att->photo_out,
                         'notes'                  => $att->notes,
                         'late_reason'            => $att->late_reason,
                         'late_photo'             => $att->late_photo,

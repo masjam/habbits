@@ -1071,6 +1071,17 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                                 <img :src="`/storage/${item.photo_in}`" class="w-full h-full object-cover" />
                                             </button>
 
+                                            <!-- Thumbnail Foto Pulang jika ada -->
+                                            <button 
+                                                v-if="item.photo_out" 
+                                                type="button" 
+                                                @click="openCellDetail(item, { date: selectedDate, day: '' }, item)"
+                                                class="w-7 h-7 rounded-lg overflow-hidden border border-theme hover:scale-110 transition-transform flex-shrink-0 cursor-pointer"
+                                                title="Lihat Foto Pulang (Selfie)"
+                                            >
+                                                <img :src="`/storage/${item.photo_out}`" class="w-full h-full object-cover" />
+                                            </button>
+
                                             <!-- Thumbnail Dokumen Lampiran Izin/Sakit jika ada -->
                                             <a 
                                                 v-if="item.attachment" 
@@ -1383,10 +1394,22 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             </div>
 
                             <!-- Foto Selfie (jika sebelumnya ada dinas luar) -->
-                            <div v-if="selectedDetailModal.record?.photo_in" class="p-3 rounded-2xl bg-card-subtle border border-theme/60 space-y-1.5">
-                                <p class="text-[10px] font-bold uppercase text-slate-400">Bukti Foto Selfie Masuk:</p>
-                                <div class="rounded-xl overflow-hidden border border-theme bg-black/20 flex items-center justify-center p-1">
-                                    <img :src="`/storage/${selectedDetailModal.record?.photo_in}`" class="max-h-40 w-auto rounded-lg object-contain" />
+                            <div v-if="selectedDetailModal.record?.photo_in || selectedDetailModal.record?.photo_out" class="p-3 rounded-2xl bg-card-subtle border border-theme/60 grid grid-cols-2 gap-3">
+                                <div v-if="selectedDetailModal.record?.photo_in" class="space-y-1.5">
+                                    <p class="text-[10px] font-bold uppercase text-slate-400">Foto Selfie Masuk:</p>
+                                    <div class="rounded-xl overflow-hidden border border-theme bg-black/20 flex items-center justify-center p-1">
+                                        <a :href="`/storage/${selectedDetailModal.record?.photo_in}`" target="_blank">
+                                            <img :src="`/storage/${selectedDetailModal.record?.photo_in}`" class="max-h-40 w-auto rounded-lg object-contain hover:scale-105 transition-transform" />
+                                        </a>
+                                    </div>
+                                </div>
+                                <div v-if="selectedDetailModal.record?.photo_out" class="space-y-1.5">
+                                    <p class="text-[10px] font-bold uppercase text-slate-400">Foto Selfie Pulang:</p>
+                                    <div class="rounded-xl overflow-hidden border border-theme bg-black/20 flex items-center justify-center p-1">
+                                        <a :href="`/storage/${selectedDetailModal.record?.photo_out}`" target="_blank">
+                                            <img :src="`/storage/${selectedDetailModal.record?.photo_out}`" class="max-h-40 w-auto rounded-lg object-contain hover:scale-105 transition-transform" />
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1583,10 +1606,22 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             </div>
 
                             <!-- Foto Selfie jika ada -->
-                            <div v-if="selectedDetailModal.record?.photo_in" class="space-y-1.5">
-                                <p class="text-xs font-bold text-slate-600 dark:text-slate-300">Foto Selfie Bukti Presensi (Luar Radius):</p>
-                                <div class="rounded-2xl overflow-hidden border border-theme bg-black/30 flex items-center justify-center p-2">
-                                    <img :src="`/storage/${selectedDetailModal.record?.photo_in}`" class="max-h-56 w-auto rounded-xl object-contain" />
+                            <div v-if="selectedDetailModal.record?.photo_in || selectedDetailModal.record?.photo_out" class="space-y-3">
+                                <div v-if="selectedDetailModal.record?.photo_in" class="space-y-1.5">
+                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300">Foto Selfie Bukti Presensi Masuk (Luar Radius):</p>
+                                    <div class="rounded-2xl overflow-hidden border border-theme bg-black/30 flex items-center justify-center p-2">
+                                        <a :href="`/storage/${selectedDetailModal.record?.photo_in}`" target="_blank">
+                                            <img :src="`/storage/${selectedDetailModal.record?.photo_in}`" class="max-h-56 w-auto rounded-xl object-contain hover:scale-105 transition-transform" />
+                                        </a>
+                                    </div>
+                                </div>
+                                <div v-if="selectedDetailModal.record?.photo_out" class="space-y-1.5">
+                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300">Foto Selfie Bukti Presensi Pulang (Luar Radius):</p>
+                                    <div class="rounded-2xl overflow-hidden border border-theme bg-black/30 flex items-center justify-center p-2">
+                                        <a :href="`/storage/${selectedDetailModal.record?.photo_out}`" target="_blank">
+                                            <img :src="`/storage/${selectedDetailModal.record?.photo_out}`" class="max-h-56 w-auto rounded-xl object-contain hover:scale-105 transition-transform" />
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
 
