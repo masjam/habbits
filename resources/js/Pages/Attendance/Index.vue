@@ -241,6 +241,7 @@ const capturedPhoto = ref(null)
 const actionType = ref('checkin') // 'checkin' | 'checkout'
 const isCameraLoading = ref(false)
 const cameraError = ref(null)
+const cameraFacingMode = ref('user')
 
 const openCameraModal = (type = 'checkin') => {
     actionType.value = type
@@ -262,7 +263,7 @@ const startCamera = async () => {
     try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                video: { facingMode: cameraFacingMode.value, width: { ideal: 640 }, height: { ideal: 480 } },
                 audio: false
             })
             cameraStream.value = stream
@@ -276,6 +277,14 @@ const startCamera = async () => {
         cameraError.value = 'Tidak dapat mengakses kamera: ' + (e.message || 'Izin kamera ditolak.')
     } finally {
         isCameraLoading.value = false
+    }
+}
+
+const toggleCamera = () => {
+    cameraFacingMode.value = cameraFacingMode.value === 'user' ? 'environment' : 'user'
+    if (cameraStream.value) {
+        stopCamera()
+        startCamera()
     }
 }
 
@@ -1217,6 +1226,19 @@ onUnmounted(() => {
                 <!-- Modal Body (Camera Live Preview / Snapshot) -->
                 <div class="p-5 space-y-4">
                     <div class="relative w-full aspect-4/3 bg-black rounded-2xl overflow-hidden flex items-center justify-center">
+                        <!-- Switch Camera Button -->
+                        <button 
+                            v-if="!capturedPhoto"
+                            type="button" 
+                            @click="toggleCamera"
+                            class="absolute top-3 right-3 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm transition-all"
+                            title="Tukar Kamera"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+
                         <!-- Video Kamera Live -->
                         <video 
                             v-show="!capturedPhoto" 
@@ -1224,14 +1246,16 @@ onUnmounted(() => {
                             autoplay 
                             playsinline 
                             muted 
-                            class="w-full h-full object-cover transform -scale-x-100" 
+                            class="w-full h-full object-cover" 
+                            :class="cameraFacingMode === 'user' ? 'transform -scale-x-100' : ''"
                         />
 
                         <!-- Hasil Snapshot -->
                         <img 
                             v-if="capturedPhoto" 
                             :src="capturedPhoto" 
-                            class="w-full h-full object-cover transform -scale-x-100" 
+                            class="w-full h-full object-cover" 
+                            :class="cameraFacingMode === 'user' ? 'transform -scale-x-100' : ''"
                             alt="Foto Selfie Presensi"
                         />
 

@@ -606,20 +606,33 @@ class AttendanceReportController extends Controller
 
         $user = User::findOrFail($data['user_id']);
 
-        $timeIn = !empty($data['time_in']) ? Carbon::parse($data['time_in'])->format('H:i:s') : null;
-        $timeOut = !empty($data['time_out']) ? Carbon::parse($data['time_out'])->format('H:i:s') : null;
+        $dateStr = Carbon::parse($data['date'])->format('Y-m-d');
+        
+        // Safely parse time, handling 'HH:MM' or 'HH:MM:SS'
+        $timeIn = !empty($data['time_in']) ? (strlen($data['time_in']) === 5 ? $data['time_in'] . ':00' : Carbon::parse($data['time_in'])->format('H:i:s')) : null;
+        $timeOut = !empty($data['time_out']) ? (strlen($data['time_out']) === 5 ? $data['time_out'] . ':00' : Carbon::parse($data['time_out'])->format('H:i:s')) : null;
+
+        $updateData = [
+            'time_in'  => $timeIn,
+            'time_out' => $timeOut,
+            'status'   => $data['status'],
+            'notes'    => $data['notes'],
+        ];
+
+        // Jika diset hadir oleh superadmin, bersihkan status terlambat & pulang cepat
+        if ($data['status'] === 'hadir') {
+            $updateData['is_early_departure'] = false;
+            $updateData['early_departure_reason'] = null;
+            $updateData['late_reason'] = null;
+            $updateData['late_photo'] = null;
+        }
 
         $attendance = Attendance::updateOrCreate(
             [
                 'user_id' => $data['user_id'],
-                'date'    => $data['date'],
+                'date'    => $dateStr,
             ],
-            [
-                'time_in'  => $timeIn,
-                'time_out' => $timeOut,
-                'status'   => $data['status'],
-                'notes'    => $data['notes'],
-            ]
+            $updateData
         );
 
         $formattedDate = Carbon::parse($data['date'])->locale('id')->isoFormat('D MMMM Y');
