@@ -30,7 +30,7 @@ jobs:
           --exclude='.env' \
           --exclude='/storage' \
           --exclude='/node_modules' \
-          --exclude='/public/storage' \   
+          --exclude='/public/storage' \
           ./ /var/www/habit/
           
       - name: Optimizations & Migrations
