@@ -291,6 +291,21 @@ const totalSkorEstimasi = computed(() => {
     return Math.min(total, maxSkorNormal.value || 10);
 });
 
+// --- Lock logic for Tahajud and Dhuha ---
+const isTahajudLocked = computed(() => {
+    if (!props.waktuSelesaiHaid) return false;
+    const selesaiDate = new Date(props.waktuSelesaiHaid);
+    const timeVal = selesaiDate.getHours() + (selesaiDate.getMinutes() / 60);
+    return timeVal > 4.5; // Jika selesai haid di atas jam 04:30 (masuk Subuh), Tahajud terkunci
+});
+
+const isDhuhaLocked = computed(() => {
+    if (!props.waktuSelesaiHaid) return false;
+    const selesaiDate = new Date(props.waktuSelesaiHaid);
+    const timeVal = selesaiDate.getHours() + (selesaiDate.getMinutes() / 60);
+    return timeVal > 12.0; // Jika selesai haid di atas jam 12:00 (masuk Dhuhur), Dhuha terkunci
+});
+
 // --- Helper Functions ---
 const getLogIndex = (habitId) => {
     return form.logs.findIndex(log => log.habit_id === habitId);
@@ -580,14 +595,20 @@ const toggleBoolean = (index) => {
                             </div>
 
                             <!-- 4. TAHAJUD -->
-                            <div v-else-if="habit.template === 'tahajud'" class="p-3 flex gap-3 text-xs">
+                            <div v-else-if="habit.template === 'tahajud'" class="p-3 flex gap-3 text-xs" :class="isTahajudLocked ? 'opacity-60 bg-slate-50 dark:bg-slate-800/80' : ''">
                                 <div class="w-1/3">
-                                    <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1">Rakaat</label>
-                                    <input type="number" min="0" v-model="form.logs[getLogIndex(habit.id)].nilai_input" class="w-full p-1.5 text-center border-slate-300 dark:border-slate-600 rounded focus:ring-emerald-500 focus:border-emerald-500 dark:bg-slate-700 dark:text-slate-100" />
+                                    <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1">
+                                        Rakaat
+                                        <span v-if="isTahajudLocked" class="block text-[8px] text-pink-600 dark:text-pink-400 mt-0.5">Terkunci (Haid)</span>
+                                    </label>
+                                    <input type="number" min="0" v-model="form.logs[getLogIndex(habit.id)].nilai_input" :disabled="isTahajudLocked" class="w-full p-1.5 text-center border-slate-300 dark:border-slate-600 rounded focus:ring-emerald-500 focus:border-emerald-500 dark:bg-slate-700 dark:text-slate-100 disabled:cursor-not-allowed" />
                                 </div>
                                 <div class="w-2/3">
-                                    <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1">Keterangan</label>
-                                    <select v-model="form.logs[getLogIndex(habit.id)].details['keterangan']" class="w-full p-1.5 text-xs border-slate-300 dark:border-slate-600 rounded focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:bg-slate-700 dark:text-slate-100">
+                                    <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1">
+                                        Keterangan
+                                        <span v-if="isTahajudLocked" class="block text-[8px] text-pink-600 dark:text-pink-400 mt-0.5">Terkunci (Haid)</span>
+                                    </label>
+                                    <select v-model="form.logs[getLogIndex(habit.id)].details['keterangan']" :disabled="isTahajudLocked" class="w-full p-1.5 text-xs border-slate-300 dark:border-slate-600 rounded focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 dark:text-slate-300 dark:text-slate-600 dark:bg-slate-700 dark:text-slate-100 disabled:cursor-not-allowed">
                                         <option value="" disabled selected>Pilih...</option>
                                         <option value="Sebelum Tidur">Sebelum Tidur</option>
                                         <option value="Sesudah Tidur">Sesudah Tidur</option>
@@ -596,9 +617,12 @@ const toggleBoolean = (index) => {
                             </div>
 
                             <!-- 5. DHUHA ATAU INTEGER BIASA -->
-                            <div v-else-if="habit.template === 'dhuha' || habit.template === 'integer'" class="p-3">
-                                <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1 uppercase">{{ habit.satuan || 'Jumlah' }}</label>
-                                <input type="number" min="0" v-model="form.logs[getLogIndex(habit.id)].nilai_input" class="w-full p-1.5 text-center border-slate-300 dark:border-slate-600 rounded focus:ring-emerald-500 focus:border-emerald-500 dark:bg-slate-700 dark:text-slate-100" />
+                            <div v-else-if="habit.template === 'dhuha' || habit.template === 'integer'" class="p-3" :class="habit.template === 'dhuha' && isDhuhaLocked ? 'opacity-60 bg-slate-50 dark:bg-slate-800/80' : ''">
+                                <label class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 mb-1 uppercase">
+                                    {{ habit.satuan || 'Jumlah' }}
+                                    <span v-if="habit.template === 'dhuha' && isDhuhaLocked" class="block text-[8px] normal-case text-pink-600 dark:text-pink-400 mt-0.5">Terkunci (Haid)</span>
+                                </label>
+                                <input type="number" min="0" v-model="form.logs[getLogIndex(habit.id)].nilai_input" :disabled="habit.template === 'dhuha' && isDhuhaLocked" class="w-full p-1.5 text-center border-slate-300 dark:border-slate-600 rounded focus:ring-emerald-500 focus:border-emerald-500 dark:bg-slate-700 dark:text-slate-100 disabled:cursor-not-allowed" />
                             </div>
 
                             <!-- 6. HADIST -->
