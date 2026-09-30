@@ -44,19 +44,29 @@ class FormHabitController extends Controller
 
         // Deteksi Mode Haid pada tanggal yang dipilih
         $isSedangHaid = false;
+        $isTransisiSelesaiHaid = false;
         if ($user->gender === 'P') {
-            $isSedangHaid = MenstruationLog::where('user_id', $user->id)
+            $haidLog = MenstruationLog::where('user_id', $user->id)
                 ->whereDate('waktu_mulai', '<=', $selectedDate)
                 ->where(function($q) use ($selectedDate) {
                     $q->whereNull('waktu_selesai')
                       ->orWhereDate('waktu_selesai', '>=', $selectedDate);
-                })->exists();
+                })->first();
+
+            if ($haidLog) {
+                $isSedangHaid = true;
+                if ($haidLog->waktu_selesai && Carbon::parse($haidLog->waktu_selesai)->isSameDay($selectedDate)) {
+                    $isTransisiSelesaiHaid = true;
+                }
+            }
         }
 
         // Filter habit
         $habitsQuery = Habit::where('status_aktif', true);
 
-        if (!$isSedangHaid) {
+        if ($isTransisiSelesaiHaid) {
+            // Buka seluruh habit (normal dan pengganti) pada hari transisi selesai haid
+        } elseif (!$isSedangHaid) {
             $habitsQuery->where('is_pengganti_haid', false);
         } else {
             $habitsQuery->where(function ($q) {
@@ -74,11 +84,13 @@ class FormHabitController extends Controller
             ->keyBy('habit_id');
 
         return Inertia::render('FormHabit', [
-            'habits'        => $habits,
-            'logsHariIni'   => $logsSelected,
-            'isSedangHaid'  => $isSedangHaid,
-            'tanggal'       => $selectedDate->toDateString(),
-            'today'         => $today->toDateString(),
+            'habits'           => $habits,
+            'logsHariIni'      => $logsSelected,
+            'isSedangHaid'     => $isSedangHaid,
+            'waktuSelesaiHaid' => $isTransisiSelesaiHaid && isset($haidLog) ? $haidLog->waktu_selesai : null,
+            'waktuMulaiHaid'   => isset($haidLog) ? $haidLog->waktu_mulai : null,
+            'tanggal'          => $selectedDate->toDateString(),
+            'today'            => $today->toDateString(),
         ]);
     }
 
@@ -110,13 +122,21 @@ class FormHabitController extends Controller
 
         // Deteksi Mode Haid pada tanggal yang dipilih
         $isSedangHaid = false;
+        $isTransisiSelesaiHaid = false;
         if ($user->gender === 'P') {
-            $isSedangHaid = MenstruationLog::where('user_id', $user->id)
+            $haidLog = MenstruationLog::where('user_id', $user->id)
                 ->whereDate('waktu_mulai', '<=', $selectedDate)
                 ->where(function($q) use ($selectedDate) {
                     $q->whereNull('waktu_selesai')
                       ->orWhereDate('waktu_selesai', '>=', $selectedDate);
-                })->exists();
+                })->first();
+
+            if ($haidLog) {
+                $isSedangHaid = true;
+                if ($haidLog->waktu_selesai && Carbon::parse($haidLog->waktu_selesai)->isSameDay($selectedDate)) {
+                    $isTransisiSelesaiHaid = true;
+                }
+            }
         }
 
         // Optimasi N+1: Ambil semua data habit sekaligus dari database
@@ -217,7 +237,7 @@ class FormHabitController extends Controller
             // Saat haid: habit yang disembunyikan (hide_saat_haid) TIDAK ditampilkan di form,
             // sehingga tidak ada input dari user. Kita biarkan nilainya 0 di sini (tidak diisi).
             // Skor habit ini diatur melalui mekanisme cap harian di bawah (setelah semua log tersimpan).
-            if ($isSedangHaid && $habit->hide_saat_haid) {
+            if ($isSedangHaid && !$isTransisiSelesaiHaid && $habit->hide_saat_haid) {
                 $skorDiperoleh = 0;
             }
 
@@ -235,38 +255,37 @@ class FormHabitController extends Controller
             );
         }
 
-        // ─── Cap Skor Harian Saat Haid ──────────────────────────────────────────────
+        // ─── Cap Skor Harian ──────────────────────────────────────────────
         // Skor habit utama (hide_saat_haid) TIDAK hangus, tapi total akhir harian
         // tidak boleh melebihi skor maksimal normal (non-haid / semua habit utama).
-        if ($isSedangHaid) {
-            // Hitung skor maksimal harian normal (tanpa habit pengganti haid)
-            $skorMaksimalNormal = Habit::where('status_aktif', true)
-                ->where('is_pengganti_haid', false)
-                ->sum('skor_maksimal');
+        
+        // Hitung skor maksimal harian normal (tanpa habit pengganti haid)
+        $skorMaksimalNormal = Habit::where('status_aktif', true)
+            ->where('is_pengganti_haid', false)
+            ->sum('skor_maksimal');
 
-            // Ambil semua log hari ini (sudah tersimpan), hitung total
-            $allLogsToday = \App\Models\HabitLog::where('user_id', $user->id)
-                ->whereDate('tanggal', $selectedDate->toDateString())
-                ->get();
+        // Ambil semua log hari ini (sudah tersimpan), hitung total
+        $allLogsToday = \App\Models\HabitLog::where('user_id', $user->id)
+            ->whereDate('tanggal', $selectedDate->toDateString())
+            ->get();
 
-            $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');
+        $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');
 
-            // Jika total melebihi skor maksimal normal, kurangi skor habit pengganti
-            if ($totalSkorHariIni > $skorMaksimalNormal) {
-                $kelebihan = $totalSkorHariIni - $skorMaksimalNormal;
+        // Jika total melebihi skor maksimal normal, kurangi skor habit pengganti
+        if ($totalSkorHariIni > $skorMaksimalNormal) {
+            $kelebihan = $totalSkorHariIni - $skorMaksimalNormal;
 
-                // Kurangi dari habit pengganti haid terlebih dahulu (skor terbesar dulu)
-                $logsHabitPengganti = $allLogsToday
-                    ->filter(fn($log) => \App\Models\Habit::find($log->habit_id)?->is_pengganti_haid)
-                    ->sortByDesc('skor_diperoleh');
+            // Kurangi dari habit pengganti haid terlebih dahulu (skor terbesar dulu)
+            $logsHabitPengganti = $allLogsToday
+                ->filter(fn($log) => \App\Models\Habit::find($log->habit_id)?->is_pengganti_haid)
+                ->sortByDesc('skor_diperoleh');
 
-                foreach ($logsHabitPengganti as $log) {
-                    if ($kelebihan <= 0) break;
-                    $potong = min($log->skor_diperoleh, $kelebihan);
-                    $log->skor_diperoleh -= $potong;
-                    $log->save();
-                    $kelebihan -= $potong;
-                }
+            foreach ($logsHabitPengganti as $log) {
+                if ($kelebihan <= 0) break;
+                $potong = min($log->skor_diperoleh, $kelebihan);
+                $log->skor_diperoleh -= $potong;
+                $log->save();
+                $kelebihan -= $potong;
             }
         }
 

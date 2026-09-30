@@ -31,19 +31,29 @@ class FormHabitController extends Controller
 
         // Deteksi Mode Haid
         $isSedangHaid = false;
+        $isTransisiSelesaiHaid = false;
         if ($user->gender === 'P') {
-            $isSedangHaid = MenstruationLog::where('user_id', $user->id)
+            $haidLog = MenstruationLog::where('user_id', $user->id)
                 ->whereDate('waktu_mulai', '<=', $selectedDate)
                 ->where(function($q) use ($selectedDate) {
                     $q->whereNull('waktu_selesai')
                       ->orWhereDate('waktu_selesai', '>=', $selectedDate);
-                })->exists();
+                })->first();
+
+            if ($haidLog) {
+                $isSedangHaid = true;
+                if ($haidLog->waktu_selesai && Carbon::parse($haidLog->waktu_selesai)->isSameDay($selectedDate)) {
+                    $isTransisiSelesaiHaid = true;
+                }
+            }
         }
 
         // Filter habit
         $habitsQuery = Habit::where('status_aktif', true);
 
-        if (!$isSedangHaid) {
+        if ($isTransisiSelesaiHaid) {
+            // Buka seluruh habit (normal dan pengganti) pada hari transisi selesai haid
+        } elseif (!$isSedangHaid) {
             $habitsQuery->where('is_pengganti_haid', false);
         } else {
             $habitsQuery->where(function ($q) {
@@ -67,6 +77,8 @@ class FormHabitController extends Controller
                 'habits' => $habits,
                 'logs' => $logsSelected,
                 'isSedangHaid' => $isSedangHaid,
+                'waktuSelesaiHaid' => $isTransisiSelesaiHaid && isset($haidLog) ? $haidLog->waktu_selesai : null,
+                'waktuMulaiHaid' => isset($haidLog) ? $haidLog->waktu_mulai : null,
                 'tanggal' => $selectedDate->toDateString(),
             ]
         ]);
@@ -93,13 +105,21 @@ class FormHabitController extends Controller
         }
 
         $isSedangHaid = false;
+        $isTransisiSelesaiHaid = false;
         if ($user->gender === 'P') {
-            $isSedangHaid = MenstruationLog::where('user_id', $user->id)
+            $haidLog = MenstruationLog::where('user_id', $user->id)
                 ->whereDate('waktu_mulai', '<=', $selectedDate)
                 ->where(function($q) use ($selectedDate) {
                     $q->whereNull('waktu_selesai')
                       ->orWhereDate('waktu_selesai', '>=', $selectedDate);
-                })->exists();
+                })->first();
+
+            if ($haidLog) {
+                $isSedangHaid = true;
+                if ($haidLog->waktu_selesai && Carbon::parse($haidLog->waktu_selesai)->isSameDay($selectedDate)) {
+                    $isTransisiSelesaiHaid = true;
+                }
+            }
         }
 
         $habitIds = collect($request->logs)->pluck('habit_id')->unique();
@@ -170,7 +190,7 @@ class FormHabitController extends Controller
                     break;
             }
 
-            if ($isSedangHaid && $habit->hide_saat_haid) {
+            if ($isSedangHaid && !$isTransisiSelesaiHaid && $habit->hide_saat_haid) {
                 $skorDiperoleh = 0;
             }
 
@@ -188,31 +208,29 @@ class FormHabitController extends Controller
             );
         }
 
-        // Cap Skor Harian Saat Haid
-        if ($isSedangHaid) {
-            $skorMaksimalNormal = Habit::where('status_aktif', true)
-                ->where('is_pengganti_haid', false)
-                ->sum('skor_maksimal');
+        // Cap Skor Harian
+        $skorMaksimalNormal = Habit::where('status_aktif', true)
+            ->where('is_pengganti_haid', false)
+            ->sum('skor_maksimal');
 
-            $allLogsToday = HabitLog::where('user_id', $user->id)
-                ->whereDate('tanggal', $selectedDate->toDateString())
-                ->get();
+        $allLogsToday = HabitLog::where('user_id', $user->id)
+            ->whereDate('tanggal', $selectedDate->toDateString())
+            ->get();
 
-            $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');
+        $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');
 
-            if ($totalSkorHariIni > $skorMaksimalNormal) {
-                $kelebihan = $totalSkorHariIni - $skorMaksimalNormal;
-                $logsHabitPengganti = $allLogsToday
-                    ->filter(fn($log) => Habit::find($log->habit_id)?->is_pengganti_haid)
-                    ->sortByDesc('skor_diperoleh');
+        if ($totalSkorHariIni > $skorMaksimalNormal) {
+            $kelebihan = $totalSkorHariIni - $skorMaksimalNormal;
+            $logsHabitPengganti = $allLogsToday
+                ->filter(fn($log) => Habit::find($log->habit_id)?->is_pengganti_haid)
+                ->sortByDesc('skor_diperoleh');
 
-                foreach ($logsHabitPengganti as $log) {
-                    if ($kelebihan <= 0) break;
-                    $potong = min($log->skor_diperoleh, $kelebihan);
-                    $log->skor_diperoleh -= $potong;
-                    $log->save();
-                    $kelebihan -= $potong;
-                }
+            foreach ($logsHabitPengganti as $log) {
+                if ($kelebihan <= 0) break;
+                $potong = min($log->skor_diperoleh, $kelebihan);
+                $log->skor_diperoleh -= $potong;
+                $log->save();
+                $kelebihan -= $potong;
             }
         }
 

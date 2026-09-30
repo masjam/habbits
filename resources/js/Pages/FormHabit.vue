@@ -13,6 +13,7 @@ const props = defineProps({
     habits:       { type: Array,   default: () => [] },
     logsHariIni:  { type: Object,  default: () => ({}) },
     isSedangHaid: { type: Boolean, default: false },
+    waktuSelesaiHaid: { type: String, default: null },
     tanggal:      { type: String,  default: '' },
     today:        { type: String,  default: '' },
 })
@@ -276,12 +277,18 @@ const doSubmit = () => {
     })
 }
 
+const maxSkorNormal = computed(() => {
+    return props.habits
+        .filter(h => !h.is_pengganti_haid)
+        .reduce((sum, h) => sum + h.skor_maksimal, 0);
+});
+
 const totalSkorEstimasi = computed(() => {
     let total = 0;
     recapItems.value.forEach(item => {
         total += item.skor;
     });
-    return total;
+    return Math.min(total, maxSkorNormal.value || 10);
 });
 
 // --- Helper Functions ---
@@ -559,12 +566,12 @@ const toggleBoolean = (index) => {
                             
                             <!-- 1. SHOLAT WAJIB -->
                             <div v-if="habit.template === 'sholat_wajib'">
-                                <SholatWajib :log="form.logs[getLogIndex(habit.id)]" />
+                                <SholatWajib :log="form.logs[getLogIndex(habit.id)]" :waktu-selesai-haid="waktuSelesaiHaid" />
                             </div>
 
                             <!-- 2. SHOLAT RAWATIB -->
                             <div v-else-if="habit.template === 'sholat_rawatib'">
-                                <SholatRawatib :log="form.logs[getLogIndex(habit.id)]" />
+                                <SholatRawatib :log="form.logs[getLogIndex(habit.id)]" :waktu-selesai-haid="waktuSelesaiHaid" />
                             </div>
 
                             <!-- 3. AL QURAN -->
