@@ -86,9 +86,9 @@ const getBadgeClass = (persentase, target) => {
             <!-- Header -->
             <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Leaderboard Pegawai</h2>
+                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Rekap Habbit Pegawai</h2>
                     <p class="text-sm text-slate-500 mt-1">
-                        Rekapitulasi pencapaian ibadah seluruh pegawai bulan <strong>{{ namaBulan }}</strong>.
+                        Rekapitulasi Golden Habbit pegawai bulan <strong>{{ namaBulan }}</strong>.
                     </p>
                 </div>
             </div>
@@ -116,7 +116,7 @@ const getBadgeClass = (persentase, target) => {
                     <!-- Search & Filters -->
                     <div class="flex-1 w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
                         <div class="col-span-1 md:col-span-2 xl:col-span-1">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pencarian</label>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cari</label>
                             <div class="relative">
                                 <input type="text" v-model="searchQuery" placeholder="Cari nama pegawai..." class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 pr-4 py-2.5 transition-colors" />
                                 <svg class="w-5 h-5 absolute left-3 top-2.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
