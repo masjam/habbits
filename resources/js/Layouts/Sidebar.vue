@@ -286,19 +286,34 @@ const featureEnabled = (key) => {
                     <span>Rekap Presensi </span>
                 </Link>
 
-                <Link
-                    :href="route('admin.laporan')"
-                    :class="navLinkClass('admin.laporan')"
-                    @click="closeSidebar"
-                >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.laporan') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                <div class="space-y-0.5">
+                    <Link
+                        :href="route('admin.laporan')"
+                        :class="navLinkClass('admin.laporan')"
+                        @click="closeSidebar"
                     >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <span>Rekap Habits</span>
-                </Link>
+                        <svg
+                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.laporan') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span>Rekap Habits</span>
+                    </Link>
+
+                    <div v-if="hasRole('superadmin')" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5">
+                        <Link
+                            :href="route('admin.laporan.unfilled')"
+                            :class="[...navLinkClass('admin.laporan.unfilled'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.laporan.unfilled') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>Cek Belum Isi Habit</span>
+                        </Link>
+                    </div>
+                </div>
 
                 <Link
                     :href="route('admin.habits.index')"

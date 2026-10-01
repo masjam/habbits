@@ -382,4 +382,157 @@ class LaporanController extends Controller
             ]
         ]);
     }
+    /**
+     * Tampilkan data pegawai yang belum mengisi habit (skor 0) pada tanggal tertentu di bulan terpilih.
+     * Hanya bisa diakses oleh superadmin.
+     */
+    public function unfilled(Request $request)
+    {
+        $now = Carbon::now();
+        $month = $request->input('month', $now->month);
+        $year = $request->input('year', $now->year);
+        
+        $date = Carbon::create($year, $month, 1);
+        $startOfMonth = $date->copy()->startOfMonth();
+        
+        // Jangan tampilkan hari di masa depan
+        $endOfMonth = $date->copy()->endOfMonth();
+        if ($endOfMonth->isFuture()) {
+            $endOfMonth = Carbon::today();
+        }
+
+        // Ambil semua pegawai aktif (bukan admin)
+        $users = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+            ->where('status_kehadiran', 'Aktif')
+            ->orderBy('name')
+            ->get();
+            
+        // Ambil semua log habit bulan ini
+        $habitLogs = HabitLog::select('user_id', 'tanggal', 'skor_diperoleh')
+            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            ->get();
+            
+        // Kelompokkan skor harian per user
+        $userDailyScores = [];
+        foreach ($habitLogs as $log) {
+            $day = Carbon::parse($log->tanggal)->day;
+            if (!isset($userDailyScores[$log->user_id])) {
+                $userDailyScores[$log->user_id] = [];
+            }
+            if (!isset($userDailyScores[$log->user_id][$day])) {
+                $userDailyScores[$log->user_id][$day] = 0;
+            }
+            $userDailyScores[$log->user_id][$day] += $log->skor_diperoleh;
+        }
+        
+        $totalDays = $startOfMonth->diffInDays($endOfMonth) + 1;
+        $unfilledData = [];
+        
+        foreach ($users as $user) {
+            $unfilledDates = [];
+            for ($day = 1; $day <= $totalDays; $day++) {
+                // Jika tanggal tersebut belum ada log sama sekali atau skor totalnya 0
+                if (!isset($userDailyScores[$user->id][$day]) || $userDailyScores[$user->id][$day] == 0) {
+                    $unfilledDates[] = $day;
+                }
+            }
+            
+            if (count($unfilledDates) > 0) {
+                $unfilledData[] = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'divisi' => $user->divisi,
+                    'unfilled_dates' => $unfilledDates,
+                    'total_unfilled' => count($unfilledDates),
+                ];
+            }
+        }
+        
+        // Urutkan berdasarkan yang paling banyak bolong
+        usort($unfilledData, function($a, $b) {
+            return $b['total_unfilled'] <=> $a['total_unfilled'];
+        });
+
+        return Inertia::render('Admin/Laporan/Unfilled', [
+            'unfilledData' => $unfilledData,
+            'namaBulan'    => $date->translatedFormat('F Y'),
+            'filters'      => [
+                'month' => (int) $month,
+                'year'  => (int) $year,
+            ]
+        ]);
+    }
+
+    /**
+     * Download data pegawai yang belum mengisi habit dalam bentuk Excel.
+     */
+    public function unfilledExport(Request $request)
+    {
+        $now = Carbon::now();
+        $month = $request->input('month', $now->month);
+        $year = $request->input('year', $now->year);
+        
+        $date = Carbon::create($year, $month, 1);
+        $startOfMonth = $date->copy()->startOfMonth();
+        
+        $endOfMonth = $date->copy()->endOfMonth();
+        if ($endOfMonth->isFuture()) {
+            $endOfMonth = Carbon::today();
+        }
+
+        $users = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+            ->where('status_kehadiran', 'Aktif')
+            ->orderBy('name')
+            ->get();
+            
+        $habitLogs = HabitLog::select('user_id', 'tanggal', 'skor_diperoleh')
+            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+            ->get();
+            
+        $userDailyScores = [];
+        foreach ($habitLogs as $log) {
+            $day = Carbon::parse($log->tanggal)->day;
+            if (!isset($userDailyScores[$log->user_id])) {
+                $userDailyScores[$log->user_id] = [];
+            }
+            if (!isset($userDailyScores[$log->user_id][$day])) {
+                $userDailyScores[$log->user_id][$day] = 0;
+            }
+            $userDailyScores[$log->user_id][$day] += $log->skor_diperoleh;
+        }
+        
+        $totalDays = $startOfMonth->diffInDays($endOfMonth) + 1;
+        $unfilledData = [];
+        
+        foreach ($users as $user) {
+            $unfilledDates = [];
+            for ($day = 1; $day <= $totalDays; $day++) {
+                if (!isset($userDailyScores[$user->id][$day]) || $userDailyScores[$user->id][$day] == 0) {
+                    $unfilledDates[] = $day;
+                }
+            }
+            
+            if (count($unfilledDates) > 0) {
+                $unfilledData[] = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'divisi' => $user->divisi,
+                    'unfilled_dates' => $unfilledDates,
+                    'total_unfilled' => count($unfilledDates),
+                ];
+            }
+        }
+        
+        usort($unfilledData, function($a, $b) {
+            return $b['total_unfilled'] <=> $a['total_unfilled'];
+        });
+
+        $namaBulan = $date->translatedFormat('F Y');
+        $fileName = 'Laporan_Belum_Isi_Habit_' . $date->format('Y_m') . '.xlsx';
+        
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\UnfilledExport($unfilledData, $namaBulan),
+            $fileName
+        );
+    }
 }

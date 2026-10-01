@@ -80,6 +80,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/laporan', [\App\Http\Controllers\Admin\LaporanController::class, 'index'])->name('admin.laporan');
         Route::get('/laporan/export', [\App\Http\Controllers\Admin\LaporanController::class, 'export'])->name('admin.laporan.export');
         Route::post('/laporan/target', [\App\Http\Controllers\Admin\LaporanController::class, 'updateTarget'])->name('admin.laporan.target');
+        
+        // Letakkan rute statis sebelum wildcard {user}
+        Route::get('/laporan/unfilled', [\App\Http\Controllers\Admin\LaporanController::class, 'unfilled'])
+            ->name('admin.laporan.unfilled')
+            ->middleware('role:superadmin');
+            
+        Route::get('/laporan/unfilled/export', [\App\Http\Controllers\Admin\LaporanController::class, 'unfilledExport'])
+            ->name('admin.laporan.unfilled.export')
+            ->middleware('role:superadmin');
+            
         Route::get('/laporan/{user}', [\App\Http\Controllers\Admin\LaporanController::class, 'detail'])->name('admin.laporan.detail');
 
         Route::get('/habits', [\App\Http\Controllers\Admin\HabitController::class, 'index'])->name('admin.habits.index');
