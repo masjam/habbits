@@ -41,6 +41,8 @@ class User extends Authenticatable
         'work_start',
         'work_end',
         'late_tolerance',
+        'rfid_uid',
+        'fingerprint_id',
     ];
 
     protected $hidden = [
