@@ -1,7 +1,7 @@
 <script setup>
 import { Head, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { watch, ref } from 'vue'
+import { watch, ref, computed } from 'vue'
 
 const props = defineProps({
     unfilledData: {
@@ -20,6 +20,15 @@ const props = defineProps({
 
 const selectedMonth = ref(props.filters.month)
 const selectedYear = ref(props.filters.year)
+const searchQuery = ref('')
+
+const filteredUnfilledData = computed(() => {
+    if (!searchQuery.value) return props.unfilledData;
+    const lowerQuery = searchQuery.value.toLowerCase();
+    return props.unfilledData.filter(item => 
+        item.name.toLowerCase().includes(lowerQuery)
+    );
+});
 
 // Helper: Array tahun dari (sekarang - 1) sampai (sekarang + 1)
 const years = Array.from({length: 3}, (_, i) => new Date().getFullYear() - 1 + i)
@@ -73,9 +82,18 @@ const applyFilter = () => {
                             <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
                         </select>
                     </div>
-                    <div class="flex items-center gap-3 mt-4 md:mt-0">
+                    <div class="flex items-center gap-3 mt-4 md:mt-0 ml-auto">
+                        <div class="relative w-full sm:w-64">
+                            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            <input type="text" v-model="searchQuery" placeholder="Cari nama pegawai..." 
+                                class="w-full pl-10 rounded-lg border-slate-300 dark:border-slate-600 text-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-slate-700 dark:text-white shadow-sm">
+                        </div>
                         <a :href="route('admin.laporan.unfilled.export', { month: selectedMonth, year: selectedYear })"
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 shrink-0">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
@@ -99,7 +117,7 @@ const applyFilter = () => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
-                            <tr v-for="(item, index) in unfilledData" :key="item.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                            <tr v-for="(item, index) in filteredUnfilledData" :key="item.id" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
                                 <td class="px-5 py-4 text-center text-slate-500">{{ index + 1 }}</td>
                                 <td class="px-5 py-4">
                                     <div class="font-bold text-slate-800 dark:text-slate-100 text-[15px]">{{ item.name }}</div>
@@ -127,6 +145,16 @@ const applyFilter = () => {
                                         </svg>
                                         <span class="font-medium text-lg text-emerald-600 dark:text-emerald-400">Alhamdulillah!</span>
                                         <span class="mt-1">Semua pegawai aktif telah mengisi habit (tidak ada yang bolong) pada bulan ini.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr v-else-if="filteredUnfilledData.length === 0">
+                                <td colspan="4" class="px-5 py-12 text-center text-slate-500 dark:text-slate-400">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <span class="mt-1">Tidak ada pegawai yang cocok dengan kata kunci <strong>"{{ searchQuery }}"</strong>.</span>
                                     </div>
                                 </td>
                             </tr>

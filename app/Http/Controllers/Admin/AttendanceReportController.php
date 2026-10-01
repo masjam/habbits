@@ -139,7 +139,7 @@ class AttendanceReportController extends Controller
                     }
                     
                     $isPureOntime = false;
-                    if ($att->status === 'hadir' && $att->time_in && !empty($daySchedule['work_start'])) {
+                    if (in_array($att->status, ['hadir', 'dinas_luar']) && $att->time_in && !empty($daySchedule['work_start'])) {
                         $inTime = substr($att->time_in, 0, 5);
                         $startTime = substr($daySchedule['work_start'], 0, 5);
                         if ($inTime <= $startTime) {
@@ -225,7 +225,7 @@ class AttendanceReportController extends Controller
             }
             
             $isPureOntime = false;
-            if ($att?->status === 'hadir' && $att?->time_in && !empty($schedule['work_start'])) {
+            if (in_array($att?->status, ['hadir', 'dinas_luar']) && $att?->time_in && !empty($schedule['work_start'])) {
                 $inTime = substr($att->time_in, 0, 5);
                 $startTime = substr($schedule['work_start'], 0, 5);
                 if ($inTime <= $startTime) {
@@ -505,7 +505,7 @@ class AttendanceReportController extends Controller
                     }
                     
                     $isPureOntime = false;
-                    if ($att->status === 'hadir' && $att->time_in && !empty($daySchedule['work_start'])) {
+                    if (in_array($att->status, ['hadir', 'dinas_luar']) && $att->time_in && !empty($daySchedule['work_start'])) {
                         $inTime = substr($att->time_in, 0, 5);
                         $startTime = substr($daySchedule['work_start'], 0, 5);
                         if ($inTime <= $startTime) {
