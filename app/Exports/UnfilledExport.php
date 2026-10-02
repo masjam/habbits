@@ -32,6 +32,7 @@ class UnfilledExport implements FromArray, WithHeadings, WithMapping, WithEvents
         return [
             ['Laporan Cek Pegawai Belum Isi Habit'],
             ['Periode: ' . $this->namaBulan],
+            ['Waktu Download: ' . now()->translatedFormat('d F Y H:i:s')],
             [''],
             [
                 'No',
@@ -65,8 +66,8 @@ class UnfilledExport implements FromArray, WithHeadings, WithMapping, WithEvents
                 $event->sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
                 
                 // Table header styling
-                $event->sheet->getStyle('A4:E4')->getFont()->setBold(true);
-                $event->sheet->getStyle('A4:E4')->applyFromArray([
+                $event->sheet->getStyle('A5:E5')->getFont()->setBold(true);
+                $event->sheet->getStyle('A5:E5')->applyFromArray([
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
                         'startColor' => ['argb' => 'E2E8F0'] // slate-200
@@ -86,9 +87,9 @@ class UnfilledExport implements FromArray, WithHeadings, WithMapping, WithEvents
                 $event->sheet->getColumnDimension('E')->setWidth(40);
                 
                 // Data body styling
-                $totalRows = count($this->unfilledData) + 4;
-                if ($totalRows > 4) {
-                    $event->sheet->getStyle('A5:E' . $totalRows)->applyFromArray([
+                $totalRows = count($this->unfilledData) + 5;
+                if ($totalRows > 5) {
+                    $event->sheet->getStyle('A6:E' . $totalRows)->applyFromArray([
                         'borders' => [
                             'allBorders' => [
                                 'borderStyle' => Border::BORDER_THIN,

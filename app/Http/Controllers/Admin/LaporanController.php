@@ -528,7 +528,8 @@ class LaporanController extends Controller
         });
 
         $namaBulan = $date->translatedFormat('F Y');
-        $fileName = 'Laporan_Belum_Isi_Habit_' . $date->format('Y_m') . '.xlsx';
+        $now = now()->format('Ymd_His');
+        $fileName = 'Laporan_Belum_Isi_Habit_' . $date->format('Y_m') . '_' . $now . '.xlsx';
         
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\UnfilledExport($unfilledData, $namaBulan),
