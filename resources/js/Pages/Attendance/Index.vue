@@ -82,9 +82,18 @@ const refreshGpsLocation = () => {
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
+            const acc = pos.coords.accuracy;
+            
+            // Cek indikasi Fake GPS
+            if (acc === 0 || acc === 5 || acc === 10 || acc === 65 || acc === 100) {
+                gpsError.value = 'Sistem mendeteksi indikasi penggunaan lokasi palsu (Fake GPS). Harap matikan Fake GPS dan gunakan lokasi asli Anda.';
+                isGpsLoading.value = false;
+                return;
+            }
+
             userLat.value = pos.coords.latitude
             userLng.value = pos.coords.longitude
-            userAccuracy.value = Math.round(pos.coords.accuracy)
+            userAccuracy.value = Math.round(acc)
             isGpsLoading.value = false
         },
         (err) => {
@@ -827,23 +836,6 @@ onUnmounted(() => {
                                 <div class="flex flex-col h-full" v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'">
                                     <template v-if="!todayAttendance || !todayAttendance.time_in">
                                         <button
-                                            v-if="isInsideRadius"
-                                            type="button"
-                                            @click="handleCheckInDirect"
-                                            :disabled="checkInForm.processing || isGpsLoading"
-                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center"
-                                        >
-                                            <svg v-if="checkInForm.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                            </svg>
-                                            <svg v-else class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            <span>ABSEN MASUK</span>
-                                        </button>
-                                        <button
-                                            v-else
                                             type="button"
                                             @click="openCameraModal('checkin')"
                                             :disabled="isGpsLoading"
@@ -858,27 +850,6 @@ onUnmounted(() => {
                                     </template>
                                     <template v-else-if="!todayAttendance.time_out">
                                         <button
-                                            v-if="isInsideRadius"
-                                            type="button"
-                                            @click="handleCheckOutDirect"
-                                            :disabled="checkOutForm.processing || isGpsLoading"
-                                            :class="[
-                                                'h-full w-full rounded-xl sm:rounded-2xl text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center',
-                                                isBeforeWorkEnd ? 'bg-purple-600 hover:bg-purple-700' : 'bg-rose-600 hover:bg-rose-700'
-                                            ]"
-                                        >
-                                            <svg v-if="checkOutForm.processing" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                            </svg>
-                                            <svg v-else class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                            </svg>
-                                            <span v-if="isBeforeWorkEnd">IJIN PULANG</span>
-                                            <span v-else>ABSEN PULANG</span>
-                                        </button>
-                                        <button
-                                            v-else
                                             type="button"
                                             @click="openCameraModal('checkout')"
                                             :disabled="isGpsLoading"
@@ -1210,8 +1181,8 @@ onUnmounted(() => {
                         <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">
                             Foto Selfie Verifikasi Lokasi
                         </h3>
-                        <p class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
-                            Presensi {{ actionType === 'checkin' ? 'Masuk' : 'Pulang' }} di Luar Area Sekolah
+                        <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                            Presensi {{ actionType === 'checkin' ? 'Masuk' : 'Pulang' }}
                         </p>
                     </div>
                     <button 
@@ -1275,14 +1246,14 @@ onUnmounted(() => {
                     <!-- Input Keterangan Dinas Luar (Khusus Check-in) -->
                     <div v-if="actionType === 'checkin'" class="space-y-1">
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                            Keterangan Kegiatan Dinas Luar <span class="text-rose-500">*</span>
+                            Keterangan Kegiatan Dinas Luar <span v-if="!isInsideRadius" class="text-rose-500">*</span>
                         </label>
                         <textarea
                             v-model="checkInForm.notes"
                             rows="2"
-                            placeholder="Contoh: Mengikuti pelatihan kurikulum di dinas pendidikan / kunjungan dinas..."
+                            :placeholder="!isInsideRadius ? 'Contoh: Mengikuti pelatihan di dinas...' : 'Catatan opsional...'"
                             class="w-full text-xs rounded-xl border border-theme bg-card-subtle p-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
-                        />
+                        ></textarea>
                     </div>
 
                     <!-- Pulang Tugas Luar (jika checkout di luar area) -->
@@ -1301,7 +1272,7 @@ onUnmounted(() => {
                             rows="2"
                             placeholder="Contoh: Pulang setelah kunjungan ke Dinas Pendidikan..."
                             class="w-full text-xs rounded-xl border border-theme bg-card-subtle p-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 mt-2"
-                        />
+                        ></textarea>
                     </div>
 
                     <!-- Tombol Ambil Foto / Ulangi -->
@@ -1331,7 +1302,7 @@ onUnmounted(() => {
                             <button
                                 type="button"
                                 @click="actionType === 'checkin' ? handleCheckInWithFace() : handleCheckOutWithFace()"
-                                :disabled="checkInForm.processing || checkOutForm.processing || (actionType === 'checkin' && !checkInForm.notes) || (actionType === 'checkout' && checkOutForm.is_dinas_luar && !checkOutForm.dinas_luar_notes)"
+                                :disabled="checkInForm.processing || checkOutForm.processing || (actionType === 'checkin' && !isInsideRadius && !checkInForm.notes) || (actionType === 'checkout' && checkOutForm.is_dinas_luar && !checkOutForm.dinas_luar_notes)"
                                 class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                             >
                                 <span>KIRIM PRESENSI</span>

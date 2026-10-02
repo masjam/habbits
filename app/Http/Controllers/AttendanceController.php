@@ -109,15 +109,13 @@ class AttendanceController extends Controller
         $lateReason = null;
         $status = 'hadir';
 
-        // Aturan facecapture sesuai instruksi:
-        // Jika di luar radius: WAJIB foto selfie & keterangan dinas luar
-        // Jika di dalam radius: tidak wajib foto selfie
-        if (!$isInsideRadius) {
-            if (!$request->photo) {
-                return redirect()->back()->with('error', "Anda berada di luar area sekolah ({$distance} meter). Presensi di luar area wajib menyertakan foto selfie kamera.");
-            }
+        // Aturan anti Fake-GPS: WAJIB foto selfie untuk semua presensi (di dalam atau luar area)
+        if (!$request->photo) {
+            return redirect()->back()->with('error', "Untuk keamanan dan mencegah Fake GPS, presensi wajib menyertakan foto selfie kamera secara langsung.");
+        }
+        $photoPath = $this->storeBase64Photo($request->photo, 'checkin');
 
-            $photoPath = $this->storeBase64Photo($request->photo, 'checkin');
+        if (!$isInsideRadius) {
             $status = 'dinas_luar';
         } else {
             // Cek keterlambatan berdasarkan jam kerja efektif user
@@ -213,8 +211,8 @@ class AttendanceController extends Controller
         );
 
         $photoPath = null;
-        if ($distance > $officeRadius && !$request->photo) {
-            return redirect()->back()->with('error', "Anda berada di luar area sekolah ({$distance} meter). Presensi pulang di luar area wajib menyertakan foto selfie kamera.");
+        if (!$request->photo) {
+            return redirect()->back()->with('error', "Untuk keamanan dan mencegah Fake GPS, presensi pulang wajib menyertakan foto selfie kamera secara langsung.");
         }
 
         if ($request->photo) {
