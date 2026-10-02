@@ -98,7 +98,8 @@ class User extends Authenticatable
             ->where('is_active', true)
             ->first();
 
-        $globalTol = (int)(Setting::where('key', 'presensi_late_tolerance')->value('value') ?: 15);
+        $globalTolSetting = Setting::where('key', 'presensi_late_tolerance')->value('value');
+        $globalTol = ($globalTolSetting !== null && $globalTolSetting !== '') ? (int)$globalTolSetting : 15;
 
         if ($piket) {
             return [

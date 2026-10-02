@@ -1652,14 +1652,14 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 <p class="text-xs text-amber-900 dark:text-amber-100 font-medium">
                                     "{{ selectedDetailModal.record?.late_reason || 'Tidak ada catatan alasan terlambat' }}"
                                 </p>
-                                <div v-if="selectedDetailModal.record?.late_photo" class="mt-2">
+                                <!-- <div v-if="selectedDetailModal.record?.late_photo" class="mt-2">
                                     <p class="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 mb-1">Bukti Foto Keterlambatan:</p>
                                     <div class="rounded-xl overflow-hidden border border-amber-300 dark:border-amber-700 bg-black/20 flex items-center justify-center p-1 max-w-[220px]">
                                         <a :href="`/storage/${selectedDetailModal.record?.late_photo}`" target="_blank" title="Lihat foto bukti keterlambatan">
                                             <img :src="`/storage/${selectedDetailModal.record?.late_photo}`" class="max-h-40 w-auto rounded-lg object-contain hover:scale-105 transition-transform" />
                                         </a>
                                     </div>
-                                </div>
+                                </div> -->
                             </div>
 
                             <!-- Keterangan Pulang Cepat -->
