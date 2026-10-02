@@ -101,6 +101,28 @@ class User extends Authenticatable
         $globalTolSetting = Setting::where('key', 'presensi_late_tolerance')->value('value');
         $globalTol = ($globalTolSetting !== null && $globalTolSetting !== '') ? (int)$globalTolSetting : 15;
 
+        // 0. Cek apakah ada jadwal khusus (Special Schedule)
+        $specialSchedule = \App\Models\SpecialSchedule::where('is_active', true)
+            ->where('start_date', '<=', $targetDate->format('Y-m-d'))
+            ->where('end_date', '>=', $targetDate->format('Y-m-d'))
+            ->first();
+
+        if ($specialSchedule) {
+            return [
+                'work_start'     => $specialSchedule->time_in,
+                'work_end'       => $specialSchedule->time_out,
+                'late_tolerance' => $specialSchedule->late_tolerance !== null ? (int)$specialSchedule->late_tolerance : $globalTol,
+                'is_custom'      => true,
+                'is_piket'       => false,
+                'is_special'     => true,
+                'special_name'   => $specialSchedule->name,
+                'is_off_day'     => false,
+                'latitude'       => $specialSchedule->latitude,
+                'longitude'      => $specialSchedule->longitude,
+                'radius'         => $specialSchedule->radius,
+            ];
+        }
+
         if ($piket) {
             return [
                 'work_start'     => $piket->time_in,

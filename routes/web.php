@@ -112,6 +112,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/duty-schedules', [\App\Http\Controllers\Admin\DutyScheduleController::class, 'store'])->name('admin.duty-schedules.store');
         Route::delete('/duty-schedules/{dutySchedule}', [\App\Http\Controllers\Admin\DutyScheduleController::class, 'destroy'])->name('admin.duty-schedules.destroy');
         Route::post('/duty-schedules/daily-work', [\App\Http\Controllers\Admin\DutyScheduleController::class, 'saveDailyWorkSchedules'])->name('admin.duty-schedules.daily-work');
+        
+        // Jadwal Khusus
+        Route::resource('special-schedules', \App\Http\Controllers\Admin\SpecialScheduleController::class)->except(['create', 'show', 'edit'])->names([
+            'index' => 'admin.special-schedules.index',
+            'store' => 'admin.special-schedules.store',
+            'update' => 'admin.special-schedules.update',
+            'destroy' => 'admin.special-schedules.destroy',
+        ]);
 
         Route::resource('divisions', \App\Http\Controllers\Admin\DivisionController::class)->except(['create', 'show', 'edit'])->names([
             'index' => 'admin.divisions.index',

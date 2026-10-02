@@ -47,9 +47,9 @@ class AttendanceController extends Controller
         $settings = Setting::all()->pluck('value', 'key')->toArray();
         $schedule = $user->getEffectiveWorkSchedule($today);
 
-        $officeLat = (float) ($settings['presensi_latitude'] ?? -7.7956);
-        $officeLng = (float) ($settings['presensi_longitude'] ?? 110.3695);
-        $officeRadius = (int) ($settings['presensi_radius_meters'] ?? 100);
+        $officeLat = (float) (isset($schedule['latitude']) && $schedule['latitude'] ? $schedule['latitude'] : ($settings['presensi_latitude'] ?? -7.7956));
+        $officeLng = (float) (isset($schedule['longitude']) && $schedule['longitude'] ? $schedule['longitude'] : ($settings['presensi_longitude'] ?? 110.3695));
+        $officeRadius = (int) (isset($schedule['radius']) && $schedule['radius'] ? $schedule['radius'] : ($settings['presensi_radius_meters'] ?? 100));
 
         return Inertia::render('Attendance/Index', [
             'todayAttendance'    => $todayAttendance,
@@ -91,9 +91,10 @@ class AttendanceController extends Controller
         ]);
 
         $settings = Setting::all()->pluck('value', 'key')->toArray();
-        $officeLat = (float) ($settings['presensi_latitude'] ?? -7.7956);
-        $officeLng = (float) ($settings['presensi_longitude'] ?? 110.3695);
-        $officeRadius = (int) ($settings['presensi_radius_meters'] ?? 100);
+        $schedule = $user->getEffectiveWorkSchedule($today);
+        $officeLat = (float) (isset($schedule['latitude']) && $schedule['latitude'] ? $schedule['latitude'] : ($settings['presensi_latitude'] ?? -7.7956));
+        $officeLng = (float) (isset($schedule['longitude']) && $schedule['longitude'] ? $schedule['longitude'] : ($settings['presensi_longitude'] ?? 110.3695));
+        $officeRadius = (int) (isset($schedule['radius']) && $schedule['radius'] ? $schedule['radius'] : ($settings['presensi_radius_meters'] ?? 100));
 
         $distance = $this->calculateDistance(
             (float) $request->latitude,
@@ -199,9 +200,10 @@ class AttendanceController extends Controller
         ]);
 
         $settings = Setting::all()->pluck('value', 'key')->toArray();
-        $officeLat = (float) ($settings['presensi_latitude'] ?? -7.7956);
-        $officeLng = (float) ($settings['presensi_longitude'] ?? 110.3695);
-        $officeRadius = (int) ($settings['presensi_radius_meters'] ?? 100);
+        $schedule = $user->getEffectiveWorkSchedule($today);
+        $officeLat = (float) (isset($schedule['latitude']) && $schedule['latitude'] ? $schedule['latitude'] : ($settings['presensi_latitude'] ?? -7.7956));
+        $officeLng = (float) (isset($schedule['longitude']) && $schedule['longitude'] ? $schedule['longitude'] : ($settings['presensi_longitude'] ?? 110.3695));
+        $officeRadius = (int) (isset($schedule['radius']) && $schedule['radius'] ? $schedule['radius'] : ($settings['presensi_radius_meters'] ?? 100));
 
         $distance = $this->calculateDistance(
             (float) $request->latitude,
@@ -219,7 +221,6 @@ class AttendanceController extends Controller
             $photoPath = $this->storeBase64Photo($request->photo, 'checkout');
         }
 
-        $schedule = $user->getEffectiveWorkSchedule($today);
         $now = Carbon::now();
         $isOvertime = false;
         $overtimeMinutes = null;
