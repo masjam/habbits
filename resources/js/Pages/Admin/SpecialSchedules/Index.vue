@@ -117,6 +117,26 @@ const initMap = () => {
     setTimeout(() => {
         mapInstance?.invalidateSize();
     }, 300);
+
+    // Coba baca GPS jika sedang dalam mode tambah baru (belum ada koordinat)
+    if (!form.latitude || !form.longitude) {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const currentLat = position.coords.latitude;
+                    const currentLng = position.coords.longitude;
+                    updateCoordinates(currentLat, currentLng);
+                    if (mapInstance) {
+                        mapInstance.flyTo([currentLat, currentLng], 17);
+                    }
+                },
+                (error) => {
+                    console.warn("Gagal membaca lokasi GPS: ", error.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+    }
 };
 
 const updateCoordinates = (lat, lng) => {
@@ -330,7 +350,10 @@ const deleteSchedule = (id) => {
                     </div>
                     <div class="space-y-1">
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Radius Lokasi (Meter)</label>
-                        <input type="number" v-model="form.radius" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" />
+                        <div class="flex items-center gap-4">
+                            <input type="range" v-model="form.radius" min="10" max="1000" step="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
+                            <input type="number" v-model="form.radius" min="10" max="5000" class="w-24 text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100 text-center font-bold" />
+                        </div>
                         <p class="text-[11px] text-slate-400">Kosongkan latitude/longitude jika tidak menggunakan batas lokasi khusus.</p>
                     </div>
 
