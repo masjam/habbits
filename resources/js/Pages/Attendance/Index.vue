@@ -84,8 +84,14 @@ const refreshGpsLocation = () => {
         (pos) => {
             const acc = pos.coords.accuracy;
             
-            // Cek indikasi Fake GPS
-            if (acc === 0 || acc === 5 || acc === 10 || acc === 65 || acc === 100) {
+            // Cek indikasi Fake GPS (Heuristik Lanjutan)
+            const isMocked = pos.mocked || (pos.coords && pos.coords.mocked);
+            
+            // Fake GPS seringkali memberikan nilai akurasi bulat tertentu atau altitude persis 0
+            const isSuspiciousAccuracy = [0, 1, 5, 10, 65, 100, 150].includes(acc);
+            const isSuspiciousAltitude = pos.coords.altitude === 0 && pos.coords.altitudeAccuracy === 0;
+            
+            if (isMocked || isSuspiciousAccuracy || isSuspiciousAltitude) {
                 gpsError.value = 'Sistem mendeteksi indikasi penggunaan lokasi palsu (Fake GPS). Harap matikan Fake GPS dan gunakan lokasi asli Anda.';
                 isGpsLoading.value = false;
                 return;
