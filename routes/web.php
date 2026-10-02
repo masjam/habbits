@@ -44,6 +44,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/dzikir', [\App\Http\Controllers\DzikirController::class, 'index'])->name('dzikir.index');
     Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qibla.index');
 
+    // Jurnal Harian Guru
+    Route::resource('teacher-journals', \App\Http\Controllers\TeacherJournalController::class)->parameters([
+        'teacher-journals' => 'teacherJournal'
+    ]);
+
     // Notifikasi / Pesan
     Route::get('/pesan', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/pesan/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
@@ -91,6 +96,8 @@ Route::middleware('auth')->group(function () {
             ->middleware('role:superadmin');
             
         Route::get('/laporan/{user}', [\App\Http\Controllers\Admin\LaporanController::class, 'detail'])->name('admin.laporan.detail');
+
+        Route::get('/teacher-journals', [\App\Http\Controllers\Admin\TeacherJournalController::class, 'index'])->name('admin.teacher-journals.index');
 
         Route::get('/habits', [\App\Http\Controllers\Admin\HabitController::class, 'index'])->name('admin.habits.index');
         Route::post('/habits/reorder', [\App\Http\Controllers\Admin\HabitController::class, 'reorder'])->name('admin.habits.reorder');

@@ -159,6 +159,21 @@ const featureEnabled = (key) => {
 
             <!-- Presensi GPS — Semua Role (bisa diakses pegawai & admin) -->
            
+            <!-- Jurnal Harian Guru -->
+            <Link
+                v-if="!hasAnyRole(['admin', 'superadmin']) && page.props.global_settings?.feature_jurnal !== 'false' && page.props.global_settings?.feature_jurnal !== '0'"
+                :href="route('teacher-journals.index')"
+                :class="navLinkClass('teacher-journals.index')"
+                @click="closeSidebar"
+            >
+                <svg
+                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('teacher-journals.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Jurnal Harian Guru</span>
+            </Link>
 
             <!-- Arah Kiblat (Hanya Mobile) -->
             <!-- <Link
@@ -314,6 +329,20 @@ const featureEnabled = (key) => {
                         </Link>
                     </div>
                 </div>
+
+                <Link
+                    :href="route('admin.teacher-journals.index')"
+                    :class="navLinkClass('admin.teacher-journals.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.teacher-journals.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    <span>Rekap Jurnal Guru</span>
+                </Link>
 
                 <Link
                     :href="route('admin.habits.index')"

@@ -71,6 +71,7 @@ const form = useForm({
     feature_cuti: props.settings.feature_cuti === '1' || props.settings.feature_cuti === 'true',
     feature_idcard: props.settings.feature_idcard === '1' || props.settings.feature_idcard === 'true',
     feature_notes: props.settings.feature_notes === '1' || props.settings.feature_notes === 'true',
+    feature_jurnal: props.settings.feature_jurnal === '1' || props.settings.feature_jurnal === 'true' || props.settings.feature_jurnal === undefined,
     maintenance_mode: props.settings.maintenance_mode === '1' || props.settings.maintenance_mode === 'true',
     maintenance_title: props.settings.maintenance_title || 'Sistem Sedang Dalam Pemeliharaan',
     maintenance_message: props.settings.maintenance_message || 'Kami sedang melakukan pemeliharaan rutin dan peningkatan performa sistem habit tracker. Mohon maaf atas ketidaknyamanan Anda. Sistem akan segera kembali normal.',
@@ -114,7 +115,7 @@ const tabOptions = computed(() => [
         title: 'Fitur HR (Pegawai)',
         shortTitle: 'Fitur HR',
         description: 'Badge, divisi, pengajuan cuti, ID card & catatan',
-        badge: '5 Fitur',
+        badge: '6 Fitur',
         badgeClass: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/80 dark:text-fuchsia-300',
         activeRing: 'border-fuchsia-500 bg-fuchsia-50/80 dark:bg-fuchsia-950/50 text-fuchsia-900 dark:text-fuchsia-200 ring-2 ring-fuchsia-500/20',
         iconBg: 'bg-fuchsia-600 text-white',
@@ -1042,6 +1043,27 @@ const submit = () => {
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
                                     <input type="checkbox" v-model="form.feature_notes" class="sr-only peer" />
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- 6. Jurnal Harian Guru -->
+                            <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-10 h-10 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-950/60 flex items-center justify-center text-fuchsia-600 shrink-0 shadow-xs mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Jurnal Harian Guru</h4>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                            Mengaktifkan fitur Jurnal Harian bagi guru (hanya berlaku untuk peran pegawai).
+                                        </p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+                                    <input type="checkbox" v-model="form.feature_jurnal" class="sr-only peer" />
                                     <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
                                 </label>
                             </div>
