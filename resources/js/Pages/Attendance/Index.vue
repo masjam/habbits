@@ -1243,15 +1243,15 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <!-- Input Keterangan Dinas Luar (Khusus Check-in) -->
-                    <div v-if="actionType === 'checkin'" class="space-y-1">
+                    <!-- Input Keterangan Dinas Luar (Khusus Check-in di luar area) -->
+                    <div v-if="actionType === 'checkin' && !isInsideRadius" class="space-y-1">
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                            Keterangan Kegiatan Dinas Luar <span v-if="!isInsideRadius" class="text-rose-500">*</span>
+                            Keterangan Kegiatan Dinas Luar <span class="text-rose-500">*</span>
                         </label>
                         <textarea
                             v-model="checkInForm.notes"
                             rows="2"
-                            :placeholder="!isInsideRadius ? 'Contoh: Mengikuti pelatihan di dinas...' : 'Catatan opsional...'"
+                            placeholder="Contoh: Mengikuti pelatihan di dinas / kunjungan dinas..."
                             class="w-full text-xs rounded-xl border border-theme bg-card-subtle p-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
                         ></textarea>
                     </div>
