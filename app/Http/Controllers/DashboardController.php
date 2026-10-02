@@ -304,6 +304,13 @@ class DashboardController extends Controller
                 }
             }
         }
+        
+        $todayStr = Carbon::today()->format('Y-m-d');
+        $hasClockedInToday = \App\Models\Attendance::where('user_id', $targetUserId)
+            ->where('date', $todayStr)
+            ->exists();
+            
+        $featurePresensiActive = \App\Models\Setting::where('key', 'feature_presensi')->value('value') === '1' || \App\Models\Setting::where('key', 'feature_presensi')->value('value') === 'true';
 
         return Inertia::render('Dashboard', [
             'skorHariIni'      => (int) $skorHariIni,
@@ -336,6 +343,8 @@ class DashboardController extends Controller
             'announcement'     => $announcement,
             'habitAnalytics'   => $habitAnalytics,
             'radarChartDataBackend' => $radarChartDataBackend,
+            'hasClockedInToday'=> $hasClockedInToday,
+            'featurePresensiActive' => $featurePresensiActive,
         ]);
     }
 

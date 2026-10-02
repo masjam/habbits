@@ -51,10 +51,13 @@ const props = defineProps({
     announcement:     { type: String,  default: null },
     habitAnalytics:   { type: Object,  default: () => ({}) },
     radarChartDataBackend: { type: Object, default: () => ({}) },
+    hasClockedInToday:{ type: Boolean, default: true },
+    featurePresensiActive: { type: Boolean, default: false },
 })
 
 // --- Modal State ---
-const showMissedDatesModal = ref(props.missedDates && props.missedDates.length > 0)
+const showMissedDatesModal = ref(false)
+const showPresensiModal = ref(false)
 const showMobileWidget = ref(false)
 
 // --- Islamic Data untuk Hadis Harian (Running Text) ---
@@ -63,10 +66,21 @@ const { dailyHadith } = useIslamicData()
 
 onMounted(() => {
     // Tampilkan modal jika ada tanggal terlewat dan sedang melihat data sendiri
-    if (props.missedDates.length > 0 && !props.isTrackingOther) {
-        showMissedDatesModal.value = true;
+    if (!props.isTrackingOther) {
+        if (props.featurePresensiActive && !props.hasClockedInToday) {
+            showPresensiModal.value = true;
+        } else if (props.missedDates && props.missedDates.length > 0) {
+            showMissedDatesModal.value = true;
+        }
     }
 })
+
+const closePresensiModal = () => {
+    showPresensiModal.value = false;
+    if (props.missedDates && props.missedDates.length > 0) {
+        showMissedDatesModal.value = true;
+    }
+}
 
 // Get days in current month for max scale
 const daysInCurrentMonth = new Date(props.tahun, new Date().getMonth() + 1, 0).getDate();
@@ -237,6 +251,43 @@ const formatTanggal = (dateStr) => {
                             </component>
                         </template>
                     </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Peringatan Belum Presensi -->
+        <div v-if="showPresensiModal" class="relative z-50" aria-labelledby="modal-presensi-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"></div>
+            
+            <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div class="relative transform overflow-hidden rounded-3xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-slate-100 dark:border-slate-700">
+                        <div class="bg-white dark:bg-slate-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                            <div class="sm:flex sm:items-start">
+                                <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 sm:mx-0 sm:h-10 sm:w-10">
+                                    <svg class="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                    <h3 class="text-base font-bold leading-6 text-slate-900 dark:text-slate-100" id="modal-presensi-title">Belum Melakukan Presensi</h3>
+                                    <div class="mt-2">
+                                        <p class="text-sm text-slate-500 dark:text-slate-400">
+                                            Anda belum melakukan presensi masuk hari ini. Silakan catat kehadiran Anda terlebih dahulu.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-700/50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                            <Link :href="route('attendance.index')" class="inline-flex w-full justify-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 sm:ml-3 sm:w-auto transition-colors">
+                                Presensi Sekarang
+                            </Link>
+                            <button @click="closePresensiModal" type="button" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 sm:mt-0 sm:w-auto transition-colors">
+                                Nanti Saja
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
