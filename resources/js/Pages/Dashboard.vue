@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import IslamicWidget from '@/Components/IslamicWidget.vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { computed, ref, onMounted } from 'vue'
 
 // Import Chart.js components
@@ -53,12 +53,43 @@ const props = defineProps({
     radarChartDataBackend: { type: Object, default: () => ({}) },
     hasClockedInToday:{ type: Boolean, default: true },
     featurePresensiActive: { type: Boolean, default: false },
+    selectedMonth:    { type: Number,  default: new Date().getMonth() + 1 },
+    selectedYear:     { type: Number,  default: new Date().getFullYear() },
 })
 
 // --- Modal State ---
 const showMissedDatesModal = ref(false)
 const showPresensiModal = ref(false)
 const showMobileWidget = ref(false)
+const showDailyChart = ref(false)
+
+const currentMonth = ref(props.selectedMonth)
+const currentYear = ref(props.selectedYear)
+
+const changeMonth = () => {
+    router.get(route('dashboard'), { month: currentMonth.value, year: currentYear.value }, {
+        preserveState: true,
+        preserveScroll: true
+    })
+}
+
+const monthNamesOptions = [
+    { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
+    { value: 3, label: 'Maret' }, { value: 4, label: 'April' },
+    { value: 5, label: 'Mei' }, { value: 6, label: 'Juni' },
+    { value: 7, label: 'Juli' }, { value: 8, label: 'Agustus' },
+    { value: 9, label: 'September' }, { value: 10, label: 'Oktober' },
+    { value: 11, label: 'November' }, { value: 12, label: 'Desember' }
+]
+
+const yearOptions = computed(() => {
+    const current = new Date().getFullYear();
+    const result = [];
+    for (let i = current - 5; i <= current + 1; i++) {
+        result.push(i);
+    }
+    return result;
+})
 
 // --- Islamic Data untuk Hadis Harian (Running Text) ---
 import { useIslamicData } from '@/Composables/useIslamicData'
@@ -554,15 +585,59 @@ const formatTanggal = (dateStr) => {
 
                     <!-- Charts Area -->
                     <div class="flex flex-col gap-6">
-                        <!-- Daily Trend Line Chart -->
-                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 h-72 flex flex-col">
-                            <div class="mb-3">
-                                <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Tren 30 Hari</p>
-                                <p class="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Poin Harian</p>
+                        <!-- Tabel Rekap Skor Harian Bulanan -->
+                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 flex flex-col max-h-[500px]">
+                            <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Rekap Skor Harian</p>
+                                    <p class="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pilih Bulan & Tahun</p>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button @click="showDailyChart = !showDailyChart" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5">
+                                        <svg v-if="!showDailyChart" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                                        </svg>
+                                        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z" />
+                                        </svg>
+                                        {{ !showDailyChart ? 'Progres Ibadahku' : 'Lihat Tabel' }}
+                                    </button>
+                                    <select v-model="currentMonth" @change="changeMonth" class="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+                                        <option v-for="m in monthNamesOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+                                    </select>
+                                    <select v-model="currentYear" @change="changeMonth" class="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
+                                        <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="flex-1 relative min-h-0">
+                            
+                            <!-- Container Table -->
+                            <div v-if="!showDailyChart" class="flex-1 overflow-y-auto custom-scrollbar">
+                                <table v-if="props.dailyChartData.length" class="w-full text-left text-sm text-slate-600 dark:text-slate-400 border-collapse">
+                                    <thead class="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
+                                        <tr>
+                                            <th class="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700">Tanggal</th>
+                                            <th class="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 text-right">Skor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                        <tr v-for="(item, index) in props.dailyChartData" :key="index" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td class="py-2.5 px-4 font-medium">{{ formatTanggal(item.tanggal) }}</td>
+                                            <td class="py-2.5 px-4 text-right">
+                                                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded-lg" :class="item.skor > 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'">
+                                                    {{ item.skor }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500 py-10">Tidak ada data</div>
+                            </div>
+
+                            <!-- Container Chart -->
+                            <div v-else class="flex-1 relative min-h-[300px]">
                                 <LineChart v-if="dailyChartData.labels.length" :data="dailyChartData" :options="dailyChartOptions" />
-                                <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500">Tidak ada data</div>
+                                <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500 py-10">Tidak ada data</div>
                             </div>
                         </div>
 

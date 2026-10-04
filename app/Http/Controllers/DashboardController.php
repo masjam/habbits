@@ -54,11 +54,16 @@ class DashboardController extends Controller
             ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
             ->sum('skor_diperoleh');
 
-        // ─── 3. Grafik Harian (30 Hari Terakhir) ───────────────────────────────
-        $startDate30Days = Carbon::today()->subDays(29);
+        // ─── 3. Rekap Harian (Bulan Pilihan) ───────────────────────────────
+        $selectedMonth = $request->query('month', date('n'));
+        $selectedYear = $request->query('year', date('Y'));
+        
+        $targetDate = Carbon::createFromDate($selectedYear, $selectedMonth, 1);
+        $startOfSelectedMonth = $targetDate->copy()->startOfMonth();
+        $endOfSelectedMonth = $targetDate->copy()->endOfMonth();
 
         $dailyRaw = HabitLog::where('user_id', $targetUserId)
-            ->where('tanggal', '>=', $startDate30Days)
+            ->whereBetween('tanggal', [$startOfSelectedMonth, $endOfSelectedMonth])
             ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total_skor'))
             ->groupBy('tanggal')
             ->orderBy('tanggal', 'asc')
@@ -66,8 +71,9 @@ class DashboardController extends Controller
             ->keyBy(fn($row) => Carbon::parse($row->tanggal)->format('Y-m-d'));
 
         $dailyChartData = collect();
-        for ($i = 0; $i < 30; $i++) {
-            $date = $startDate30Days->copy()->addDays($i)->format('Y-m-d');
+        $daysInSelectedMonth = $targetDate->daysInMonth;
+        for ($i = 1; $i <= $daysInSelectedMonth; $i++) {
+            $date = $targetDate->copy()->day($i)->format('Y-m-d');
             $dailyChartData->push([
                 'tanggal' => $date,
                 'skor'    => isset($dailyRaw[$date]) ? (int) $dailyRaw[$date]->total_skor : 0,
@@ -345,6 +351,8 @@ class DashboardController extends Controller
             'radarChartDataBackend' => $radarChartDataBackend,
             'hasClockedInToday'=> $hasClockedInToday,
             'featurePresensiActive' => $featurePresensiActive,
+            'selectedMonth'    => (int) $selectedMonth,
+            'selectedYear'     => (int) $selectedYear,
         ]);
     }
 
