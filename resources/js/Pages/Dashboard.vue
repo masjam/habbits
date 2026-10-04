@@ -67,7 +67,10 @@ const { dailyHadith } = useIslamicData()
 onMounted(() => {
     // Tampilkan modal jika ada tanggal terlewat dan sedang melihat data sendiri
     if (!props.isTrackingOther) {
-        if (props.featurePresensiActive && !props.hasClockedInToday) {
+        const todayDay = new Date().getDay();
+        const isWeekend = todayDay === 0 || todayDay === 6; // 0: Minggu, 6: Sabtu
+
+        if (props.featurePresensiActive && !props.hasClockedInToday && !isWeekend) {
             showPresensiModal.value = true;
         } else if (props.missedDates && props.missedDates.length > 0) {
             showMissedDatesModal.value = true;

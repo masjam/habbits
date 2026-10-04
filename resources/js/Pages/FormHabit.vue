@@ -278,17 +278,15 @@ const doSubmit = () => {
 }
 
 const maxSkorNormal = computed(() => {
-    return props.habits
-        .filter(h => !h.is_pengganti_haid)
-        .reduce((sum, h) => sum + h.skor_maksimal, 0);
+    return 10;
 });
 
 const totalSkorEstimasi = computed(() => {
     let total = 0;
     recapItems.value.forEach(item => {
-        total += item.skor;
+        total += Number(item.skor) || 0;
     });
-    return Math.min(total, maxSkorNormal.value || 10);
+    return Math.min(total, 10);
 });
 
 // --- Lock logic for Tahajud and Dhuha ---
