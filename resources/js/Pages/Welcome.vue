@@ -74,7 +74,7 @@ const youtubeEmbedUrl = computed(() => {
                 <div class="flex items-center gap-3">
                     <img src="/logo.png" alt="Logo" class="w-10 h-10 object-contain transform transition hover:scale-105" />
                     <span class="text-xl sm:text-2xl font-black tracking-tight text-slate-800 bg-clip-text text-transparent bg-gradient-to-r from-emerald-700 to-emerald-900">
-                        Mutaba'ah Yaumiyah
+                        System Pantauan Aktifitas Guru/Karyawan
                     </span>
                 </div>
 

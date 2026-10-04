@@ -72,6 +72,9 @@ const form = useForm({
     feature_idcard: props.settings.feature_idcard === '1' || props.settings.feature_idcard === 'true',
     feature_notes: props.settings.feature_notes === '1' || props.settings.feature_notes === 'true',
     feature_jurnal: props.settings.feature_jurnal === '1' || props.settings.feature_jurnal === 'true' || props.settings.feature_jurnal === undefined,
+    feature_arsip: props.settings.feature_arsip === '1' || props.settings.feature_arsip === 'true' || props.settings.feature_arsip === undefined,
+    feature_kpi: props.settings.feature_kpi === '1' || props.settings.feature_kpi === 'true' || props.settings.feature_kpi === undefined,
+    feature_habit: props.settings.feature_habit === '1' || props.settings.feature_habit === 'true' || props.settings.feature_habit === undefined,
     maintenance_mode: props.settings.maintenance_mode === '1' || props.settings.maintenance_mode === 'true',
     maintenance_title: props.settings.maintenance_title || 'Sistem Sedang Dalam Pemeliharaan',
     maintenance_message: props.settings.maintenance_message || 'Kami sedang melakukan pemeliharaan rutin dan peningkatan performa sistem habit tracker. Mohon maaf atas ketidaknyamanan Anda. Sistem akan segera kembali normal.',
@@ -1064,6 +1067,69 @@ const submit = () => {
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
                                     <input type="checkbox" v-model="form.feature_jurnal" class="sr-only peer" />
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- 7. Arsip Kepegawaian (E-Filing) -->
+                            <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-10 h-10 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-950/60 flex items-center justify-center text-fuchsia-600 shrink-0 shadow-xs mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Arsip Kepegawaian (E-Filing)</h4>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                            Pegawai dapat mengunggah dokumen pribadi (Ijazah, SK, KTP) dan Admin dapat memverifikasinya.
+                                        </p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+                                    <input type="checkbox" v-model="form.feature_arsip" class="sr-only peer" />
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- 8. Penilaian Kinerja (KPI) -->
+                            <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-10 h-10 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-950/60 flex items-center justify-center text-fuchsia-600 shrink-0 shadow-xs mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Penilaian Kinerja (KPI)</h4>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                            Kepala Sekolah dapat memberikan nilai kinerja tiap bulan dan pegawai bisa melihat rapornya.
+                                        </p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+                                    <input type="checkbox" v-model="form.feature_kpi" class="sr-only peer" />
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- 9. Habit Tracker -->
+                            <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-10 h-10 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-950/60 flex items-center justify-center text-fuchsia-600 shrink-0 shadow-xs mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Modul Habit Tracker (Ibadah)</h4>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                            Jika dinonaktifkan, seluruh menu Pengisian Form Habit & Rekap Ibadah akan disembunyikan.
+                                        </p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+                                    <input type="checkbox" v-model="form.feature_habit" class="sr-only peer" />
                                     <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
                                 </label>
                             </div>

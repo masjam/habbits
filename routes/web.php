@@ -72,8 +72,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/push-subscriptions/test', [\App\Http\Controllers\PushSubscriptionController::class, 'sendTest'])->name('push.test');
     Route::post('/push-subscriptions/broadcast', [\App\Http\Controllers\PushSubscriptionController::class, 'sendBroadcast'])->name('push.broadcast')->middleware('role:admin|superadmin');
 
+    // ─── Arsip Kepegawaian (E-Filing) ─────────────────────────────────────────
+    Route::get('/employee-documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'index'])->name('employee-documents.index');
+    Route::post('/employee-documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'store'])->name('employee-documents.store');
+    Route::get('/employee-documents/{employeeDocument}/download', [\App\Http\Controllers\EmployeeDocumentController::class, 'download'])->name('employee-documents.download');
+    Route::delete('/employee-documents/{employeeDocument}', [\App\Http\Controllers\EmployeeDocumentController::class, 'destroy'])->name('employee-documents.destroy');
+    Route::patch('/employee-documents/{employeeDocument}/verify', [\App\Http\Controllers\EmployeeDocumentController::class, 'verify'])->name('employee-documents.verify')->middleware('role:admin|superadmin');
+
+    // ─── Penilaian Kinerja (KPI) ──────────────────────────────────────────────
+    Route::get('/performance-evaluations', [\App\Http\Controllers\PerformanceEvaluationController::class, 'userIndex'])->name('performance.index');
+
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {
+        
+        // Arsip & KPI
+        Route::get('/arsip-pegawai', [\App\Http\Controllers\EmployeeDocumentController::class, 'manage'])->name('admin.employee-documents.index');
+        Route::get('/performance-evaluations', [\App\Http\Controllers\PerformanceEvaluationController::class, 'adminIndex'])->name('admin.performance.index');
+        Route::post('/performance-evaluations', [\App\Http\Controllers\PerformanceEvaluationController::class, 'store'])->name('admin.performance.store');
 
         Route::get('/presensi', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'index'])->name('admin.attendance.index');
         Route::post('/presensi/approval', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateApproval'])->name('admin.attendance.approval');

@@ -76,6 +76,16 @@ class User extends Authenticatable
         return $this->hasMany(Attendance::class);
     }
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(EmployeeDocument::class);
+    }
+
+    public function performanceEvaluations(): HasMany
+    {
+        return $this->hasMany(PerformanceEvaluation::class, 'user_id');
+    }
+
     /**
      * Relasi ke jadwal piket yang ditugaskan ke user ini.
      */

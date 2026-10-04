@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 
 const props = defineProps({
@@ -63,11 +63,26 @@ const navLinkClass = (routeName) => [
 const page = usePage()
 const featureEnabled = (key) => {
     const val = page.props.global_settings?.[key]
-    if (key === 'feature_presensi') {
+    if (['feature_presensi', 'feature_arsip', 'feature_kpi', 'feature_habit'].includes(key)) {
         return val === undefined || val === '1' || val === 'true' || val === true
     }
     return val === '1' || val === 'true' || val === true
 }
+
+// ─── Menu Toggle States ──────────────────────────────────────────────────────
+const isRekapHabitOpen = ref(
+    isActive('admin.laporan') || 
+    isActive('admin.laporan.unfilled')
+)
+
+const isManajemenUserOpen = ref(
+    isActive('admin.users.*') || 
+    isActive('admin.employee-documents.*') || 
+    isActive('admin.performance.*') ||
+    isActive('admin.duty-schedules.*') ||
+    isActive('admin.special-schedules.*') ||
+    isActive('admin.divisions.*')
+)
 </script>
 
 <template>
@@ -175,6 +190,38 @@ const featureEnabled = (key) => {
                 <span>Jurnal Harian Guru</span>
             </Link>
 
+            <!-- Arsip Saya -->
+            <Link
+                v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_arsip')"
+                :href="route('employee-documents.index')"
+                :class="navLinkClass('employee-documents.*')"
+                @click="closeSidebar"
+            >
+                <svg
+                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('employee-documents.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Arsip Kepegawaian</span>
+            </Link>
+
+            <!-- Rapor Kinerja (KPI) -->
+            <Link
+                v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_kpi')"
+                :href="route('performance.index')"
+                :class="navLinkClass('performance.*')"
+                @click="closeSidebar"
+            >
+                <svg
+                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('performance.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span>Rapor Kinerja (KPI)</span>
+            </Link>
+
             <!-- Arah Kiblat (Hanya Mobile) -->
             <!-- <Link
                 :href="route('qibla.index')"
@@ -216,6 +263,7 @@ const featureEnabled = (key) => {
                 </Link>
 
                 <Link
+                    v-if="featureEnabled('feature_habit')"
                     :href="route('habit.form')"
                     :class="navLinkClass('habit.form')"
                     @click="closeSidebar"
@@ -302,22 +350,45 @@ const featureEnabled = (key) => {
                 </Link>
 
                 <div class="space-y-0.5">
-                    <Link
-                        :href="route('admin.laporan')"
-                        :class="navLinkClass('admin.laporan')"
-                        @click="closeSidebar"
+                    <button
+                        v-if="featureEnabled('feature_habit')"
+                        @click="isRekapHabitOpen = !isRekapHabitOpen"
+                        :class="[
+                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all group',
+                            isRekapHabitOpen ? 'bg-emerald-50/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                        ]"
                     >
                         <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.laporan') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isRekapHabitOpen ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
                             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
                         >
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                         <span>Rekap Habits</span>
-                    </Link>
+                        <svg
+                            class="w-4 h-4 ml-auto transition-transform duration-200"
+                            :class="{ 'rotate-180': isRekapHabitOpen }"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
 
-                    <div v-if="hasRole('superadmin')" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5">
+                    <div v-show="isRekapHabitOpen" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5 mt-1">
                         <Link
+                            v-if="featureEnabled('feature_habit')"
+                            :href="route('admin.laporan')"
+                            :class="[...navLinkClass('admin.laporan'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.laporan') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                            </svg>
+                            <span>Semua Laporan</span>
+                        </Link>
+
+                        <Link
+                            v-if="hasRole('superadmin') && featureEnabled('feature_habit')"
                             :href="route('admin.laporan.unfilled')"
                             :class="[...navLinkClass('admin.laporan.unfilled'), 'text-xs py-2']"
                             @click="closeSidebar"
@@ -345,6 +416,7 @@ const featureEnabled = (key) => {
                 </Link>
 
                 <Link
+                    v-if="featureEnabled('feature_habit')"
                     :href="route('admin.habits.index')"
                     :class="navLinkClass('admin.habits.index')"
                     @click="closeSidebar"
@@ -359,21 +431,68 @@ const featureEnabled = (key) => {
                 </Link>
 
                 <div class="space-y-0.5">
-                    <Link
-                        :href="route('admin.users.index')"
-                        :class="navLinkClass('admin.users.index')"
-                        @click="closeSidebar"
+                    <button
+                        @click="isManajemenUserOpen = !isManajemenUserOpen"
+                        :class="[
+                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all group',
+                            isManajemenUserOpen ? 'bg-emerald-50/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                        ]"
                     >
                         <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.users.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isManajemenUserOpen ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
                             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
                         >
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                         <span>Manajemen User</span>
-                    </Link>
+                        <svg
+                            class="w-4 h-4 ml-auto transition-transform duration-200"
+                            :class="{ 'rotate-180': isManajemenUserOpen }"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
 
-                    <div class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5">
+                    <div v-show="isManajemenUserOpen" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5 mt-1">
+                        <!-- Submenu Daftar User -->
+                        <Link
+                            :href="route('admin.users.index')"
+                            :class="[...navLinkClass('admin.users.index'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.users.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <span>Daftar User</span>
+                        </Link>
+
+                        <!-- Submenu Verifikasi Arsip Pegawai -->
+                        <Link
+                            v-if="featureEnabled('feature_arsip')"
+                            :href="route('admin.employee-documents.index')"
+                            :class="[...navLinkClass('admin.employee-documents.index'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.employee-documents.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>Verifikasi Arsip Pegawai</span>
+                        </Link>
+
+                        <!-- Submenu Evaluasi Kinerja (KPI) -->
+                        <Link
+                            v-if="featureEnabled('feature_kpi')"
+                            :href="route('admin.performance.index')"
+                            :class="[...navLinkClass('admin.performance.index'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.performance.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            <span>Evaluasi Kinerja (KPI)</span>
+                        </Link>
+
                         <!-- Submenu Jadwal Piket -->
                         <Link
                             v-if="featureEnabled('feature_presensi')"

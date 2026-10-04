@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import IslamicWidget from '@/Components/IslamicWidget.vue'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { computed, ref, onMounted } from 'vue'
 
 // Import Chart.js components
@@ -25,6 +25,11 @@ import { useTheme } from '@/Composables/useTheme'
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, RadialLinearScale, RadarController, Title, Tooltip, Legend, Filler)
 
 const { activeTheme } = useTheme()
+const page = usePage()
+const featureHabitActive = computed(() => {
+    const val = page.props.global_settings?.feature_habit
+    return val === undefined || val === '1' || val === 'true' || val === true
+})
 
 const props = defineProps({
     skorHariIni:      { type: Number,  default: 0 },
@@ -394,7 +399,7 @@ const formatTanggal = (dateStr) => {
                 </div>
                 
                 <!-- Streak Pill -->
-                <div v-if="targetUser?.current_streak > 0" class="inline-flex items-center gap-2 px-4 py-2 rounded-full shadow-sm bg-gradient-to-r from-orange-400 to-amber-500 text-white font-bold text-sm">
+                <div v-if="featureHabitActive && targetUser?.current_streak > 0" class="inline-flex items-center gap-2 px-4 py-2 rounded-full shadow-sm bg-gradient-to-r from-orange-400 to-amber-500 text-white font-bold text-sm">
                     <span>{{ targetUser.current_streak }} Hari Beruntun</span>
                     <svg class="w-5 h-5 drop-shadow" fill="currentColor" viewBox="0 0 24 24"><path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /></svg>
                 </div>
@@ -418,7 +423,7 @@ const formatTanggal = (dateStr) => {
                 <div class="lg:col-span-2 xl:col-span-2 space-y-6">
                     
                     <!-- Gamification: Koleksi Lencana -->
-                    <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
+                    <div v-if="featureHabitActive" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">Koleksi Lencana</h2>
@@ -450,7 +455,7 @@ const formatTanggal = (dateStr) => {
                     </div>
 
                     <!-- Analisis Ibadah Widget -->
-                    <div v-if="habitAnalytics && Object.keys(habitAnalytics).length > 0" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
+                    <div v-if="featureHabitActive && habitAnalytics && Object.keys(habitAnalytics).length > 0" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
                         <div class="border-b border-slate-100 dark:border-slate-700 pb-3 mb-4">
                             <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Analisis Kualitas Bulan Ini</h3>
                             <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide">Berdasarkan data yang Anda inputkan</p>
@@ -548,7 +553,7 @@ const formatTanggal = (dateStr) => {
                 <div class="lg:col-span-1 xl:col-span-1 space-y-6">
                     
                     <!-- Stat Cards -->
-                    <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
+                    <div v-if="featureHabitActive" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
                         <div class="border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
                             <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
                                 Perolehan Skor
@@ -584,7 +589,7 @@ const formatTanggal = (dateStr) => {
                     </div>
 
                     <!-- Charts Area -->
-                    <div class="flex flex-col gap-6">
+                    <div v-if="featureHabitActive" class="flex flex-col gap-6">
                         <!-- Tabel Rekap Skor Harian Bulanan -->
                         <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 flex flex-col max-h-[500px]">
                             <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
