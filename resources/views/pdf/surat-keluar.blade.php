@@ -6,7 +6,7 @@
     <style>
         @font-face {
             font-family: 'Amiri';
-            src: url("{{ storage_path('app/public/fonts/Amiri-Regular.ttf') }}") format('truetype');
+            src: url("{{ public_path('fonts/Amiri-Regular.ttf') }}") format('truetype');
             font-weight: normal;
             font-style: normal;
         }
