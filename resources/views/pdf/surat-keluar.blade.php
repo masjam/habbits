@@ -6,7 +6,7 @@
     <style>
         @font-face {
             font-family: 'Amiri';
-            src: url("{{ public_path('fonts/Amiri-Regular.ttf') }}") format('truetype');
+            src: url("data:font/truetype;charset=utf-8;base64,{{ base64_encode(file_get_contents(public_path('fonts/Amiri-Regular.ttf'))) }}") format('truetype');
             font-weight: normal;
             font-style: normal;
         }
@@ -138,10 +138,10 @@
     @endphp
 
     <div class="kop-surat">
-        @if($logoKiri)
+        @if($logoKiri && file_exists(public_path('storage/' . $logoKiri)))
             <img src="{{ public_path('storage/' . $logoKiri) }}" class="logo-left" alt="Logo Kiri">
         @endif
-        @if($logoKanan)
+        @if($logoKanan && file_exists(public_path('storage/' . $logoKanan)))
             <img src="{{ public_path('storage/' . $logoKanan) }}" class="logo-right" alt="Logo Kanan">
         @endif
         
