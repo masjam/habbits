@@ -17,11 +17,6 @@ jobs:
       - name: Install Composer Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
         
-      - name: Install NPM Dependencies & Build
-        run: |
-          npm install
-          npm run build
-          
       - name: Deploy to Web Directory
         run: |
           rsync -avz --delete \
@@ -31,8 +26,15 @@ jobs:
           --exclude='/storage' \
           --exclude='/node_modules' \
           --exclude='/public/storage' \
+          --exclude='/public/build' \
           ./ /var/www/habit/
           
+      - name: Install NPM & Build
+        run: |
+          cd /var/www/habit
+          npm install
+          npm run build
+
       - name: Optimizations & Migrations
         run: |
           cd /var/www/habit
@@ -41,6 +43,4 @@ jobs:
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
-          php artisan storage:link    
-
-      
+          php artisan storage:link
