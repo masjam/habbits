@@ -105,6 +105,7 @@ class UserController extends Controller
         if ($isSuperadmin) {
             $rules['role'] = 'required|in:user,admin,superadmin';
             $rules['can_multi_login'] = 'nullable|boolean';
+            $rules['is_tata_usaha'] = 'nullable|boolean';
         }
 
         $validated = $request->validate($rules);
@@ -124,11 +125,18 @@ class UserController extends Controller
         ]);
 
         // Tetapkan role
+        $rolesToAssign = [];
         if ($isSuperadmin && isset($validated['role'])) {
-            $user->assignRole($validated['role']);
+            $rolesToAssign[] = $validated['role'];
         } else {
-            $user->assignRole('user');
+            $rolesToAssign[] = 'user';
         }
+        
+        if ($isSuperadmin && !empty($validated['is_tata_usaha'])) {
+            $rolesToAssign[] = 'tata_usaha';
+        }
+
+        $user->syncRoles($rolesToAssign);
 
         return redirect()->route('admin.users.index')
             ->with('success', "Pengguna {$user->name} berhasil ditambahkan.");
@@ -170,6 +178,7 @@ class UserController extends Controller
         if ($isSuperadmin) {
             $rules['role'] = 'required|in:user,admin,superadmin';
             $rules['can_multi_login'] = 'nullable|boolean';
+            $rules['is_tata_usaha'] = 'nullable|boolean';
         }
 
         // Admin & Superadmin sama-sama bisa isi catatan jika fitur Notes aktif
@@ -211,7 +220,11 @@ class UserController extends Controller
         $user->update($updateData);
 
         if ($isSuperadmin && isset($validated['role'])) {
-            $user->syncRoles([$validated['role']]);
+            $rolesToAssign = [$validated['role']];
+            if (!empty($validated['is_tata_usaha'])) {
+                $rolesToAssign[] = 'tata_usaha';
+            }
+            $user->syncRoles($rolesToAssign);
         }
 
         return redirect()->back()->with('success', 'Profil pengguna berhasil diperbarui.');

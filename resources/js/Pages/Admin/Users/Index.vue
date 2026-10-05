@@ -40,6 +40,7 @@ const form = useForm({
     password: '',
     gender: 'L',
     role: 'user', // Default
+    is_tata_usaha: false,
     nip: '',
     divisi: '',
     status_kehadiran: 'Aktif',
@@ -96,8 +97,9 @@ const openEditModal = (user) => {
     form.name = user.name
     form.email = user.email
     form.gender = user.gender
-    // We only set the primary role here. If a user has multiple roles, just pick the first or highest.
+    // We only set the primary role here.
     form.role = user.roles.includes('superadmin') ? 'superadmin' : (user.roles.includes('admin') ? 'admin' : 'user')
+    form.is_tata_usaha = user.roles.includes('tata_usaha')
     form.password = '' // Don't prefill password
     
     // HR Features
@@ -321,9 +323,10 @@ const canEditUser = (user) => {
                                               :class="{
                                                   'bg-emerald-100 text-emerald-800': role === 'user',
                                                   'bg-amber-100 text-amber-800': role === 'admin',
-                                                  'bg-purple-100 text-purple-800': role === 'superadmin'
+                                                  'bg-purple-100 text-purple-800': role === 'superadmin',
+                                                  'bg-blue-100 text-blue-800': role === 'tata_usaha'
                                               }">
-                                            {{ role === 'user' ? 'Pegawai' : role }}
+                                            {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : role) }}
                                         </span>
                                     </div>
                                 </td>
@@ -394,9 +397,10 @@ const canEditUser = (user) => {
                                       :class="{
                                           'bg-emerald-100 text-emerald-800': role === 'user',
                                           'bg-amber-100 text-amber-800': role === 'admin',
-                                          'bg-purple-100 text-purple-800': role === 'superadmin'
+                                          'bg-purple-100 text-purple-800': role === 'superadmin',
+                                          'bg-blue-100 text-blue-800': role === 'tata_usaha'
                                       }">
-                                    {{ role === 'user' ? 'Pegawai' : role }}
+                                    {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : role) }}
                                 </span>
                             </div>
                         </div>
@@ -528,9 +532,15 @@ const canEditUser = (user) => {
                                         </select>
                                         <p v-if="form.errors.role" class="text-xs text-rose-500 mt-1">{{ form.errors.role }}</p>
                                     </div>
-                                    <div v-if="isSuperadmin" class="flex items-center gap-2 mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                                        <input type="checkbox" id="can_multi_login" v-model="form.can_multi_login" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
-                                        <label for="can_multi_login" class="text-xs font-bold text-slate-700">Izinkan Multi-Login (Beralih Akun)</label>
+                                    <div v-if="isSuperadmin" class="flex flex-col gap-3 mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="is_tata_usaha" v-model="form.is_tata_usaha" class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" />
+                                            <label for="is_tata_usaha" class="text-xs font-bold text-slate-700">Berikan Akses Tata Usaha (Modul Surat)</label>
+                                        </div>
+                                        <div class="flex items-center gap-2 pt-2 border-t border-blue-100/50">
+                                            <input type="checkbox" id="can_multi_login" v-model="form.can_multi_login" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+                                            <label for="can_multi_login" class="text-xs font-bold text-slate-700">Izinkan Multi-Login (Beralih Akun)</label>
+                                        </div>
                                     </div>
                                     <div v-else-if="!isEditing" class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
                                         <p class="text-xs text-slate-500 font-medium">Pengguna baru akan otomatis didaftarkan sebagai <strong>Pegawai</strong>.</p>

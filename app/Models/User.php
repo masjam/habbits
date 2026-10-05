@@ -259,6 +259,26 @@ class User extends Authenticatable
                     ->withPivot('unlocked_at')
                     ->withTimestamps();
     }
+
+    public function suratMasuk(): HasMany
+    {
+        return $this->hasMany(SuratMasuk::class, 'user_id');
+    }
+
+    public function suratKeluar(): HasMany
+    {
+        return $this->hasMany(SuratKeluar::class, 'user_id');
+    }
+
+    public function disposisiDiberikan(): HasMany
+    {
+        return $this->hasMany(Disposisi::class, 'pemberi_id');
+    }
+
+    public function disposisiDiterima(): HasMany
+    {
+        return $this->hasMany(Disposisi::class, 'penerima_id');
+    }
 }
 
 
