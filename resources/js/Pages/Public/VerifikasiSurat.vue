@@ -100,7 +100,14 @@ const props = defineProps({
                 </div>
             </div>
 
-            <div class="mt-6 text-center">
+            <div class="mt-8 text-center space-y-4 flex flex-col">
+                <a v-if="status === 'valid' && surat.file_path" :href="`/storage/${surat.file_path}`" target="_blank" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Lihat Dokumen Asli
+                </a>
                 <Link href="/" class="text-sm font-medium text-blue-600 hover:text-blue-500">
                     &larr; Kembali ke Beranda
                 </Link>

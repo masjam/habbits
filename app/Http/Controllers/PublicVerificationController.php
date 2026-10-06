@@ -37,6 +37,7 @@ class PublicVerificationController extends Controller
                 'tujuan' => $surat->tujuan,
                 'perihal' => $surat->perihal,
                 'hash' => $surat->document_hash,
+                'file_path' => $surat->file_path,
                 'dibuat_pada' => $surat->created_at->translatedFormat('l, d F Y H:i:s'),
             ]
         ]);
