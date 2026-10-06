@@ -232,8 +232,11 @@
             <p style="margin: 0; margin-bottom: 5px;">Wonosari, {{ str_replace(' M', '', $tanggal_masehi) }}</p>
         @endif
         <p style="margin: 0;">Kepala Sekolah</p>
-        <div class="signature-space">
+        <div class="signature-space" style="position: relative;">
             <!-- Tempat tanda tangan -->
+            @if(isset($qrCode))
+                <img src="data:image/svg+xml;base64,{{ $qrCode }}" alt="QR Code Verifikasi" style="position: absolute; top: 10px; left: 0; width: 60px; height: 60px;">
+            @endif
         </div>
         <div class="kepsek-name">{{ $nama_kepsek }}</div>
         <div style="margin: 0;">NBM. {{ $nbm_kepsek }}</div>

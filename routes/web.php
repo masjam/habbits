@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('welcome');
+Route::get('/verifikasi-surat/{uuid}', [\App\Http\Controllers\PublicVerificationController::class, 'verifySuratKeluar'])->name('public.verifikasi-surat');
 
 // Authentication Routes
 Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');

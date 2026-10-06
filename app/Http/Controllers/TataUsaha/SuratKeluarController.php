@@ -105,6 +105,11 @@ class SuratKeluarController extends Controller
         $validated['salam_pembuka'] = $arabic->utf8Glyphs('السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ', 150, false, false);
         $validated['salam_penutup'] = $arabic->utf8Glyphs('وَالسَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ', 150, false, false);
 
+        // Dummy QR Code for preview
+        $verifyUrl = url('/verifikasi-surat/preview-only');
+        $qrCode = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate($verifyUrl));
+        $validated['qrCode'] = $qrCode;
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
         $pdf->setPaper('A4', 'portrait');
         
@@ -134,6 +139,15 @@ class SuratKeluarController extends Controller
         $validated['salam_pembuka'] = $arabic->utf8Glyphs('السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ', 150, false, false);
         $validated['salam_penutup'] = $arabic->utf8Glyphs('وَالسَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ', 150, false, false);
 
+        // Scenario A: Hashing data and creating QR
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $dataToHash = $validated['nomor_surat'] . $validated['perihal'] . $validated['isi_surat'];
+        $hash = hash('sha256', $dataToHash);
+        
+        $verifyUrl = url('/verifikasi-surat/' . $uuid);
+        $qrCode = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate($verifyUrl));
+        $validated['qrCode'] = $qrCode;
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
         
         // Atur ukuran kertas
@@ -148,6 +162,8 @@ class SuratKeluarController extends Controller
         $date = date('Y-m-d'); 
         
         SuratKeluar::create([
+            'uuid' => $uuid,
+            'document_hash' => $hash,
             'nomor_surat' => $validated['nomor_surat'],
             'tanggal_surat' => $date,
             'tujuan' => $validated['kepada'],

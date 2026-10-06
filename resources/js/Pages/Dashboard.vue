@@ -57,6 +57,7 @@ const props = defineProps({
     habitAnalytics:   { type: Object,  default: () => ({}) },
     radarChartDataBackend: { type: Object, default: () => ({}) },
     hasClockedInToday:{ type: Boolean, default: true },
+    shouldShowPresensiNotif: { type: Boolean, default: false },
     featurePresensiActive: { type: Boolean, default: false },
     selectedMonth:    { type: Number,  default: new Date().getMonth() + 1 },
     selectedYear:     { type: Number,  default: new Date().getFullYear() },
@@ -106,7 +107,7 @@ onMounted(() => {
         const todayDay = new Date().getDay();
         const isWeekend = todayDay === 0 || todayDay === 6; // 0: Minggu, 6: Sabtu
 
-        if (props.featurePresensiActive && !props.hasClockedInToday && !isWeekend) {
+        if (props.shouldShowPresensiNotif && !isWeekend) {
             showPresensiModal.value = true;
         } else if (props.missedDates && props.missedDates.length > 0) {
             showMissedDatesModal.value = true;

@@ -318,6 +318,21 @@ class DashboardController extends Controller
             
         $featurePresensiActive = \App\Models\Setting::where('key', 'feature_presensi')->value('value') === '1' || \App\Models\Setting::where('key', 'feature_presensi')->value('value') === 'true';
 
+        $shouldShowPresensiNotif = false;
+        if ($featurePresensiActive && !$hasClockedInToday) {
+            $schedule = clone $user; // Create a temporary object to avoid altering user
+            $workSchedule = $user->getEffectiveWorkSchedule($todayStr);
+            if (!empty($workSchedule['work_start'])) {
+                $workStartTime = Carbon::parse($todayStr . ' ' . $workSchedule['work_start']);
+                if (Carbon::now()->greaterThan($workStartTime)) {
+                    $shouldShowPresensiNotif = true;
+                }
+            } else {
+                // If no specific schedule is found, default to showing it if we can't determine
+                $shouldShowPresensiNotif = true; 
+            }
+        }
+
         return Inertia::render('Dashboard', [
             'skorHariIni'      => (int) $skorHariIni,
             'skorMaksimalHariIni'=> (int) $skorMaksimalHariIni,
@@ -350,6 +365,7 @@ class DashboardController extends Controller
             'habitAnalytics'   => $habitAnalytics,
             'radarChartDataBackend' => $radarChartDataBackend,
             'hasClockedInToday'=> $hasClockedInToday,
+            'shouldShowPresensiNotif' => $shouldShowPresensiNotif,
             'featurePresensiActive' => $featurePresensiActive,
             'selectedMonth'    => (int) $selectedMonth,
             'selectedYear'     => (int) $selectedYear,
