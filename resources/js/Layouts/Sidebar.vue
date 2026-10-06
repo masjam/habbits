@@ -70,6 +70,12 @@ const featureEnabled = (key) => {
 }
 
 // ─── Menu Toggle States ──────────────────────────────────────────────────────
+const isFormHabitOpen = ref(
+    isActive('habit.form') || 
+    isActive('quran.recap') || 
+    isActive('kajian.index')
+)
+
 const isRekapHabitOpen = ref(
     isActive('admin.laporan') || 
     isActive('admin.laporan.unfilled')
@@ -174,53 +180,7 @@ const isManajemenUserOpen = ref(
 
             <!-- Presensi GPS — Semua Role (bisa diakses pegawai & admin) -->
            
-            <!-- Jurnal Harian Guru -->
-            <Link
-                v-if="!hasAnyRole(['admin', 'superadmin']) && page.props.global_settings?.feature_jurnal !== 'false' && page.props.global_settings?.feature_jurnal !== '0'"
-                :href="route('teacher-journals.index')"
-                :class="navLinkClass('teacher-journals.index')"
-                @click="closeSidebar"
-            >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('teacher-journals.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                <span>Jurnal Harian Guru</span>
-            </Link>
 
-            <!-- Arsip Saya -->
-            <Link
-                v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_arsip')"
-                :href="route('employee-documents.index')"
-                :class="navLinkClass('employee-documents.*')"
-                @click="closeSidebar"
-            >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('employee-documents.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Arsip Kepegawaian</span>
-            </Link>
-
-            <!-- Rapor Kinerja (KPI) -->
-            <Link
-                v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_kpi')"
-                :href="route('performance.index')"
-                :class="navLinkClass('performance.*')"
-                @click="closeSidebar"
-            >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('performance.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                <span>Rapor Kinerja (KPI)</span>
-            </Link>
 
             <!-- Arah Kiblat (Hanya Mobile) -->
             <!-- <Link
@@ -262,48 +222,65 @@ const isManajemenUserOpen = ref(
                     <span>Mobile Presensi</span>
                 </Link>
 
-                <Link
-                    v-if="featureEnabled('feature_habit')"
-                    :href="route('habit.form')"
-                    :class="navLinkClass('habit.form')"
-                    @click="closeSidebar"
-                >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('habit.form') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                <div class="space-y-0.5" v-if="featureEnabled('feature_habit')">
+                    <button
+                        @click="isFormHabitOpen = !isFormHabitOpen"
+                        :class="[
+                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all group',
+                            isFormHabitOpen ? 'bg-emerald-50/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
+                        ]"
                     >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Form Isi Habit</span>
-                </Link>
+                        <svg
+                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isFormHabitOpen ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Form Isi Habit</span>
+                        <svg
+                            class="w-4 h-4 ml-auto transition-transform duration-200"
+                            :class="{ 'rotate-180': isFormHabitOpen }"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
 
-                <Link
-                    :href="route('quran.recap')"
-                    :class="navLinkClass('quran.recap')"
-                    @click="closeSidebar"
-                >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('quran.recap') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    <span>Rekap Al-Quran</span>
-                </Link>
+                    <div v-show="isFormHabitOpen" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5 mt-1">
+                        <Link
+                            :href="route('habit.form')"
+                            :class="[...navLinkClass('habit.form'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('habit.form') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span>Input Habit Harian</span>
+                        </Link>
 
-                <Link
-                    :href="route('kajian.index')"
-                    :class="navLinkClass('kajian.index')"
-                    @click="closeSidebar"
-                >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('kajian.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <span>Jurnal Kajian & Hadits</span>
-                </Link>
+                        <Link
+                            :href="route('quran.recap')"
+                            :class="[...navLinkClass('quran.recap'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('quran.recap') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <span>Rekap Al-Quran</span>
+                        </Link>
+
+                        <Link
+                            :href="route('kajian.index')"
+                            :class="[...navLinkClass('kajian.index'), 'text-xs py-2']"
+                            @click="closeSidebar"
+                        >
+                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('kajian.index') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            <span>Jurnal Kajian & Hadits</span>
+                        </Link>
+                    </div>
+                </div>
 
                 <Link
                     v-if="isFemale"
@@ -322,6 +299,54 @@ const isManajemenUserOpen = ref(
                     <span class="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-600">
                         Aktif
                     </span>
+                </Link>
+
+                <!-- Jurnal Harian Guru -->
+                <Link
+                    v-if="!hasAnyRole(['admin', 'superadmin']) && page.props.global_settings?.feature_jurnal !== 'false' && page.props.global_settings?.feature_jurnal !== '0'"
+                    :href="route('teacher-journals.index')"
+                    :class="navLinkClass('teacher-journals.index')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('teacher-journals.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span>Jurnal Harian Guru</span>
+                </Link>
+
+                <!-- Arsip Saya -->
+                <Link
+                    v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_arsip')"
+                    :href="route('employee-documents.index')"
+                    :class="navLinkClass('employee-documents.*')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('employee-documents.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Arsip Kepegawaian</span>
+                </Link>
+
+                <!-- Rapor Kinerja (KPI) -->
+                <Link
+                    v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_kpi')"
+                    :href="route('performance.index')"
+                    :class="navLinkClass('performance.*')"
+                    @click="closeSidebar"
+                >
+                    <svg
+                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('performance.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span>Rapor Kinerja (KPI)</span>
                 </Link>
             </template>
 
