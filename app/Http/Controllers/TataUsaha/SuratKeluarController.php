@@ -85,11 +85,12 @@ class SuratKeluarController extends Controller
     public function preview(Request $request)
     {
         $validated = $request->validate([
+            'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
             'nomor_surat' => 'required|string',
             'lampiran' => 'nullable|string',
-            'perihal' => 'required|string',
-            'kepada' => 'required|string',
-            'di' => 'required|string',
+            'perihal' => 'nullable|string',
+            'kepada' => 'nullable|string',
+            'di' => 'nullable|string',
             'tanggal_masehi' => 'required|string',
             'tanggal_hijriah' => 'required|string',
             'isi_surat' => 'required|string',
@@ -113,11 +114,12 @@ class SuratKeluarController extends Controller
     public function generate(Request $request)
     {
         $validated = $request->validate([
+            'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
             'nomor_surat' => 'required|string',
             'lampiran' => 'nullable|string',
-            'perihal' => 'required|string',
-            'kepada' => 'required|string',
-            'di' => 'required|string',
+            'perihal' => 'nullable|string',
+            'kepada' => 'nullable|string',
+            'di' => 'nullable|string',
             'tanggal_masehi' => 'required|string',
             'tanggal_hijriah' => 'required|string',
             'isi_surat' => 'required|string',

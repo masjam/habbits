@@ -158,63 +158,79 @@
         {{ $bismillah }}
     </div>
 
-    <table class="surat-info">
-        <tr>
-            <td width="60%">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                        <td width="60">Nomor</td>
-                        <td width="10">:</td>
-                        <td>{{ $nomor_surat }}</td>
-                    </tr>
-                    <tr>
-                        <td>Lamp</td>
-                        <td>:</td>
-                        <td>{{ $lampiran }}</td>
-                    </tr>
-                    <tr>
-                        <td>Hal</td>
-                        <td>:</td>
-                        <td>{{ $perihal }}</td>
-                    </tr>
-                </table>
-            </td>
-            <td width="40%" style="text-align: right; padding-top: 5px;">
-                <div style="border-bottom: 1px solid #000; display: inline-block;">{{ $tanggal_hijriah }}</div><br>
-                <div style="display: inline-block;">{{ $tanggal_masehi }}</div>
-            </td>
-        </tr>
-    </table>
+    @if($jenis_surat == 'Umum')
+        <table class="surat-info">
+            <tr>
+                <td width="60%">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                            <td width="60">Nomor</td>
+                            <td width="10">:</td>
+                            <td>{{ $nomor_surat }}</td>
+                        </tr>
+                        <tr>
+                            <td>Lamp</td>
+                            <td>:</td>
+                            <td>{{ $lampiran }}</td>
+                        </tr>
+                        <tr>
+                            <td>Hal</td>
+                            <td>:</td>
+                            <td>{{ $perihal }}</td>
+                        </tr>
+                    </table>
+                </td>
+                <td width="40%" style="text-align: right; padding-top: 5px;">
+                    <div style="border-bottom: 1px solid #000; display: inline-block;">{{ $tanggal_hijriah }}</div><br>
+                    <div style="display: inline-block;">{{ $tanggal_masehi }}</div>
+                </td>
+            </tr>
+        </table>
 
-    <div class="tujuan">
-        Kepada:<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Yth. {{ $kepada }}<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;di {{ $di }}
-    </div>
-
-    <div class="salam-pembuka">
-        <div class="arabic-text" dir="rtl">
-            {{ $salam_pembuka }}
+        <div class="tujuan">
+            Kepada:<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Yth. {{ $kepada }}<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;di {{ $di }}
         </div>
-        <p style="text-align: justify; margin: 0;">
-            Alhamdulillah, puji dan syukur hanya bagi Allah SWT dengan segala limpahan nikmat dan rahmat-Nya. Salam dan shalawat semoga senantiasa tercurah kepada Nabi Muhammad SAW.
-        </p>
-    </div>
+    @else
+        <div style="text-align: center; margin-top: 20px; margin-bottom: 20px;">
+            <h3 style="margin: 0; text-decoration: underline; text-transform: uppercase;">
+                {{ $jenis_surat == 'Tugas' ? 'SURAT TUGAS' : 'SURAT KETERANGAN' }}
+            </h3>
+            <p style="margin: 0; margin-top: 5px;">Nomor: {{ $nomor_surat }}</p>
+        </div>
+    @endif
+
+    @if($jenis_surat == 'Umum')
+        <div class="salam-pembuka">
+            <div class="arabic-text" dir="rtl">
+                {{ $salam_pembuka }}
+            </div>
+            <p style="text-align: justify; margin: 0;">
+                Alhamdulillah, puji dan syukur hanya bagi Allah SWT dengan segala limpahan nikmat dan rahmat-Nya. Salam dan shalawat semoga senantiasa tercurah kepada Nabi Muhammad SAW.
+            </p>
+        </div>
+    @endif
 
     <div class="isi-surat">
         {!! $isi_surat !!}
     </div>
 
     <div class="salam-penutup">
-        <p style="text-align: justify; margin-bottom: 10px;">
-            Demikian surat edaran ini kami sampaikan, atas perhatiannya diucapkan <i>jazakumullahu khairan katsiran.</i>
-        </p>
-        <div class="arabic-text" dir="rtl">
-            {{ $salam_penutup }}
-        </div>
+        @if($jenis_surat == 'Umum')
+            <p style="text-align: justify; margin-bottom: 10px;">
+                Demikian surat ini kami sampaikan, atas perhatiannya diucapkan <i>jazakumullahu khairan katsiran.</i>
+            </p>
+            <div class="arabic-text" dir="rtl">
+                {{ $salam_penutup }}
+            </div>
+        @endif
     </div>
 
     <div class="signature-area">
+        @if($jenis_surat != 'Umum')
+            <p style="margin: 0; margin-bottom: 5px;">Wonosari, {{ str_replace(' M', '', $tanggal_masehi) }}</p>
+        @endif
         <p style="margin: 0;">Kepala Sekolah</p>
         <div class="signature-space">
             <!-- Tempat tanda tangan -->

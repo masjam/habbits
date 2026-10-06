@@ -13,6 +13,7 @@ const props = defineProps({
 const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
 
 const form = useForm({
+    jenis_surat: 'Umum',
     nomor_surat: props.next_nomor,
     lampiran: '-',
     perihal: 'Surat Edaran',
@@ -80,8 +81,27 @@ const submit = () => {
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-6">
                 <form @submit.prevent="submit" class="space-y-6">
                     
-                    <!-- Informasi Meta Surat yang disusun secara kompak (1 Baris) -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <!-- Format Surat -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-4">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Pilih Format Surat</label>
+                        <div class="flex flex-wrap gap-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" v-model="form.jenis_surat" value="Umum" class="text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                <span class="ml-2 text-sm text-slate-700">Surat Umum (Edaran, Undangan)</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" v-model="form.jenis_surat" value="Tugas" class="text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                <span class="ml-2 text-sm text-slate-700">Surat Tugas</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" v-model="form.jenis_surat" value="Keterangan" class="text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                <span class="ml-2 text-sm text-slate-700">Surat Keterangan</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Informasi Meta Surat (Hanya untuk Surat Umum) -->
+                    <div v-if="form.jenis_surat === 'Umum'" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div>
                             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Lampiran</label>
                             <input type="text" v-model="form.lampiran" class="w-full p-2 text-sm border-slate-300 rounded-lg" required />
@@ -99,6 +119,15 @@ const submit = () => {
                             <input type="text" v-model="form.di" class="w-full p-2 text-sm border-slate-300 rounded-lg" required />
                         </div>
                         
+                        <!-- Hidden Inputs -->
+                        <input type="hidden" v-model="form.nomor_surat">
+                        <input type="hidden" v-model="form.tanggal_hijriah">
+                        <input type="hidden" v-model="form.tanggal_masehi">
+                    </div>
+                    <div v-else class="grid grid-cols-1 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p class="text-xs text-slate-500">
+                            <i>Format Surat Tugas dan Surat Keterangan tidak menggunakan field Hal, Lampiran, dan Kepada Yth. Format ini akan menggunakan judul tengah otomatis.</i>
+                        </p>
                         <!-- Hidden Inputs -->
                         <input type="hidden" v-model="form.nomor_surat">
                         <input type="hidden" v-model="form.tanggal_hijriah">
