@@ -176,6 +176,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/pengaturan-surat', [\App\Http\Controllers\TataUsaha\SettingController::class, 'update'])->name('settings.update');
 
         Route::get('/surat-keluar/builder', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'builder'])->name('surat-keluar.builder');
+        Route::get('/surat-keluar/{suratKeluar}/edit-builder', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'editBuilder'])->name('surat-keluar.edit-builder');
+        Route::post('/surat-keluar/{suratKeluar}/update-builder', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'updateBuilder'])->name('surat-keluar.update-builder');
         Route::post('/surat-keluar/preview', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'preview'])->name('surat-keluar.preview');
         Route::post('/surat-keluar/generate', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'generate'])->name('surat-keluar.generate');
         Route::get('/surat-keluar', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'index'])->name('surat-keluar.index');

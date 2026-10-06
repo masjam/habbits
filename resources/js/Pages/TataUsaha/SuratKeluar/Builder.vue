@@ -8,20 +8,23 @@ const props = defineProps({
     next_nomor: String,
     tanggal_masehi: String,
     tanggal_hijriah: String,
+    isEdit: { type: Boolean, default: false },
+    suratId: { type: Number, default: null },
+    builderData: { type: Object, default: () => null },
 })
 
 const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
 
 const form = useForm({
-    jenis_surat: 'Umum',
-    nomor_surat: props.next_nomor,
-    lampiran: '-',
-    perihal: 'Surat Edaran',
-    tanggal_masehi: props.tanggal_masehi,
-    tanggal_hijriah: props.tanggal_hijriah,
-    kepada: 'Bapak/Ibu Orangtua Wali Murid Kelas I-VI',
-    di: 'tempat',
-    isi_surat: '<p>Dalam rangka menindaklanjuti...</p>'
+    jenis_surat: props.builderData?.jenis_surat || 'Umum',
+    nomor_surat: props.builderData?.nomor_surat || props.next_nomor,
+    lampiran: props.builderData?.lampiran || '-',
+    perihal: props.builderData?.perihal || 'Surat Edaran',
+    tanggal_masehi: props.builderData?.tanggal_masehi || props.tanggal_masehi,
+    tanggal_hijriah: props.builderData?.tanggal_hijriah || props.tanggal_hijriah,
+    kepada: props.builderData?.kepada || 'Bapak/Ibu Orangtua Wali Murid Kelas I-VI',
+    di: props.builderData?.di || 'tempat',
+    isi_surat: props.builderData?.isi_surat || '<p>Dalam rangka menindaklanjuti...</p>'
 })
 
 const isPreviewing = ref(false)
@@ -55,9 +58,15 @@ const previewPdf = async () => {
 }
 
 const submit = () => {
-    form.post(route('tata-usaha.surat-keluar.generate'), {
-        preserveScroll: true
-    })
+    if (props.isEdit) {
+        form.post(route('tata-usaha.surat-keluar.update-builder', props.suratId), {
+            preserveScroll: true
+        })
+    } else {
+        form.post(route('tata-usaha.surat-keluar.generate'), {
+            preserveScroll: true
+        })
+    }
 }
 </script>
 
@@ -166,7 +175,7 @@ const submit = () => {
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                             </svg>
-                            <span>Generate & Simpan Arsip</span>
+                            <span>{{ isEdit ? 'Perbarui & Generate Ulang' : 'Generate & Simpan Arsip' }}</span>
                         </button>
                     </div>
                 </form>

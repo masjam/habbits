@@ -96,6 +96,18 @@ class SuratKeluarController extends Controller
             'isi_surat' => 'required|string',
         ]);
 
+        if ($validated['jenis_surat'] === 'Tugas') {
+            $validated['perihal'] = 'Surat Tugas';
+            $validated['kepada'] = 'Yang Bersangkutan';
+            $validated['di'] = 'Tempat';
+            $validated['lampiran'] = '-';
+        } elseif ($validated['jenis_surat'] === 'Keterangan') {
+            $validated['perihal'] = 'Surat Keterangan';
+            $validated['kepada'] = 'Yang Berkepentingan';
+            $validated['di'] = 'Tempat';
+            $validated['lampiran'] = '-';
+        }
+
         $settings = \App\Models\Setting::whereIn('key', ['kepsek_nama', 'kepsek_nbm'])->pluck('value', 'key');
         $validated['nama_kepsek'] = $settings['kepsek_nama'] ?? 'Joko Kiswanto, S.Pd.I, M.Pd';
         $validated['nbm_kepsek'] = $settings['kepsek_nbm'] ?? '1.032.440';
@@ -129,6 +141,18 @@ class SuratKeluarController extends Controller
             'tanggal_hijriah' => 'required|string',
             'isi_surat' => 'required|string',
         ]);
+
+        if ($validated['jenis_surat'] === 'Tugas') {
+            $validated['perihal'] = 'Surat Tugas';
+            $validated['kepada'] = 'Yang Bersangkutan';
+            $validated['di'] = 'Tempat';
+            $validated['lampiran'] = '-';
+        } elseif ($validated['jenis_surat'] === 'Keterangan') {
+            $validated['perihal'] = 'Surat Keterangan';
+            $validated['kepada'] = 'Yang Berkepentingan';
+            $validated['di'] = 'Tempat';
+            $validated['lampiran'] = '-';
+        }
 
         $settings = \App\Models\Setting::whereIn('key', ['kepsek_nama', 'kepsek_nbm'])->pluck('value', 'key');
         $validated['nama_kepsek'] = $settings['kepsek_nama'] ?? 'Joko Kiswanto, S.Pd.I, M.Pd';
@@ -168,12 +192,102 @@ class SuratKeluarController extends Controller
             'tanggal_surat' => $date,
             'tujuan' => $validated['kepada'],
             'perihal' => $validated['perihal'],
+            'builder_data' => $validated, // Save all builder fields
             'file_path' => $path,
             'user_id' => Auth::id(),
         ]);
 
         return redirect()->route('tata-usaha.surat-keluar.index')
             ->with('success', 'Surat keluar otomatis berhasil dibuat dan disimpan.');
+    }
+
+    public function editBuilder(SuratKeluar $suratKeluar)
+    {
+        if (!$suratKeluar->builder_data) {
+            return redirect()->back()->with('error', 'Surat ini tidak dibuat melalui sistem otomatis sehingga tidak bisa diedit ulang.');
+        }
+
+        return Inertia::render('TataUsaha/SuratKeluar/Builder', [
+            'isEdit' => true,
+            'suratId' => $suratKeluar->id,
+            'builderData' => $suratKeluar->builder_data,
+            // Pass these just in case the builder requires them, though builderData already has them
+            'next_nomor' => $suratKeluar->nomor_surat, 
+            'tanggal_masehi' => $suratKeluar->builder_data['tanggal_masehi'] ?? \Carbon\Carbon::now()->translatedFormat('d F Y') . ' M',
+            'tanggal_hijriah' => $suratKeluar->builder_data['tanggal_hijriah'] ?? '11 Rabi\'ul Akhir 1447 H'
+        ]);
+    }
+
+    public function updateBuilder(Request $request, SuratKeluar $suratKeluar)
+    {
+        $validated = $request->validate([
+            'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
+            'nomor_surat' => 'required|string',
+            'lampiran' => 'nullable|string',
+            'perihal' => 'nullable|string',
+            'kepada' => 'nullable|string',
+            'di' => 'nullable|string',
+            'tanggal_masehi' => 'required|string',
+            'tanggal_hijriah' => 'required|string',
+            'isi_surat' => 'required|string',
+        ]);
+
+        if ($validated['jenis_surat'] === 'Tugas') {
+            $validated['perihal'] = 'Surat Tugas';
+            $validated['kepada'] = 'Yang Bersangkutan';
+            $validated['di'] = 'Tempat';
+            $validated['lampiran'] = '-';
+        } elseif ($validated['jenis_surat'] === 'Keterangan') {
+            $validated['perihal'] = 'Surat Keterangan';
+            $validated['kepada'] = 'Yang Berkepentingan';
+            $validated['di'] = 'Tempat';
+            $validated['lampiran'] = '-';
+        }
+
+        $settings = \App\Models\Setting::whereIn('key', ['kepsek_nama', 'kepsek_nbm'])->pluck('value', 'key');
+        $validated['nama_kepsek'] = $settings['kepsek_nama'] ?? 'Joko Kiswanto, S.Pd.I, M.Pd';
+        $validated['nbm_kepsek'] = $settings['kepsek_nbm'] ?? '1.032.440';
+
+        $arabic = new \ArPHP\I18N\Arabic();
+        $validated['bismillah'] = $arabic->utf8Glyphs('بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم', 150, false, false);
+        $validated['salam_pembuka'] = $arabic->utf8Glyphs('السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ', 150, false, false);
+        $validated['salam_penutup'] = $arabic->utf8Glyphs('وَالسَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ', 150, false, false);
+
+        // Keep the old UUID so the old printed QR code might still work if we want? 
+        // Wait, if the document changes, the hash MUST change. 
+        // We regenerate the hash. We can keep the same UUID.
+        $uuid = $suratKeluar->uuid ?? (string) \Illuminate\Support\Str::uuid();
+        $dataToHash = $validated['nomor_surat'] . $validated['perihal'] . $validated['isi_surat'];
+        $hash = hash('sha256', $dataToHash);
+        
+        $verifyUrl = url('/verifikasi-surat/' . $uuid);
+        $qrCode = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate($verifyUrl));
+        $validated['qrCode'] = $qrCode;
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Remove old file
+        if ($suratKeluar->file_path) {
+            Storage::disk('public')->delete($suratKeluar->file_path);
+        }
+
+        $filename = 'surat_keluar_' . time() . '.pdf';
+        $path = 'surat_keluar/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+
+        $suratKeluar->update([
+            'uuid' => $uuid,
+            'document_hash' => $hash,
+            'nomor_surat' => $validated['nomor_surat'],
+            'tujuan' => $validated['kepada'],
+            'perihal' => $validated['perihal'],
+            'builder_data' => $validated,
+            'file_path' => $path,
+        ]);
+
+        return redirect()->route('tata-usaha.surat-keluar.index')
+            ->with('success', 'Surat keluar berhasil diperbarui dan digenerate ulang.');
     }
 
     public function destroy(SuratKeluar $suratKeluar)

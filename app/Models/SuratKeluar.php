@@ -19,12 +19,14 @@ class SuratKeluar extends Model
         'tanggal_surat',
         'tujuan',
         'perihal',
+        'builder_data',
         'file_path',
         'user_id',
     ];
 
     protected $casts = [
         'tanggal_surat' => 'date',
+        'builder_data' => 'array',
     ];
 
     /**
