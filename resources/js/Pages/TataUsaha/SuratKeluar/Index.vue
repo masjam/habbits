@@ -104,18 +104,20 @@ const deleteSurat = (id) => {
                                 <th class="px-4 py-3">Tgl Surat</th>
                                 <th class="px-4 py-3">Tujuan</th>
                                 <th class="px-4 py-3">Perihal</th>
+                                <th class="px-4 py-3">Penginput</th>
                                 <th class="px-4 py-3 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200">
                             <tr v-if="suratKeluar.data.length === 0">
-                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">Belum ada data surat keluar.</td>
+                                <td colspan="6" class="px-4 py-8 text-center text-slate-500">Belum ada data surat keluar.</td>
                             </tr>
                             <tr v-for="surat in suratKeluar.data" :key="surat.id" class="bg-white hover:bg-slate-50 transition-colors">
                                 <td class="px-4 py-4 font-medium text-slate-800">{{ surat.nomor_surat }}</td>
                                 <td class="px-4 py-4 text-slate-500">{{ surat.tanggal_surat }}</td>
                                 <td class="px-4 py-4 font-medium">{{ surat.tujuan }}</td>
                                 <td class="px-4 py-4 text-slate-500"><div class="line-clamp-2" v-html="surat.perihal"></div></td>
+                                <td class="px-4 py-4 text-slate-500 text-xs">{{ surat.uploader?.name || '-' }}</td>
                                 <td class="px-4 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
                                         <a v-if="surat.file_path" :href="`/storage/${surat.file_path}`" target="_blank" title="Lihat File" class="text-blue-500 hover:text-blue-700">

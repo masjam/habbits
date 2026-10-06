@@ -99,13 +99,14 @@ const deleteSurat = (id) => {
                                 <th class="px-4 py-3">Tgl Surat / Diterima</th>
                                 <th class="px-4 py-3">Pengirim</th>
                                 <th class="px-4 py-3">Perihal</th>
+                                <th class="px-4 py-3">Penginput</th>
                                 <th class="px-4 py-3 text-center">Status</th>
                                 <th class="px-4 py-3 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200">
                             <tr v-if="suratMasuk.data.length === 0">
-                                <td colspan="6" class="px-4 py-8 text-center text-slate-500">Belum ada data surat masuk.</td>
+                                <td colspan="7" class="px-4 py-8 text-center text-slate-500">Belum ada data surat masuk.</td>
                             </tr>
                             <tr v-for="surat in suratMasuk.data" :key="surat.id" class="bg-white hover:bg-slate-50 transition-colors">
                                 <td class="px-4 py-4 font-medium text-slate-800">{{ surat.nomor_surat }}</td>
@@ -115,6 +116,7 @@ const deleteSurat = (id) => {
                                 </td>
                                 <td class="px-4 py-4">{{ surat.pengirim }}</td>
                                 <td class="px-4 py-4"><div class="line-clamp-2" v-html="surat.perihal"></div></td>
+                                <td class="px-4 py-4 text-slate-500 text-xs">{{ surat.uploader?.name || '-' }}</td>
                                 <td class="px-4 py-4 text-center">
                                     <span class="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider"
                                           :class="{

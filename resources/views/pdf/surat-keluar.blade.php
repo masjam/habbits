@@ -70,9 +70,9 @@
         }
         .bismillah {
             text-align: center;
-            font-size: 16pt;
+            font-size: 13pt;
             font-family: 'Amiri', serif;
-            margin-top: 0px;
+            margin-top: -10px;
             margin-bottom: 15px;
         }
         .surat-info {

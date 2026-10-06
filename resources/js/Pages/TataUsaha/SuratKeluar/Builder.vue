@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import Editor from '@tinymce/tinymce-vue'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps({
     next_nomor: String,
@@ -11,6 +11,7 @@ const props = defineProps({
     isEdit: { type: Boolean, default: false },
     suratId: { type: Number, default: null },
     builderData: { type: Object, default: () => null },
+    users: { type: Array, default: () => [] },
 })
 
 const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
@@ -24,7 +25,17 @@ const form = useForm({
     tanggal_hijriah: props.builderData?.tanggal_hijriah || props.tanggal_hijriah,
     kepada: props.builderData?.kepada || 'Bapak/Ibu Orangtua Wali Murid Kelas I-VI',
     di: props.builderData?.di || 'tempat',
+    pegawai_ditugaskan: props.builderData?.pegawai_ditugaskan || [],
+    pokok_tugas: props.builderData?.pokok_tugas || '',
     isi_surat: props.builderData?.isi_surat || '<p>Dalam rangka menindaklanjuti...</p>'
+})
+
+const searchPegawai = ref('')
+
+const filteredUsers = computed(() => {
+    if (!searchPegawai.value) return props.users
+    const lowerSearch = searchPegawai.value.toLowerCase()
+    return props.users.filter(u => u.name.toLowerCase().includes(lowerSearch))
 })
 
 const isPreviewing = ref(false)
@@ -133,9 +144,36 @@ const submit = () => {
                         <input type="hidden" v-model="form.tanggal_hijriah">
                         <input type="hidden" v-model="form.tanggal_masehi">
                     </div>
+                    <div v-else-if="form.jenis_surat === 'Tugas'" class="grid grid-cols-1 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p class="text-xs text-slate-500 mb-2">
+                            <i>Silakan pilih pegawai yang ditugaskan dan isi pokok kegiatan. Detail kegiatan bisa ditulis di bagian Isi Surat di bawah.</i>
+                        </p>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Pegawai Yang Ditugaskan</label>
+                            <div class="border border-slate-300 rounded-lg p-2 bg-white">
+                                <input type="text" v-model="searchPegawai" placeholder="Cari nama pegawai..." class="w-full p-2 mb-2 text-sm border-slate-200 rounded bg-slate-50 focus:bg-white transition-colors" />
+                                <div class="max-h-64 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 p-1">
+                                    <label v-for="user in filteredUsers" :key="user.id" class="flex items-center space-x-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200">
+                                        <input type="checkbox" :value="user.name" v-model="form.pegawai_ditugaskan" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 flex-shrink-0">
+                                        <span class="text-xs text-slate-700 select-none line-clamp-1" :title="user.name">{{ user.name }}</span>
+                                    </label>
+                                    <div v-if="filteredUsers.length === 0" class="col-span-full text-xs text-slate-500 p-3 text-center">Pegawai tidak ditemukan.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Pokok Tugas / Kegiatan</label>
+                            <input type="text" v-model="form.pokok_tugas" class="w-full p-2 text-sm border-slate-300 rounded-lg" placeholder="Contoh: Mengikuti Pelatihan Kurikulum Merdeka" required />
+                        </div>
+                        <!-- Hidden Inputs -->
+                        <input type="hidden" v-model="form.nomor_surat">
+                        <input type="hidden" v-model="form.tanggal_hijriah">
+                        <input type="hidden" v-model="form.tanggal_masehi">
+                    </div>
+                    
                     <div v-else class="grid grid-cols-1 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <p class="text-xs text-slate-500">
-                            <i>Format Surat Tugas dan Surat Keterangan tidak menggunakan field Hal, Lampiran, dan Kepada Yth. Format ini akan menggunakan judul tengah otomatis.</i>
+                            <i>Format Surat Keterangan tidak menggunakan field Hal, Lampiran, dan Kepada Yth. Format ini akan menggunakan judul tengah otomatis.</i>
                         </p>
                         <!-- Hidden Inputs -->
                         <input type="hidden" v-model="form.nomor_surat">

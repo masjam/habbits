@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class SuratKeluarController extends Controller
 {
@@ -78,7 +79,10 @@ class SuratKeluarController extends Controller
         return Inertia::render('TataUsaha/SuratKeluar/Builder', [
             'next_nomor' => $nextNomor,
             'tanggal_masehi' => \Carbon\Carbon::now()->translatedFormat('d F Y') . ' M',
-            'tanggal_hijriah' => '11 Rabi\'ul Akhir 1447 H' // TODO: Implement Hijri Converter if needed
+            'tanggal_hijriah' => '11 Rabi\'ul Akhir 1447 H', // TODO: Implement Hijri Converter if needed
+            'users' => User::whereDoesntHave('roles', function ($q) {
+                $q->whereIn('name', ['admin', 'superadmin']);
+            })->orderBy('name')->get(['id', 'name'])
         ]);
     }
 
@@ -94,6 +98,8 @@ class SuratKeluarController extends Controller
             'tanggal_masehi' => 'required|string',
             'tanggal_hijriah' => 'required|string',
             'isi_surat' => 'required|string',
+            'pegawai_ditugaskan' => 'nullable|array',
+            'pokok_tugas' => 'nullable|string',
         ]);
 
         if ($validated['jenis_surat'] === 'Tugas') {
@@ -140,6 +146,8 @@ class SuratKeluarController extends Controller
             'tanggal_masehi' => 'required|string',
             'tanggal_hijriah' => 'required|string',
             'isi_surat' => 'required|string',
+            'pegawai_ditugaskan' => 'nullable|array',
+            'pokok_tugas' => 'nullable|string',
         ]);
 
         if ($validated['jenis_surat'] === 'Tugas') {
@@ -185,13 +193,21 @@ class SuratKeluarController extends Controller
         // Parse date from masehi to Y-m-d format for DB loosely
         $date = date('Y-m-d'); 
         
+        $db_tujuan = $validated['kepada'];
+        $db_perihal = $validated['perihal'];
+        
+        if ($validated['jenis_surat'] === 'Tugas') {
+            $db_tujuan = !empty($validated['pegawai_ditugaskan']) ? implode(', ', (array)$validated['pegawai_ditugaskan']) : 'Yang Bersangkutan';
+            $db_perihal = !empty($validated['pokok_tugas']) ? $validated['pokok_tugas'] : 'Surat Tugas';
+        }
+
         SuratKeluar::create([
             'uuid' => $uuid,
             'document_hash' => $hash,
             'nomor_surat' => $validated['nomor_surat'],
             'tanggal_surat' => $date,
-            'tujuan' => $validated['kepada'],
-            'perihal' => $validated['perihal'],
+            'tujuan' => $db_tujuan,
+            'perihal' => $db_perihal,
             'builder_data' => $validated, // Save all builder fields
             'file_path' => $path,
             'user_id' => Auth::id(),
@@ -214,7 +230,10 @@ class SuratKeluarController extends Controller
             // Pass these just in case the builder requires them, though builderData already has them
             'next_nomor' => $suratKeluar->nomor_surat, 
             'tanggal_masehi' => $suratKeluar->builder_data['tanggal_masehi'] ?? \Carbon\Carbon::now()->translatedFormat('d F Y') . ' M',
-            'tanggal_hijriah' => $suratKeluar->builder_data['tanggal_hijriah'] ?? '11 Rabi\'ul Akhir 1447 H'
+            'tanggal_hijriah' => $suratKeluar->builder_data['tanggal_hijriah'] ?? '11 Rabi\'ul Akhir 1447 H',
+            'users' => User::whereDoesntHave('roles', function ($q) {
+                $q->whereIn('name', ['admin', 'superadmin']);
+            })->orderBy('name')->get(['id', 'name'])
         ]);
     }
 
@@ -230,6 +249,8 @@ class SuratKeluarController extends Controller
             'tanggal_masehi' => 'required|string',
             'tanggal_hijriah' => 'required|string',
             'isi_surat' => 'required|string',
+            'pegawai_ditugaskan' => 'nullable|array',
+            'pokok_tugas' => 'nullable|string',
         ]);
 
         if ($validated['jenis_surat'] === 'Tugas') {
@@ -276,12 +297,20 @@ class SuratKeluarController extends Controller
         $path = 'surat_keluar/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
 
+        $db_tujuan = $validated['kepada'];
+        $db_perihal = $validated['perihal'];
+        
+        if ($validated['jenis_surat'] === 'Tugas') {
+            $db_tujuan = !empty($validated['pegawai_ditugaskan']) ? implode(', ', (array)$validated['pegawai_ditugaskan']) : 'Yang Bersangkutan';
+            $db_perihal = !empty($validated['pokok_tugas']) ? $validated['pokok_tugas'] : 'Surat Tugas';
+        }
+
         $suratKeluar->update([
             'uuid' => $uuid,
             'document_hash' => $hash,
             'nomor_surat' => $validated['nomor_surat'],
-            'tujuan' => $validated['kepada'],
-            'perihal' => $validated['perihal'],
+            'tujuan' => $db_tujuan,
+            'perihal' => $db_perihal,
             'builder_data' => $validated,
             'file_path' => $path,
         ]);

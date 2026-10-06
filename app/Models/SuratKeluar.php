@@ -25,7 +25,7 @@ class SuratKeluar extends Model
     ];
 
     protected $casts = [
-        'tanggal_surat' => 'date',
+        'tanggal_surat' => 'date:Y-m-d',
         'builder_data' => 'array',
     ];
 
