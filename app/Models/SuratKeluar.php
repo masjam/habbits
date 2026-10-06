@@ -13,6 +13,8 @@ class SuratKeluar extends Model
     protected $table = 'surat_keluar';
 
     protected $fillable = [
+        'uuid',
+        'document_hash',
         'nomor_surat',
         'tanggal_surat',
         'tujuan',
