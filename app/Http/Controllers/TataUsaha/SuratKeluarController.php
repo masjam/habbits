@@ -348,8 +348,12 @@ class SuratKeluarController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true], true)->loadView('pdf.surat-keluar', $validated);
             $pdf->setPaper('A4', 'portrait');
 
-            // Save replacing the old file
-            Storage::disk('public')->put($suratKeluar->file_path, $pdf->output());
+            // Hapus file lama dan buat nama file baru agar browser tidak meload cache PDF lama
+            Storage::disk('public')->delete($suratKeluar->file_path);
+            $newPath = 'surat_keluar/' . time() . '_approved.pdf';
+            Storage::disk('public')->put($newPath, $pdf->output());
+
+            $suratKeluar->update(['file_path' => $newPath]);
         }
 
         return redirect()->back()->with('success', 'Surat Keluar berhasil di-approve.');
