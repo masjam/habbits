@@ -48,6 +48,20 @@ const closeModal = () => {
     form.clearErrors()
 }
 
+// Preview Modal State
+const isPreviewModalOpen = ref(false)
+const previewUrl = ref('')
+
+const openPreview = (url) => {
+    previewUrl.value = url
+    isPreviewModalOpen.value = true
+}
+
+const closePreview = () => {
+    isPreviewModalOpen.value = false
+    previewUrl.value = ''
+}
+
 const handleFileChange = (e) => {
     form.file = e.target.files[0]
 }
@@ -219,9 +233,9 @@ const usePhoto = async () => {
                                 <td class="px-4 py-4 text-slate-500 text-xs">{{ surat.uploader?.name || '-' }}</td>
                                 <td class="px-4 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <a v-if="surat.file_path" :href="`/storage/${surat.file_path}`" target="_blank" title="Lihat File" class="text-blue-500 hover:text-blue-700">
+                                        <button v-if="surat.file_path" @click="openPreview(`/storage/${surat.file_path}`)" title="Lihat File" class="text-blue-500 hover:text-blue-700">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        </a>
+                                        </button>
                                         <button v-if="isKepalaSekolah && surat.status === 'draft' && surat.builder_data" @click="approveSurat(surat.id)" title="Approve" class="text-emerald-500 hover:text-emerald-700">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                                         </button>
@@ -349,6 +363,39 @@ const usePhoto = async () => {
                                     Gunakan Foto
                                 </button>
                             </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Modal -->
+        <div v-if="isPreviewModalOpen" class="relative z-50">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closePreview"></div>
+            <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl w-full max-w-4xl flex flex-col" style="height: 85vh;">
+                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center shrink-0">
+                            <h3 class="text-base font-bold text-slate-800">Preview Dokumen</h3>
+                            <div class="flex items-center gap-2">
+                                <a :href="previewUrl" target="_blank" class="inline-flex items-center justify-center rounded-lg bg-blue-100 p-2 text-blue-700 hover:bg-blue-200 transition-colors" title="Buka di tab baru (jika PDF tidak muncul)">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                </a>
+                                <button @click="closePreview" class="inline-flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 w-full bg-slate-100 p-2 overflow-hidden">
+                            <iframe :src="previewUrl" class="w-full h-full rounded-lg bg-white border border-slate-300" title="Preview PDF"></iframe>
+                            <div class="mt-2 text-xs text-center text-slate-500 pb-2">
+                                Jika PDF tidak tertampil di perangkat mobile Anda, klik tombol biru (panah) di pojok kanan atas untuk membuka/mengunduh file.
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 px-4 py-3 flex justify-end shrink-0">
+                            <button @click="closePreview" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-300 transition-colors">
+                                <span>Tutup</span>
+                            </button>
                         </div>
                     </div>
                 </div>
