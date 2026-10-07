@@ -31,6 +31,8 @@ const isFemale = computed(() => props.user?.gender === 'P')
 const roleLabel = computed(() => {
     if (hasRole('superadmin')) return 'Super Admin'
     if (hasRole('admin'))      return 'Admin'
+    if (hasRole('kepala_sekolah')) return 'Kepala Sekolah'
+    if (hasRole('tata_usaha')) return 'Tata Usaha'
     return 'Pegawai'
 })
 
@@ -175,7 +177,10 @@ const isManajemenUserOpen = ref(
                 >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <span>Pesan &amp; Notifikasi</span>
+                <span class="flex-1">Pesan &amp; Notifikasi</span>
+                <span v-if="$page.props.notifications.unread_count > 0" class="ml-auto flex items-center justify-center px-2 py-0.5 text-[10px] font-bold bg-rose-500 text-white rounded-full">
+                    {{ $page.props.notifications.unread_count }} New
+                </span>
             </Link>
 
             <!-- Presensi GPS — Semua Role (bisa diakses pegawai & admin) -->
@@ -350,8 +355,8 @@ const isManajemenUserOpen = ref(
                 </Link>
             </template>
 
-            <!-- D. Menu Tata Usaha (tata_usaha & superadmin) -->
-            <template v-if="hasAnyRole(['tata_usaha', 'superadmin'])">
+            <!-- D. Menu Tata Usaha (tata_usaha, kepala_sekolah & superadmin) -->
+            <template v-if="hasAnyRole(['tata_usaha', 'kepala_sekolah', 'superadmin'])">
                 <div class="pt-3 pb-1">
                     <p class="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                         Tata Usaha

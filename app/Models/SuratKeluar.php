@@ -21,6 +21,7 @@ class SuratKeluar extends Model
         'perihal',
         'builder_data',
         'file_path',
+        'status',
         'user_id',
     ];
 

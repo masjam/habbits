@@ -128,6 +128,8 @@ class SuratKeluarController extends Controller
         $qrCode = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate($verifyUrl));
         $validated['qrCode'] = $qrCode;
 
+        $validated['is_draft'] = true; // Preview is always draft
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
         $pdf->setPaper('A4', 'portrait');
         
@@ -180,6 +182,8 @@ class SuratKeluarController extends Controller
         $qrCode = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate($verifyUrl));
         $validated['qrCode'] = $qrCode;
 
+        $validated['is_draft'] = true; // Newly generated is draft
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
         
         // Atur ukuran kertas
@@ -210,6 +214,7 @@ class SuratKeluarController extends Controller
             'perihal' => $db_perihal,
             'builder_data' => $validated, // Save all builder fields
             'file_path' => $path,
+            'status' => 'draft',
             'user_id' => Auth::id(),
         ]);
 
@@ -285,6 +290,8 @@ class SuratKeluarController extends Controller
         $qrCode = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate($verifyUrl));
         $validated['qrCode'] = $qrCode;
 
+        $validated['is_draft'] = true;
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
         $pdf->setPaper('A4', 'portrait');
         
@@ -313,10 +320,35 @@ class SuratKeluarController extends Controller
             'perihal' => $db_perihal,
             'builder_data' => $validated,
             'file_path' => $path,
+            'status' => 'draft',
         ]);
 
         return redirect()->route('tata-usaha.surat-keluar.index')
             ->with('success', 'Surat keluar berhasil diperbarui dan digenerate ulang.');
+    }
+
+    public function approve(SuratKeluar $suratKeluar)
+    {
+        if ($suratKeluar->status === 'approved') {
+            return redirect()->back()->with('error', 'Surat ini sudah di-approve.');
+        }
+
+        $suratKeluar->update(['status' => 'approved']);
+
+        if ($suratKeluar->builder_data) {
+            // Regenerate PDF without Draft watermark
+            $validated = $suratKeluar->builder_data;
+            $validated['is_draft'] = false;
+            $validated['qrCode'] = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate(url('/verifikasi-surat/' . $suratKeluar->uuid)));
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
+            $pdf->setPaper('A4', 'portrait');
+
+            // Save replacing the old file
+            Storage::disk('public')->put($suratKeluar->file_path, $pdf->output());
+        }
+
+        return redirect()->back()->with('success', 'Surat Keluar berhasil di-approve.');
     }
 
     public function destroy(SuratKeluar $suratKeluar)

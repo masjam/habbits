@@ -127,9 +127,24 @@
             margin-bottom: 10px;
             padding-left: 20px;
         }
+        .watermark {
+            position: fixed;
+            top: 30%;
+            left: 20%;
+            font-size: 100pt;
+            color: rgba(255, 0, 0, 0.2);
+            transform: rotate(-45deg);
+            z-index: -1;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
+
+    @if(isset($is_draft) && $is_draft)
+        <div class="watermark">DRAFT</div>
+    @endif
 
     @php
         $settings = \App\Models\Setting::whereIn('key', ['kop_logo_kiri', 'kop_logo_kanan', 'kop_baris_1', 'kop_baris_2', 'kop_baris_3', 'kop_alamat', 'kop_kontak'])->pluck('value', 'key')->toArray();

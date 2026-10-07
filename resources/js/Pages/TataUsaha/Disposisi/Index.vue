@@ -1,16 +1,21 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, Link, useForm, router } from '@inertiajs/vue3'
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+
+const page = usePage()
+const hasRole = (role) => page.props.auth.roles?.includes(role)
 
 const props = defineProps({
     disposisi: Object,
     suratMasuk: Array,
+    suratPerluDisposisi: Array,
     pegawai: Array,
     filters: Object,
 })
 
 const isModalOpen = ref(false)
+const editingId = ref(null)
 const searchQuery = ref(props.filters?.search || '')
 
 let searchTimeout = null
@@ -23,27 +28,45 @@ watch(searchQuery, (newVal) => {
 
 const form = useForm({
     surat_masuk_id: '',
-    penerima_id: '',
+    penerima_id: [],
     instruksi: '',
     batas_waktu: '',
 })
 
-const openAddModal = () => {
+const openAddModal = (suratId = '') => {
+    editingId.value = null
     form.reset()
     form.clearErrors()
+    form.surat_masuk_id = suratId
+    isModalOpen.value = true
+}
+
+const editDisposisi = (item) => {
+    editingId.value = item.id
+    form.surat_masuk_id = item.surat_masuk_id
+    form.penerima_id = [item.penerima_id]
+    form.instruksi = item.instruksi
+    form.batas_waktu = item.batas_waktu ? item.batas_waktu.split('T')[0] : ''
     isModalOpen.value = true
 }
 
 const closeModal = () => {
     isModalOpen.value = false
+    editingId.value = null
     form.reset()
     form.clearErrors()
 }
 
 const saveDisposisi = () => {
-    form.post(route('tata-usaha.disposisi.store'), {
-        onSuccess: () => closeModal(),
-    })
+    if (editingId.value) {
+        form.put(route('tata-usaha.disposisi.update', editingId.value), {
+            onSuccess: () => closeModal(),
+        })
+    } else {
+        form.post(route('tata-usaha.disposisi.store'), {
+            onSuccess: () => closeModal(),
+        })
+    }
 }
 
 const deleteDisposisi = (id) => {
@@ -80,6 +103,38 @@ const deleteDisposisi = (id) => {
                         </svg>
                         <span>Buat Disposisi</span>
                     </button>
+                </div>
+            </div>
+
+            <!-- Surat Perlu Disposisi Table -->
+            <div v-if="suratPerluDisposisi && suratPerluDisposisi.length > 0" class="bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden mb-6">
+                <div class="px-4 py-3 bg-amber-50 border-b border-amber-200">
+                    <h3 class="text-sm font-bold text-amber-800">Menunggu Disposisi</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-amber-50/50 text-xs uppercase text-amber-700 font-semibold border-b border-amber-100">
+                            <tr>
+                                <th class="px-4 py-3">No. Surat</th>
+                                <th class="px-4 py-3">Pengirim</th>
+                                <th class="px-4 py-3">Perihal</th>
+                                <th class="px-4 py-3 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-amber-100">
+                            <tr v-for="surat in suratPerluDisposisi" :key="surat.id" class="bg-white hover:bg-amber-50/50 transition-colors">
+                                <td class="px-4 py-4 font-bold text-slate-800">{{ surat.nomor_surat }}</td>
+                                <td class="px-4 py-4">{{ surat.pengirim }}</td>
+                                <td class="px-4 py-4"><div class="line-clamp-2" v-html="surat.perihal"></div></td>
+                                <td class="px-4 py-4 text-right">
+                                    <button @click="openAddModal(surat.id)" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold hover:bg-purple-200 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                        Beri Disposisi
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -125,7 +180,13 @@ const deleteDisposisi = (id) => {
                                 </td>
                                 <td class="px-4 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button @click="deleteDisposisi(item.id)" title="Hapus" class="text-rose-500 hover:text-rose-700">
+                                        <a :href="route('tata-usaha.disposisi.print', item.id)" target="_blank" title="Cetak Disposisi" class="text-blue-500 hover:text-blue-700">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                        </a>
+                                        <button v-if="hasRole('kepala_sekolah') || hasRole('superadmin')" @click="editDisposisi(item)" title="Edit" class="text-amber-500 hover:text-amber-700">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        </button>
+                                        <button v-if="hasRole('kepala_sekolah') || hasRole('superadmin')" @click="deleteDisposisi(item.id)" title="Hapus" class="text-rose-500 hover:text-rose-700">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
@@ -145,7 +206,7 @@ const deleteDisposisi = (id) => {
                     <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl w-full max-w-md">
                         <form @submit.prevent="saveDisposisi">
                             <div class="bg-white px-4 pb-4 pt-5 sm:p-6">
-                                <h3 class="text-lg font-bold text-slate-900 mb-4">Buat Disposisi / Penugasan</h3>
+                                <h3 class="text-lg font-bold text-slate-900 mb-4">{{ editingId ? 'Edit Disposisi' : 'Buat Disposisi / Penugasan' }}</h3>
                                 
                                 <div class="space-y-4">
                                     <div>
@@ -160,9 +221,11 @@ const deleteDisposisi = (id) => {
                                     </div>
                                     
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-500 mb-1">Tugaskan Kepada</label>
-                                        <select v-model="form.penerima_id" class="w-full p-2 text-sm border-slate-300 rounded-lg" required>
-                                            <option value="">-- Pilih Pegawai --</option>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-xs font-bold text-slate-500">Tugaskan Kepada</label>
+                                            <span class="text-[10px] text-slate-400">Gunakan CTRL/CMD untuk pilih lebih dari satu</span>
+                                        </div>
+                                        <select v-model="form.penerima_id" multiple class="w-full p-2 text-sm border-slate-300 rounded-lg h-32" required>
                                             <option v-for="user in pegawai" :key="user.id" :value="user.id">
                                                 {{ user.name }}
                                             </option>

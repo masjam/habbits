@@ -19,14 +19,17 @@ class SuratMasuk extends Model
         'tanggal_diterima',
         'pengirim',
         'perihal',
+        'jenis_surat',
         'file_path',
         'status',
+        'perlu_disposisi',
         'user_id',
     ];
 
     protected $casts = [
         'tanggal_surat' => 'date',
         'tanggal_diterima' => 'date',
+        'perlu_disposisi' => 'boolean',
     ];
 
     /**

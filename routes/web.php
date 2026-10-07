@@ -166,10 +166,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/maintenance/switch-role', [\App\Http\Controllers\MaintenanceController::class, 'switchRole'])->name('admin.maintenance.switch-role');
     Route::post('/admin/maintenance/toggle', [\App\Http\Controllers\MaintenanceController::class, 'toggle'])->name('admin.maintenance.toggle');
 
-    // ─── Tata Usaha Routes ─────────────────────────────────────────────
-    Route::middleware('role:tata_usaha|superadmin')->prefix('tata-usaha')->name('tata-usaha.')->group(function () {
+    // Print disposisi (bisa diakses pegawai penerima, pemberi, dan tata usaha)
+    Route::get('/tata-usaha/disposisi/{disposisi}/print', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'print'])->name('tata-usaha.disposisi.print');
+
+    // ─── Tata Usaha & Kepala Sekolah Routes ─────────────────────────────────────────────
+    Route::middleware('role:tata_usaha|superadmin|kepala_sekolah')->prefix('tata-usaha')->name('tata-usaha.')->group(function () {
         Route::get('/surat-masuk', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'index'])->name('surat-masuk.index');
         Route::post('/surat-masuk', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'store'])->name('surat-masuk.store');
+        Route::put('/surat-masuk/{suratMasuk}', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'update'])->name('surat-masuk.update');
         Route::delete('/surat-masuk/{suratMasuk}', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'destroy'])->name('surat-masuk.destroy');
 
         Route::get('/pengaturan-surat', [\App\Http\Controllers\TataUsaha\SettingController::class, 'index'])->name('settings.index');
@@ -178,6 +182,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/surat-keluar/builder', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'builder'])->name('surat-keluar.builder');
         Route::get('/surat-keluar/{suratKeluar}/edit-builder', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'editBuilder'])->name('surat-keluar.edit-builder');
         Route::post('/surat-keluar/{suratKeluar}/update-builder', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'updateBuilder'])->name('surat-keluar.update-builder');
+        Route::post('/surat-keluar/{suratKeluar}/approve', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'approve'])->name('surat-keluar.approve');
         Route::post('/surat-keluar/preview', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'preview'])->name('surat-keluar.preview');
         Route::post('/surat-keluar/generate', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'generate'])->name('surat-keluar.generate');
         Route::get('/surat-keluar', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'index'])->name('surat-keluar.index');
@@ -186,6 +191,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/disposisi', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'index'])->name('disposisi.index');
         Route::post('/disposisi', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'store'])->name('disposisi.store');
+        Route::put('/disposisi/{disposisi}', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'update'])->name('disposisi.update');
         Route::put('/disposisi/{disposisi}/status', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'updateStatus'])->name('disposisi.update-status');
         Route::delete('/disposisi/{disposisi}', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'destroy'])->name('disposisi.destroy');
     });

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, Link, useForm, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3'
+import { ref, watch, computed } from 'vue'
 import Editor from '@tinymce/tinymce-vue'
 
 const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
@@ -9,6 +9,12 @@ const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
 const props = defineProps({
     suratKeluar: Object,
     filters: Object,
+})
+
+const page = usePage()
+const isKepalaSekolah = computed(() => {
+    const roles = page.props.auth.roles || []
+    return roles.includes('kepala_sekolah') || roles.includes('superadmin')
 })
 
 const isModalOpen = ref(false)
@@ -52,12 +58,90 @@ const saveSurat = () => {
     })
 }
 
+const getJenisSurat = (surat) => {
+    if (surat.builder_data && surat.builder_data.jenis_surat) {
+        return 'Surat ' + surat.builder_data.jenis_surat
+    }
+    const perihal = (surat.perihal || '').toLowerCase()
+    if (perihal.includes('tugas')) return 'Surat Tugas'
+    if (perihal.includes('keterangan')) return 'Surat Keterangan'
+    if (perihal.includes('undangan')) return 'Surat Undangan'
+    if (perihal.includes('keputusan')) return 'Surat Keputusan'
+    if (perihal.includes('edaran')) return 'Surat Edaran'
+    if (perihal.includes('pemberitahuan')) return 'Surat Pemberitahuan'
+    return 'Surat Umum'
+}
 const deleteSurat = (id) => {
     if (confirm('Yakin ingin menghapus surat keluar ini?')) {
         router.delete(route('tata-usaha.surat-keluar.destroy', id), {
             preserveScroll: true
         })
     }
+}
+
+const approveSurat = (id) => {
+    if (confirm('Yakin ingin menyetujui surat keluar ini?')) {
+        router.post(route('tata-usaha.surat-keluar.approve', id), {}, {
+            preserveScroll: true
+        })
+    }
+}
+
+// Camera handling
+const isCameraOpen = ref(false)
+const videoRef = ref(null)
+const canvasRef = ref(null)
+const capturedImage = ref(null)
+let mediaStream = null
+
+const openCamera = async () => {
+    isCameraOpen.value = true
+    capturedImage.value = null
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        if (videoRef.value) {
+            videoRef.value.srcObject = mediaStream
+        }
+    } catch (error) {
+        console.error("Error accessing camera:", error)
+        alert("Tidak dapat mengakses kamera. Pastikan Anda telah memberikan izin.")
+        closeCamera()
+    }
+}
+
+const takePhoto = () => {
+    if (!videoRef.value || !canvasRef.value) return
+    const context = canvasRef.value.getContext('2d')
+    canvasRef.value.width = videoRef.value.videoWidth
+    canvasRef.value.height = videoRef.value.videoHeight
+    context.drawImage(videoRef.value, 0, 0, canvasRef.value.width, canvasRef.value.height)
+    
+    capturedImage.value = canvasRef.value.toDataURL('image/jpeg', 0.8)
+}
+
+const retakePhoto = () => {
+    capturedImage.value = null
+}
+
+const closeCamera = () => {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop())
+        mediaStream = null
+    }
+    isCameraOpen.value = false
+    capturedImage.value = null
+}
+
+const usePhoto = async () => {
+    if (!capturedImage.value) return
+    
+    // Convert dataURL to File
+    const res = await fetch(capturedImage.value)
+    const blob = await res.blob()
+    const file = new File([blob], `scan_surat_${Date.now()}.jpg`, { type: 'image/jpeg' })
+    
+    form.file = file
+    closeCamera()
 }
 </script>
 
@@ -103,8 +187,10 @@ const deleteSurat = (id) => {
                                 <th class="px-4 py-3">No. Surat</th>
                                 <th class="px-4 py-3">Tgl Surat</th>
                                 <th class="px-4 py-3">Tujuan</th>
+                                <th class="px-4 py-3">Jenis Surat</th>
+                                <th class="px-4 py-3">Status</th>
                                 <th class="px-4 py-3">Perihal</th>
-                                <th class="px-4 py-3">Penginput</th>
+                                <th class="px-4 py-3">Pembuat</th>
                                 <th class="px-4 py-3 text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -116,6 +202,19 @@ const deleteSurat = (id) => {
                                 <td class="px-4 py-4 font-medium text-slate-800">{{ surat.nomor_surat }}</td>
                                 <td class="px-4 py-4 text-slate-500">{{ surat.tanggal_surat }}</td>
                                 <td class="px-4 py-4 font-medium">{{ surat.tujuan }}</td>
+                                <td class="px-4 py-4">
+                                    <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                        {{ getJenisSurat(surat) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span v-if="surat.status === 'approved'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        Approved
+                                    </span>
+                                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                        Draft
+                                    </span>
+                                </td>
                                 <td class="px-4 py-4 text-slate-500"><div class="line-clamp-2" v-html="surat.perihal"></div></td>
                                 <td class="px-4 py-4 text-slate-500 text-xs">{{ surat.uploader?.name || '-' }}</td>
                                 <td class="px-4 py-4 text-right">
@@ -123,6 +222,9 @@ const deleteSurat = (id) => {
                                         <a v-if="surat.file_path" :href="`/storage/${surat.file_path}`" target="_blank" title="Lihat File" class="text-blue-500 hover:text-blue-700">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </a>
+                                        <button v-if="isKepalaSekolah && surat.status === 'draft' && surat.builder_data" @click="approveSurat(surat.id)" title="Approve" class="text-emerald-500 hover:text-emerald-700">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                        </button>
                                         <Link v-if="surat.builder_data" :href="route('tata-usaha.surat-keluar.edit-builder', surat.id)" title="Edit Pembuat Surat" class="text-amber-500 hover:text-amber-700">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                         </Link>
@@ -179,8 +281,18 @@ const deleteSurat = (id) => {
                                         <p v-if="form.errors.perihal" class="text-xs text-rose-500 mt-1">{{ form.errors.perihal }}</p>
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-500 mb-1">File Upload (PDF/Image/Word)</label>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-xs font-bold text-slate-500">File Upload (PDF/Image/Word)</label>
+                                            <button type="button" @click="openCamera" class="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                Buka Kamera
+                                            </button>
+                                        </div>
                                         <input type="file" @change="handleFileChange" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+                                        
+                                        <div v-if="form.file && form.file.name.includes('scan_surat')" class="mt-2 text-xs text-blue-600 font-medium">
+                                            ✅ Gambar dari kamera siap digunakan.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -194,6 +306,50 @@ const deleteSurat = (id) => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Modal -->
+        <div v-if="isCameraOpen" class="relative z-[60]">
+            <div class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm transition-opacity"></div>
+            <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div class="relative transform overflow-hidden rounded-2xl bg-black text-left shadow-2xl w-full max-w-lg border border-slate-700">
+                        <div class="p-4 flex items-center justify-between border-b border-slate-800">
+                            <h3 class="text-lg font-bold text-white">Ambil Foto Surat</h3>
+                            <button @click="closeCamera" class="text-slate-400 hover:text-white">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        
+                        <div class="relative bg-black flex items-center justify-center min-h-[300px]">
+                            <!-- Video Feed -->
+                            <video v-show="!capturedImage" ref="videoRef" autoplay playsinline class="w-full h-auto max-h-[60vh] object-contain"></video>
+                            
+                            <!-- Captured Image Preview -->
+                            <img v-if="capturedImage" :src="capturedImage" class="w-full h-auto max-h-[60vh] object-contain" />
+                            
+                            <!-- Hidden Canvas for capture -->
+                            <canvas ref="canvasRef" class="hidden"></canvas>
+                        </div>
+                        
+                        <div class="p-4 bg-slate-900 flex items-center justify-center gap-4">
+                            <template v-if="!capturedImage">
+                                <button @click="takePhoto" class="w-16 h-16 rounded-full border-4 border-slate-300 flex items-center justify-center hover:border-white hover:bg-white/10 transition-all">
+                                    <div class="w-12 h-12 bg-white rounded-full"></div>
+                                </button>
+                            </template>
+                            <template v-else>
+                                <button @click="retakePhoto" class="px-4 py-2 rounded-xl bg-slate-700 text-white font-bold text-sm hover:bg-slate-600">
+                                    Ulangi
+                                </button>
+                                <button @click="usePhoto" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700">
+                                    Gunakan Foto
+                                </button>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -101,11 +101,11 @@ class UserController extends Controller
             'fingerprint_id'   => 'nullable|string|max:255|unique:'.User::class,
         ];
 
-        // Jika superadmin, validasi pilihan role & multi login
         if ($isSuperadmin) {
             $rules['role'] = 'required|in:user,admin,superadmin';
             $rules['can_multi_login'] = 'nullable|boolean';
             $rules['is_tata_usaha'] = 'nullable|boolean';
+            $rules['is_kepala_sekolah'] = 'nullable|boolean';
         }
 
         $validated = $request->validate($rules);
@@ -134,6 +134,10 @@ class UserController extends Controller
         
         if ($isSuperadmin && !empty($validated['is_tata_usaha'])) {
             $rolesToAssign[] = 'tata_usaha';
+        }
+
+        if ($isSuperadmin && !empty($validated['is_kepala_sekolah'])) {
+            $rolesToAssign[] = 'kepala_sekolah';
         }
 
         $user->syncRoles($rolesToAssign);
@@ -179,6 +183,7 @@ class UserController extends Controller
             $rules['role'] = 'required|in:user,admin,superadmin';
             $rules['can_multi_login'] = 'nullable|boolean';
             $rules['is_tata_usaha'] = 'nullable|boolean';
+            $rules['is_kepala_sekolah'] = 'nullable|boolean';
         }
 
         // Admin & Superadmin sama-sama bisa isi catatan jika fitur Notes aktif
@@ -223,6 +228,9 @@ class UserController extends Controller
             $rolesToAssign = [$validated['role']];
             if (!empty($validated['is_tata_usaha'])) {
                 $rolesToAssign[] = 'tata_usaha';
+            }
+            if (!empty($validated['is_kepala_sekolah'])) {
+                $rolesToAssign[] = 'kepala_sekolah';
             }
             $user->syncRoles($rolesToAssign);
         }

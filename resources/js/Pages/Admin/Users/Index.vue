@@ -41,6 +41,7 @@ const form = useForm({
     gender: 'L',
     role: 'user', // Default
     is_tata_usaha: false,
+    is_kepala_sekolah: false,
     nip: '',
     divisi: '',
     status_kehadiran: 'Aktif',
@@ -100,6 +101,7 @@ const openEditModal = (user) => {
     // We only set the primary role here.
     form.role = user.roles.includes('superadmin') ? 'superadmin' : (user.roles.includes('admin') ? 'admin' : 'user')
     form.is_tata_usaha = user.roles.includes('tata_usaha')
+    form.is_kepala_sekolah = user.roles.includes('kepala_sekolah')
     form.password = '' // Don't prefill password
     
     // HR Features
@@ -324,9 +326,10 @@ const canEditUser = (user) => {
                                                   'bg-emerald-100 text-emerald-800': role === 'user',
                                                   'bg-amber-100 text-amber-800': role === 'admin',
                                                   'bg-purple-100 text-purple-800': role === 'superadmin',
-                                                  'bg-blue-100 text-blue-800': role === 'tata_usaha'
+                                                  'bg-blue-100 text-blue-800': role === 'tata_usaha',
+                                                  'bg-rose-100 text-rose-800': role === 'kepala_sekolah'
                                               }">
-                                            {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : role) }}
+                                            {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : (role === 'kepala_sekolah' ? 'Kepala Sekolah' : role)) }}
                                         </span>
                                     </div>
                                 </td>
@@ -398,9 +401,10 @@ const canEditUser = (user) => {
                                           'bg-emerald-100 text-emerald-800': role === 'user',
                                           'bg-amber-100 text-amber-800': role === 'admin',
                                           'bg-purple-100 text-purple-800': role === 'superadmin',
-                                          'bg-blue-100 text-blue-800': role === 'tata_usaha'
+                                          'bg-blue-100 text-blue-800': role === 'tata_usaha',
+                                          'bg-rose-100 text-rose-800': role === 'kepala_sekolah'
                                       }">
-                                    {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : role) }}
+                                    {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : (role === 'kepala_sekolah' ? 'Kepala Sekolah' : role)) }}
                                 </span>
                             </div>
                         </div>
@@ -536,6 +540,10 @@ const canEditUser = (user) => {
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="is_tata_usaha" v-model="form.is_tata_usaha" class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" />
                                             <label for="is_tata_usaha" class="text-xs font-bold text-slate-700">Berikan Akses Tata Usaha (Modul Surat)</label>
+                                        </div>
+                                        <div class="flex items-center gap-2 pt-2 border-t border-blue-100/50">
+                                            <input type="checkbox" id="is_kepala_sekolah" v-model="form.is_kepala_sekolah" class="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500" />
+                                            <label for="is_kepala_sekolah" class="text-xs font-bold text-slate-700">Berikan Akses Kepala Sekolah (Approve Surat)</label>
                                         </div>
                                         <div class="flex items-center gap-2 pt-2 border-t border-blue-100/50">
                                             <input type="checkbox" id="can_multi_login" v-model="form.can_multi_login" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />

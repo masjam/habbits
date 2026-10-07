@@ -109,8 +109,18 @@ const markAllAsRead = () => {
                                     'text-sm',
                                     notification.read_at === null ? 'text-slate-700 dark:text-slate-300 font-medium' : 'text-slate-500 dark:text-slate-400'
                                 ]">
-                                    {{ notification.data.body }}
+                                    {{ notification.data.body || notification.data.message }}
                                 </p>
+                                <div class="mt-3 flex flex-wrap gap-2" v-if="notification.data.action_links">
+                                    <a v-for="link in notification.data.action_links" 
+                                       :key="link.url" 
+                                       :href="link.url" 
+                                       target="_blank" 
+                                       @click.stop="markAsRead(notification.id, null)"
+                                       class="inline-flex items-center px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-sm font-semibold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors">
+                                        {{ link.label }}
+                                    </a>
+                                </div>
                                 <div v-if="notification.read_at === null" class="mt-2">
                                     <span class="inline-block w-2 h-2 rounded-full bg-primary-500"></span>
                                 </div>
