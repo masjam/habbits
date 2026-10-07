@@ -6,7 +6,9 @@
     <style>
         @font-face {
             font-family: 'Amiri';
-            src: url("data:font/truetype;charset=utf-8;base64,{{ base64_encode(file_get_contents(public_path('fonts/Amiri-Regular.ttf'))) }}") format('truetype');
+            @if(file_exists(public_path('fonts/Amiri-Regular.ttf')))
+            src: url("data:font/truetype;charset=utf-8;base64,{{ base64_encode(@file_get_contents(public_path('fonts/Amiri-Regular.ttf'))) }}") format('truetype');
+            @endif
             font-weight: normal;
             font-style: normal;
         }

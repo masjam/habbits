@@ -130,7 +130,8 @@ class SuratKeluarController extends Controller
 
         $validated['is_draft'] = true; // Preview is always draft
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
+        ini_set('memory_limit', '512M');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true])->loadView('pdf.surat-keluar', $validated);
         $pdf->setPaper('A4', 'portrait');
         
         return $pdf->stream('preview_surat.pdf');
@@ -184,7 +185,8 @@ class SuratKeluarController extends Controller
 
         $validated['is_draft'] = true; // Newly generated is draft
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
+        ini_set('memory_limit', '512M');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true])->loadView('pdf.surat-keluar', $validated);
         
         // Atur ukuran kertas
         $pdf->setPaper('A4', 'portrait');
@@ -292,7 +294,8 @@ class SuratKeluarController extends Controller
 
         $validated['is_draft'] = true;
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
+        ini_set('memory_limit', '512M');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true])->loadView('pdf.surat-keluar', $validated);
         $pdf->setPaper('A4', 'portrait');
         
         // Remove old file
@@ -341,7 +344,8 @@ class SuratKeluarController extends Controller
             $validated['is_draft'] = false;
             $validated['qrCode'] = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate(url('/verifikasi-surat/' . $suratKeluar->uuid)));
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.surat-keluar', $validated);
+            ini_set('memory_limit', '512M');
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true])->loadView('pdf.surat-keluar', $validated);
             $pdf->setPaper('A4', 'portrait');
 
             // Save replacing the old file
