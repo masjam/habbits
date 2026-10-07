@@ -141,7 +141,7 @@ class SuratKeluarController extends Controller
     {
         $validated = $request->validate([
             'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
-            'nomor_surat' => 'required|string',
+            'nomor_surat' => 'required|string|unique:surat_keluar,nomor_surat',
             'lampiran' => 'nullable|string',
             'perihal' => 'nullable|string',
             'kepada' => 'nullable|string',
@@ -248,7 +248,7 @@ class SuratKeluarController extends Controller
     {
         $validated = $request->validate([
             'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
-            'nomor_surat' => 'required|string',
+            'nomor_surat' => 'required|string|unique:surat_keluar,nomor_surat,' . $suratKeluar->id,
             'lampiran' => 'nullable|string',
             'perihal' => 'nullable|string',
             'kepada' => 'nullable|string',
