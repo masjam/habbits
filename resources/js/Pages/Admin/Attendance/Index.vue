@@ -1474,7 +1474,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 </div>
 
                                 <!-- Action Buttons -->
-                                <div class="flex items-center gap-2 mt-3 pt-2 border-t border-theme/40">
+                                <div v-if="selectedDetailModal.record?.approval_status === 'pending'" class="flex items-center gap-2 mt-3 pt-2 border-t border-theme/40">
                                     <button 
                                         type="button" 
                                         @click="handleQuickApprove(selectedDetailModal)"
@@ -1714,7 +1714,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 </div>
 
                                 <!-- Action Buttons -->
-                                <div class="flex items-center gap-2 mt-3 pt-2 border-t border-theme/40">
+                                <div v-if="selectedDetailModal.record?.approval_status === 'pending'" class="flex items-center gap-2 mt-3 pt-2 border-t border-theme/40">
                                     <button 
                                         type="button" 
                                         @click="handleQuickApprove(selectedDetailModal)"
