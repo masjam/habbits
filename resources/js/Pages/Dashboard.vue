@@ -61,6 +61,8 @@ const props = defineProps({
     featurePresensiActive: { type: Boolean, default: false },
     selectedMonth:    { type: Number,  default: new Date().getMonth() + 1 },
     selectedYear:     { type: Number,  default: new Date().getFullYear() },
+    presensiBulanIni: { type: Array,   default: () => [] },
+    semesterPresensiSummary: { type: Object, default: () => ({ tepat_waktu: 0, terlambat: 0, izin: 0 }) },
 })
 
 // --- Modal State ---
@@ -423,37 +425,7 @@ const formatTanggal = (dateStr) => {
                 <!-- Left Column (Badges & Charts) -->
                 <div class="lg:col-span-2 xl:col-span-2 space-y-6">
                     
-                    <!-- Gamification: Koleksi Lencana -->
-                    <div v-if="featureHabitActive" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
-                        <div class="flex items-center justify-between mb-6">
-                            <div>
-                                <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">Koleksi Lencana</h2>
-                                <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Penghargaan atas konsistensi ibadah Anda</p>
-                            </div>
-                        </div>
-                        
-                        <div v-if="userBadges?.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-                            <div v-for="badge in userBadges" :key="badge.id" class="flex flex-col items-center text-center group cursor-default">
-                                <div :class="`w-20 h-20 rounded-full flex items-center justify-center mb-3 bg-${badge.color_theme}-100 text-${badge.color_theme}-500 shadow-inner group-hover:scale-110 transition-transform duration-300 ring-4 ring-${badge.color_theme}-50`">
-                                    <svg v-if="badge.icon === 'academic-cap'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>
-                                    <svg v-else-if="badge.icon === 'fire'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M11.64 5.93h-.04a8.21 8.21 0 00-2.3 3.37A8.32 8.32 0 009 13c0 2.22 1.34 4 3 4s3-1.78 3-4c0-1.25-.49-2.43-1.37-3.23a8.1 8.1 0 00-2.33-1.5c-.32-.14-.52-.45-.47-.8a.8.8 0 00-.73-.89L10 6.54l1.64-.61z" /><path d="M17 9.87c-.6-.73-1.38-1.33-2.22-1.76l-1.02-.53-.16-.95C13.43 5.48 12.56 4 11.5 4c-.16 0-.32.02-.48.05-.18-1.06-1.12-1.9-2.27-1.97h-.24C6.58 2.27 5 3.99 5 6.06c0 1.25.64 2.41 1.7 3.12l.98.66-.4 1.12C7.03 11.68 6 13.25 6 15c0 3.31 2.69 6 6 6s6-2.69 6-6c0-2.12-1.1-4.05-2.83-5.06l-1.07-.63.2-1.12c.16-.95.34-2.12.16-3.15l-.26-1.52 1.36.87A6.47 6.47 0 0118 10.42v1.54l-1-.59zM12 19c-2.21 0-4-1.79-4-4 0-1.4.88-2.64 2.19-3.26l1.24-.59-.3-1.34c-.15-.65-.18-1.31-.08-1.95.46.46.99.85 1.56 1.13l1.1.53-.15 1.2c-.08.63-.05 1.26.09 1.87A4.01 4.01 0 0116 15c0 2.21-1.79 4-4 4z"/></svg>
-                                    <svg v-else-if="badge.icon === 'star'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                    <svg v-else-if="badge.icon === 'trending-up'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
-                                    <svg v-else-if="badge.icon === 'shield-check'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-                                    <svg v-else class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
-                                </div>
-                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ badge.name }}</h4>
-                                <p class="text-[11px] text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1 leading-snug px-2">{{ badge.description }}</p>
-                            </div>
-                        </div>
-                        
-                        <div v-else class="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 mb-3 shadow-sm">
-                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            </div>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">Belum ada lencana yang terbuka. <br/> Terus semangat penuhi target harian Anda!</p>
-                        </div>
-                    </div>
+
 
                     <!-- Analisis Ibadah Widget -->
                     <div v-if="featureHabitActive && habitAnalytics && Object.keys(habitAnalytics).length > 0" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
@@ -546,6 +518,69 @@ const formatTanggal = (dateStr) => {
                                     </div>
                                 </div>
                             </template>
+                        </div>
+                    </div>
+                    
+                    <!-- Rekap Presensi Bulan Ini -->
+                    <div v-if="featurePresensiActive" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
+                        <div class="border-b border-slate-100 dark:border-slate-700 pb-3 mb-4 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Rekap Presensi Bulan Berjalan</h3>
+                                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide">Data absensi harian Anda bulan ini</p>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto custom-scrollbar max-h-64">
+                            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-400 border-collapse">
+                                <thead class="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700">Tanggal</th>
+                                        <th class="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 text-center">Masuk</th>
+                                        <th class="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 text-center">Pulang</th>
+                                        <th class="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 text-right">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                    <tr v-if="presensiBulanIni.length === 0">
+                                        <td colspan="4" class="py-6 text-center text-slate-400 dark:text-slate-500">Belum ada data presensi bulan ini</td>
+                                    </tr>
+                                    <tr v-for="item in presensiBulanIni" :key="item.tanggal" class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <td class="py-2.5 px-4 font-medium">{{ formatTanggal(item.tanggal) }}</td>
+                                        <td class="py-2.5 px-4 text-center">{{ item.check_in || '-' }}</td>
+                                        <td class="py-2.5 px-4 text-center">{{ item.check_out || '-' }}</td>
+                                        <td class="py-2.5 px-4 text-right">
+                                            <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded-lg capitalize"
+                                                :class="{
+                                                    'bg-emerald-100 text-emerald-700': item.status === 'hadir',
+                                                    'bg-amber-100 text-amber-700': item.status === 'terlambat',
+                                                    'bg-blue-100 text-blue-700': ['izin', 'sakit', 'dinas_luar'].includes(item.status),
+                                                    'bg-red-100 text-red-700': item.status === 'alpa'
+                                                }">
+                                                {{ item.status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Footer Semester Summary -->
+                        <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                            <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Akumulasi {{ semester }}</p>
+                            <div class="flex flex-wrap items-center gap-4">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <span class="text-xs text-slate-600 dark:text-slate-400">Tepat Waktu: <span class="font-bold text-slate-800 dark:text-slate-200">{{ semesterPresensiSummary.tepat_waktu }}</span></span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+                                    <span class="text-xs text-slate-600 dark:text-slate-400">Terlambat: <span class="font-bold text-slate-800 dark:text-slate-200">{{ semesterPresensiSummary.terlambat }}</span></span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                                    <span class="text-xs text-slate-600 dark:text-slate-400">Izin/Sakit: <span class="font-bold text-slate-800 dark:text-slate-200">{{ semesterPresensiSummary.izin }}</span></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -661,10 +696,45 @@ const formatTanggal = (dateStr) => {
                     </div>
                 </div>
 
-                <!-- Right Column (Islamic Widget) - Hidden on Mobile, shown as sidebar on Desktop -->
-                <div class="hidden xl:block xl:col-span-1">
-                    <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden xl:sticky xl:top-6">
-                        <IslamicWidget class="h-full border-none shadow-none" />
+                <!-- Right Column (Islamic Widget & Badges) -->
+                <div class="xl:col-span-1">
+                    <div class="space-y-6 xl:sticky xl:top-6">
+                        <!-- Islamic Widget (Hidden on Mobile) -->
+                        <div class="hidden xl:block bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
+                            <IslamicWidget class="h-full border-none shadow-none" />
+                        </div>
+                        
+                        <!-- Gamification: Koleksi Lencana -->
+                        <div v-if="featureHabitActive" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200">Koleksi Lencana</h2>
+                                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Penghargaan atas konsistensi ibadah Anda</p>
+                                </div>
+                            </div>
+                            
+                            <div v-if="userBadges?.length" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 gap-6">
+                                <div v-for="badge in userBadges" :key="badge.id" class="flex flex-col items-center text-center group cursor-default">
+                                    <div :class="`w-20 h-20 rounded-full flex items-center justify-center mb-3 bg-${badge.color_theme}-100 text-${badge.color_theme}-500 shadow-inner group-hover:scale-110 transition-transform duration-300 ring-4 ring-${badge.color_theme}-50`">
+                                        <svg v-if="badge.icon === 'academic-cap'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72l5 2.73 5-2.73v3.72z"/></svg>
+                                        <svg v-else-if="badge.icon === 'fire'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M11.64 5.93h-.04a8.21 8.21 0 00-2.3 3.37A8.32 8.32 0 009 13c0 2.22 1.34 4 3 4s3-1.78 3-4c0-1.25-.49-2.43-1.37-3.23a8.1 8.1 0 00-2.33-1.5c-.32-.14-.52-.45-.47-.8a.8.8 0 00-.73-.89L10 6.54l1.64-.61z" /><path d="M17 9.87c-.6-.73-1.38-1.33-2.22-1.76l-1.02-.53-.16-.95C13.43 5.48 12.56 4 11.5 4c-.16 0-.32.02-.48.05-.18-1.06-1.12-1.9-2.27-1.97h-.24C6.58 2.27 5 3.99 5 6.06c0 1.25.64 2.41 1.7 3.12l.98.66-.4 1.12C7.03 11.68 6 13.25 6 15c0 3.31 2.69 6 6 6s6-2.69 6-6c0-2.12-1.1-4.05-2.83-5.06l-1.07-.63.2-1.12c.16-.95.34-2.12.16-3.15l-.26-1.52 1.36.87A6.47 6.47 0 0118 10.42v1.54l-1-.59zM12 19c-2.21 0-4-1.79-4-4 0-1.4.88-2.64 2.19-3.26l1.24-.59-.3-1.34c-.15-.65-.18-1.31-.08-1.95.46.46.99.85 1.56 1.13l1.1.53-.15 1.2c-.08.63-.05 1.26.09 1.87A4.01 4.01 0 0116 15c0 2.21-1.79 4-4 4z"/></svg>
+                                        <svg v-else-if="badge.icon === 'star'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                        <svg v-else-if="badge.icon === 'trending-up'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+                                        <svg v-else-if="badge.icon === 'shield-check'" class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                                        <svg v-else class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
+                                    </div>
+                                    <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ badge.name }}</h4>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1 leading-snug px-2">{{ badge.description }}</p>
+                                </div>
+                            </div>
+                            
+                            <div v-else class="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 mb-3 shadow-sm">
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                </div>
+                                <p class="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">Belum ada lencana yang terbuka. <br/> Terus semangat penuhi target harian Anda!</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

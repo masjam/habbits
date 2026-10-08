@@ -55,7 +55,7 @@ const youtubeEmbedUrl = computed(() => {
 </script>
 
 <template>
-    <Head title="Sistem Pantauan Habit" />
+    <Head title="SAHABAT SDAM" />
     
     <div class="min-h-screen relative overflow-hidden flex flex-col font-sans">
         
@@ -72,10 +72,15 @@ const youtubeEmbedUrl = computed(() => {
             <div class="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
                 <!-- Logo Area -->
                 <div class="flex items-center gap-3">
-                    <img src="/logo.png" alt="Logo" class="w-10 h-10 object-contain transform transition hover:scale-105" />
-                    <span class="text-xl sm:text-2xl font-black tracking-tight text-slate-800 bg-clip-text text-transparent bg-gradient-to-r from-emerald-700 to-emerald-900">
-                        System Pantauan Aktifitas Guru/Karyawan
-                    </span>
+                    <img src="/logo.png" alt="Logo" class="w-10 h-10 sm:w-12 sm:h-12 object-contain transform transition hover:scale-105" />
+                    <div class="flex flex-col">
+                        <span class="text-xl sm:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-emerald-900 leading-tight">
+                            SAHABAT SDAM
+                        </span>
+                        <span class="text-[10px] sm:text-xs font-semibold text-slate-500 hidden sm:block leading-none">
+                            Sistem Absensi, Habit, Administrasi & Buku Tugas SD Al Mujahidin Wonosari
+                        </span>
+                    </div>
                 </div>
 
                 <!-- Action Buttons -->
@@ -107,45 +112,28 @@ const youtubeEmbedUrl = computed(() => {
             <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-blue-50 blur-3xl opacity-50 pointer-events-none"></div>
 
             <div class="max-w-[90rem] mx-auto w-full px-4 sm:px-6 lg:px-8 mt-12 sm:mt-0 relative z-10">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
                     
-                    <!-- Column 1: Welcome Message -->
-                    <div class="lg:col-span-4 space-y-8 self-center">
+                    <!-- Column 1 (25%): Welcome Message -->
+                    <div class="lg:col-span-3 space-y-8">
                         <div class="space-y-4">
                             <span class="inline-block px-3 sm:px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] sm:text-xs font-bold tracking-widest uppercase">
-                                Pantau Ibadah Harian
+                                Platform Terpadu SDAM
                             </span>
-                            <h1 class="text-4xl sm:text-5xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                                Disiplin Ibadah, <br class="hidden md:block" />
+                            <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                                Sinergi Kinerja & <br class="hidden xl:block" />
                                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">
-                                    Berkah Melimpah
+                                    Istiqomah Ibadah
                                 </span>
                             </h1>
-                            <p class="text-base sm:text-lg text-slate-600 max-w-xl font-medium leading-relaxed">
-                                Catat dan pantau kebiasaan ibadah harian Anda. Bangun rutinitas yang istiqomah untuk mencapai ketenangan hidup dan keridhoan-Nya.
+                            <p class="text-sm sm:text-base text-slate-600 font-medium leading-relaxed">
+                                Kelola kehadiran, administrasi persuratan, tugas harian, hingga pemantauan ibadah (Mutaba'ah Yaumiyah) dalam satu platform yang terintegrasi.
                             </p>
-                            
-                            <!-- Live Stats -->
-                            <div class="pt-4 grid grid-cols-2 gap-4 max-w-lg">
-                                <div class="bg-white/60 backdrop-blur border border-emerald-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                                    <span class="text-3xl font-black text-emerald-600">{{ liveStats.logs.toLocaleString('id-ID') }}</span>
-                                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Total Ibadah Tercatat Bulan Ini</span>
-                                </div>
-                                <div class="bg-white/60 backdrop-blur border border-blue-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center">
-                                    <span class="text-3xl font-black text-blue-600">{{ liveStats.skor.toLocaleString('id-ID') }}</span>
-                                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">Akumulasi Skor Kebaikan</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
-                    <!-- Column 2: Islamic Widget -->
-                    <div class="lg:col-span-3 self-center">
-                        <IslamicWidget />
-                    </div>
-
-                    <!-- Column 3: YouTube Video Section or Mockup -->
-                    <div class="lg:col-span-5 self-center w-full">
+                    <!-- Column 2 (50%): Desktop Mockup -->
+                    <div class="lg:col-span-6 self-center w-full relative">
                         <div v-if="youtubeEmbedUrl" class="bg-white p-2 rounded-2xl shadow-lg border border-slate-100 transform transition hover:shadow-xl">
                             <div class="relative w-full overflow-hidden rounded-xl" style="padding-top: 56.25%;">
                                 <iframe 
@@ -158,15 +146,22 @@ const youtubeEmbedUrl = computed(() => {
                                 ></iframe>
                             </div>
                         </div>
-                        <div v-else class="relative group cursor-pointer">
-                            <div class="absolute -inset-1 bg-gradient-to-r from-emerald-600 to-teal-500 rounded-[2rem] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                            <img src="/mockup.jpg" alt="App Mockup" class="relative rounded-[2rem] shadow-2xl border border-slate-100 transform transition hover:scale-[1.02] duration-300 w-full object-cover aspect-square md:aspect-auto" />
-                            <div class="absolute bottom-4 left-0 right-0 text-center">
-                                <span class="bg-slate-900/80 backdrop-blur text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">Preview Tampilan Dashboard</span>
+                        <div v-else class="relative w-full">
+                            <!-- Background glow -->
+                            <div class="absolute inset-0 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-full blur-[80px] opacity-20 pointer-events-none"></div>
+                            
+                            <div class="transform transition-transform hover:-translate-y-2 duration-500 rounded-3xl overflow-hidden shadow-2xl border border-white/60 relative z-10">
+                                <img src="/mockup.jpg?v=3" alt="Desktop Mockup" class="w-full h-full object-cover aspect-[4/3]" />
                             </div>
                         </div>
                     </div>
 
+                    <!-- Column 3 (25%): Mobile Mockup -->
+                    <div class="lg:col-span-3 self-center w-full relative hidden sm:block">
+                        <div class="transform transition-transform hover:-translate-y-2 duration-500 rounded-3xl overflow-hidden shadow-2xl border border-white/60">
+                            <img src="/mockup2.jpg?v=2" alt="Mobile Mockup" class="w-full h-full object-cover aspect-[9/16] object-center" />
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -174,7 +169,7 @@ const youtubeEmbedUrl = computed(() => {
         
         <!-- Footer -->
         <footer class="bg-white border-t border-slate-100 py-6 text-center text-sm font-medium text-slate-500 relative z-10">
-            <p>&copy; {{ new Date().getFullYear() }} Mutaba'ah Yaumiah SDAM. All rights reserved. @blue_core21</p>
+            <p>&copy; {{ new Date().getFullYear() }} SAHABAT SDAM. All rights reserved. @blue_core21</p>
         </footer>
         
         <!-- Pop-up Modal -->

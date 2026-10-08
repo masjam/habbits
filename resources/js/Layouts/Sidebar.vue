@@ -108,8 +108,8 @@ const isManajemenUserOpen = ref(
         <div class="flex items-center gap-3 px-5 py-5 border-b border-subtle flex-shrink-0">
             <img src="/logo.png" alt="Logo SDAM" class="w-9 h-9 object-contain flex-shrink-0" />
             <div class="leading-none">
-                <p class="text-[15px] font-bold text-emerald-600 tracking-tight">HabitTracker</p>
-                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Sistem Pantauan Ibadah</p>
+                <p class="text-[15px] font-bold text-emerald-600 tracking-tight">SAHABAT SDAM</p>
+                <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Sistem Presensi & Habit</p>
             </div>
         </div>
 

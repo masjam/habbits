@@ -18,7 +18,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Login - Sistem Pantauan Habit" />
+    <Head title="Login - SAHABAT SDAM" />
 
     <div class="min-h-screen flex flex-col justify-center items-center py-10 px-4 sm:px-0 relative overflow-hidden">
         
@@ -31,8 +31,8 @@ const submit = () => {
             <Link :href="route('welcome')" class="flex flex-col items-center gap-4 group text-center">
                 <img src="/logo.png" alt="Logo SDAM" class="w-16 h-16 sm:w-20 sm:h-20 object-contain group-hover:scale-105 transition-transform drop-shadow-md" />
                 <div class="flex flex-col items-center">
-                    <span class="text-3xl font-extrabold text-slate-800 tracking-tight leading-none group-hover:text-emerald-700 transition-colors">Gobit SDAM</span>
-                    <span class="text-xs sm:text-sm font-semibold text-slate-500 mt-2 max-w-xs leading-relaxed">Sistem Pantauan Golden Habbits <br>SD Al Mujahidin Wonosari</span>
+                    <span class="text-3xl font-extrabold text-slate-800 tracking-tight leading-none group-hover:text-emerald-700 transition-colors">SAHABAT SDAM</span>
+                    <span class="text-xs sm:text-sm font-semibold text-slate-500 mt-2 max-w-xs leading-relaxed">Sistem Absensi, Habit, Administrasi & Buku Tugas <br>SD Al Mujahidin Wonosari</span>
                 </div>
             </Link>
         </div>

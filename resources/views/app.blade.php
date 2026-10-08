@@ -5,14 +5,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title inertia>{{ config('app.name', 'Sistem Pantauan Habit') }}</title>
+        <title inertia>{{ config('app.name', 'SAHABAT SDAM') }}</title>
 
         <!-- PWA & Favicon Meta Tags -->
         <link rel="manifest" href="/manifest.json">
         <meta name="theme-color" content="#059669">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
-        <meta name="apple-mobile-web-app-title" content="GobitSDAM">
+        <meta name="apple-mobile-web-app-title" content="SAHABAT SDAM">
         <link rel="icon" type="image/x-icon" href="/favicon.ico">
         <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png">
         <link rel="icon" type="image/png" sizes="512x512" href="/img/icon-512.png">

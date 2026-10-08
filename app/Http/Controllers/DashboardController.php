@@ -333,6 +333,33 @@ class DashboardController extends Controller
             }
         }
 
+        // ─── 9. Rekap Presensi Bulan Ini & Semester ──────────────────────────────
+        $presensiBulanIniRaw = \App\Models\Attendance::where('user_id', $targetUserId)
+            ->whereBetween('date', [$startOfSelectedMonth->format('Y-m-d'), $endOfSelectedMonth->format('Y-m-d')])
+            ->orderBy('date', 'desc')
+            ->get(['date', 'time_in', 'time_out', 'status']);
+            
+        $presensiBulanIni = $presensiBulanIniRaw->map(function($p) {
+            return [
+                'tanggal' => $p->date,
+                'check_in' => $p->time_in,
+                'check_out' => $p->time_out,
+                'status' => $p->status
+            ];
+        });
+
+        $semesterAttendances = \App\Models\Attendance::where('user_id', $targetUserId)
+            ->whereYear('date', $currentYear)
+            ->whereMonth('date', '>=', $startMonth)
+            ->whereMonth('date', '<=', $endMonth)
+            ->get(['status']);
+
+        $semesterPresensiSummary = [
+            'tepat_waktu' => $semesterAttendances->where('status', 'hadir')->count(),
+            'terlambat'   => $semesterAttendances->where('status', 'terlambat')->count(),
+            'izin'        => $semesterAttendances->whereIn('status', ['izin', 'sakit', 'dinas_luar'])->count(),
+        ];
+
         return Inertia::render('Dashboard', [
             'skorHariIni'      => (int) $skorHariIni,
             'skorMaksimalHariIni'=> (int) $skorMaksimalHariIni,
@@ -369,6 +396,8 @@ class DashboardController extends Controller
             'featurePresensiActive' => $featurePresensiActive,
             'selectedMonth'    => (int) $selectedMonth,
             'selectedYear'     => (int) $selectedYear,
+            'presensiBulanIni' => $presensiBulanIni,
+            'semesterPresensiSummary' => $semesterPresensiSummary,
         ]);
     }
 

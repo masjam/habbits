@@ -86,7 +86,7 @@ const userAvatarUrl = computed(() => {
             </button>
 
             <span class="hidden md:inline-block text-sm font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
-                Sistem Pantauan Habit &amp; Ibadah
+                SAHABAT SDAM
             </span>
         </div>
 
