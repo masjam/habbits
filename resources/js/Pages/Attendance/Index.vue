@@ -854,7 +854,7 @@ onUnmounted(() => {
                                             <span>FOTO MASUK</span>
                                         </button>
                                     </template>
-                                    <template v-else-if="!todayAttendance.time_out">
+                                    <template v-else>
                                         <button
                                             type="button"
                                             @click="openCameraModal('checkout')"
@@ -867,14 +867,9 @@ onUnmounted(() => {
                                             </svg>
                                             <span v-if="isBeforeWorkEnd">FOTO IJIN</span>
                                             <span v-else>FOTO PULANG</span>
+                                            <span v-if="todayAttendance && todayAttendance.time_out" class="block text-[8px] sm:text-[10px] mt-0 font-normal">UPDATE PULANG</span>
                                         </button>
                                     </template>
-                                    <div v-else class="h-full w-full rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-[10px] sm:text-sm flex flex-col items-center justify-center p-2 text-center gap-1.5">
-                                        <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span>SELESAI</span>
-                                    </div>
                                 </div>
                                 <div v-else class="flex flex-col h-full justify-center items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
                                     <svg class="w-6 h-6 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

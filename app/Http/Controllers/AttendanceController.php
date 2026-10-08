@@ -182,9 +182,7 @@ class AttendanceController extends Controller
             return redirect()->back()->with('error', 'Anda belum melakukan presensi masuk hari ini.');
         }
 
-        if ($attendance->time_out) {
-            return redirect()->back()->with('error', 'Anda sudah melakukan presensi pulang hari ini.');
-        }
+
 
         $request->validate([
             'latitude'               => 'required|numeric',

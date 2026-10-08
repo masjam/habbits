@@ -116,40 +116,32 @@ class AttendanceRFIDController extends Controller
             ]);
         } else {
             // Sudah absen masuk
-            if ($attendance->time_out) {
-                // Sudah absen pulang
-                return response()->json([
-                    'success' => false,
-                    'message' => "{$user->name} sudah melakukan absensi pulang hari ini.",
-                ], 400);
-            } else {
-                // Belum absen pulang -> CHECK OUT
-                $isPulangCepat = $time < $workEnd;
+            // Update time_out (Check out)
+            $isPulangCepat = $time < $workEnd;
 
-                $attendance->update([
-                    'time_out' => $time,
+            $attendance->update([
+                'time_out' => $time,
+                'is_pulang_cepat' => $isPulangCepat,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'type' => 'out',
+                'user' => [
+                    'name' => $user->name,
+                    'time' => $time,
                     'is_pulang_cepat' => $isPulangCepat,
-                ]);
+                ],
+                'attendance' => [
+                    'id' => $attendance->id,
+                    'name' => $user->name,
+                    'time_in' => $attendance->time_in,
+                    'time_out' => $time,
+                    'status' => $attendance->status,
+                ],
+                'message' => "Sampai jumpa, {$user->name}!",
+            ]);
 
-                return response()->json([
-                    'success' => true,
-                    'type' => 'out',
-                    'user' => [
-                        'name' => $user->name,
-                        'time' => $time,
-                        'is_pulang_cepat' => $isPulangCepat,
-                    ],
-                    'attendance' => [
-                        'id' => $attendance->id,
-                        'name' => $user->name,
-                        'time_in' => $attendance->time_in,
-                        'time_out' => $time,
-                        'status' => $attendance->status,
-                        'notes' => $attendance->notes,
-                    ],
-                    'message' => "Hati-hati di jalan, {$user->name}!",
-                ]);
-            }
         }
     }
 }
