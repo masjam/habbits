@@ -186,6 +186,68 @@ const submit = () => {
     openSignatureModal()
 }
 
+// --- Voice to Text Logic ---
+const isListeningIsi = ref(false)
+const isListeningTindak = ref(false)
+let recognition = null;
+
+if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    // We only process final results to avoid weird jitter in TinyMCE
+    recognition.interimResults = false; 
+    recognition.lang = 'id-ID';
+}
+
+const toggleDictation = (field) => {
+    if (!recognition) {
+        alert("Browser Anda tidak mendukung fitur Voice-to-Text. Harap gunakan Google Chrome atau Edge terbaru.");
+        return;
+    }
+
+    if (field === 'isi') {
+        if (isListeningIsi.value) {
+            recognition.stop();
+            return;
+        }
+        if (isListeningTindak.value) recognition.stop();
+        
+        recognition.onresult = (event) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) transcript += event.results[i][0].transcript + ' ';
+            }
+            if (transcript) form.isi_pembahasan = (form.isi_pembahasan || '') + transcript;
+        };
+        
+        recognition.onend = () => { isListeningIsi.value = false; };
+        recognition.start();
+        isListeningIsi.value = true;
+        isListeningTindak.value = false;
+        
+    } else if (field === 'tindak') {
+        if (isListeningTindak.value) {
+            recognition.stop();
+            return;
+        }
+        if (isListeningIsi.value) recognition.stop();
+        
+        recognition.onresult = (event) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) transcript += event.results[i][0].transcript + ' ';
+            }
+            if (transcript) form.tindak_lanjut = (form.tindak_lanjut || '') + transcript;
+        };
+        
+        recognition.onend = () => { isListeningTindak.value = false; };
+        recognition.start();
+        isListeningTindak.value = true;
+        isListeningIsi.value = false;
+    }
+}
+
 // Editor setup
 const editorInit = {
     height: 300,
@@ -229,13 +291,25 @@ const editorInit = {
                             <!-- Kiri: Isi & Followup (Dominan) -->
                             <div class="lg:col-span-9 space-y-6">
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Isi Pembahasan / Hasil Rapat <span class="text-red-500">*</span></label>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300">Isi Pembahasan / Hasil Rapat <span class="text-red-500">*</span></label>
+                                        <button type="button" @click="toggleDictation('isi')" :class="{'bg-red-500 text-white animate-pulse': isListeningIsi, 'bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-600': !isListeningIsi}" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-colors">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                            {{ isListeningIsi ? 'Mendengarkan...' : 'Dikte Suara' }}
+                                        </button>
+                                    </div>
                                     <Editor :api-key="tinymceApiKey" :init="editorInit" v-model="form.isi_pembahasan" />
                                     <div v-if="form.errors.isi_pembahasan" class="text-red-500 text-xs mt-1">{{ form.errors.isi_pembahasan }}</div>
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tindak Lanjut (Follow up)</label>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300">Tindak Lanjut (Follow up)</label>
+                                        <button type="button" @click="toggleDictation('tindak')" :class="{'bg-red-500 text-white animate-pulse': isListeningTindak, 'bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-600': !isListeningTindak}" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-colors">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                            {{ isListeningTindak ? 'Mendengarkan...' : 'Dikte Suara' }}
+                                        </button>
+                                    </div>
                                     <Editor :api-key="tinymceApiKey" :init="{ ...editorInit, height: 200 }" v-model="form.tindak_lanjut" />
                                     <div v-if="form.errors.tindak_lanjut" class="text-red-500 text-xs mt-1">{{ form.errors.tindak_lanjut }}</div>
                                 </div>
