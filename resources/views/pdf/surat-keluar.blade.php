@@ -123,6 +123,8 @@
         .isi-surat p {
             margin-top: 0;
             margin-bottom: 10px;
+            text-indent: 0 !important; /* Paksa agar tidak menjorok */
+            padding-left: 0 !important; /* Hilangkan padding bawaan editor */
         }
         .isi-surat ol, .isi-surat ul {
             margin-top: 0;
@@ -230,7 +232,14 @@
     @endif
 
     <div class="isi-surat">
-        {!! $isi_surat !!}
+        @php
+            // Bersihkan &nbsp; atau spasi kosong yang tidak sengaja terketik di awal paragraf
+            $clean_isi = preg_replace('/<p[^>]*>(\s|&nbsp;)+/i', '<p>', $isi_surat);
+            
+            // Hapus atribut style margin-left, padding-left, atau text-indent bawaan editor
+            $clean_isi = preg_replace('/(margin-left|padding-left|text-indent)\s*:\s*[^;"]+;?/i', '', $clean_isi);
+        @endphp
+        {!! $clean_isi !!}
     </div>
 
     <div class="salam-penutup">
