@@ -11,6 +11,8 @@ const props = defineProps({
     }
 })
 
+const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
+
 // Form
 const form = useForm({
     judul_rapat: '',
@@ -18,7 +20,7 @@ const form = useForm({
     tanggal_waktu: '',
     pimpinan_rapat: '',
     lokasi: '',
-    daftar_hadir: '',
+    peserta_rapat: '',
     isi_pembahasan: '',
     tindak_lanjut: '',
     dokumentasi: null
@@ -114,7 +116,7 @@ const checkSelectAllState = () => {
 }
 
 const updateDaftarHadirForm = () => {
-    form.daftar_hadir = hadirTags.value.join(', ')
+    form.peserta_rapat = hadirTags.value.join(', ')
 }
 
 const hidePimpinanList = () => {
@@ -177,13 +179,13 @@ const editorInit = {
                             <div class="lg:col-span-9 space-y-6">
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Isi Pembahasan / Hasil Rapat <span class="text-red-500">*</span></label>
-                                    <Editor api-key="no-api-key" :init="editorInit" v-model="form.isi_pembahasan" />
+                                    <Editor :api-key="tinymceApiKey" :init="editorInit" v-model="form.isi_pembahasan" />
                                     <div v-if="form.errors.isi_pembahasan" class="text-red-500 text-xs mt-1">{{ form.errors.isi_pembahasan }}</div>
                                 </div>
 
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tindak Lanjut (Follow up)</label>
-                                    <Editor api-key="no-api-key" :init="{ ...editorInit, height: 200 }" v-model="form.tindak_lanjut" />
+                                    <Editor :api-key="tinymceApiKey" :init="{ ...editorInit, height: 200 }" v-model="form.tindak_lanjut" />
                                     <div v-if="form.errors.tindak_lanjut" class="text-red-500 text-xs mt-1">{{ form.errors.tindak_lanjut }}</div>
                                 </div>
 
@@ -240,7 +242,7 @@ const editorInit = {
                                 </div>
 
                                 <div class="relative">
-                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Daftar Hadir</label>
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Peserta Rapat (Diundang)</label>
                                     
                                     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col h-[280px]">
                                         <!-- Search input for filter / manual entry -->
@@ -271,7 +273,7 @@ const editorInit = {
                                             </div>
                                         </div>
                                     </div>
-                                    <div v-if="form.errors.daftar_hadir" class="text-red-500 text-xs mt-1">{{ form.errors.daftar_hadir }}</div>
+                                    <div v-if="form.errors.peserta_rapat" class="text-red-500 text-xs mt-1">{{ form.errors.peserta_rapat }}</div>
                                 </div>
                             </div>
                         </div>

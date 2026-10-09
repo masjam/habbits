@@ -87,6 +87,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/notulen/create', [\App\Http\Controllers\NotulenController::class, 'create'])->name('notulen.create');
     Route::get('/notulen', [\App\Http\Controllers\NotulenController::class, 'index'])->name('notulen.index');
     Route::post('/notulen', [\App\Http\Controllers\NotulenController::class, 'store'])->name('notulen.store');
+    Route::post('/notulen/{notulen}/hadir', [\App\Http\Controllers\NotulenController::class, 'markHadir'])->name('notulen.hadir');
     Route::delete('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'destroy'])->name('notulen.destroy');
 
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────

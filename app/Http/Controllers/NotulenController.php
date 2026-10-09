@@ -44,11 +44,13 @@ class NotulenController extends Controller
             'tanggal_waktu' => 'required|date',
             'pimpinan_rapat' => 'required|string|max:255',
             'lokasi' => 'required|string|max:255',
-            'daftar_hadir' => 'nullable|string',
+            'peserta_rapat' => 'nullable|string',
             'isi_pembahasan' => 'required|string',
             'tindak_lanjut' => 'nullable|string',
             'dokumentasi.*' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048'
         ]);
+
+        $validated['daftar_hadir'] = null; // Mulai dengan daftar hadir kosong
 
         $dokPaths = [];
         if ($request->hasFile('dokumentasi')) {
@@ -75,5 +77,22 @@ class NotulenController extends Controller
         $notulen->delete();
         
         return redirect()->back()->with('success', 'Notulen berhasil dihapus.');
+    }
+
+    public function markHadir(Notulen $notulen)
+    {
+        $userName = auth()->user()->name;
+        
+        $hadirList = $notulen->daftar_hadir ? explode(', ', $notulen->daftar_hadir) : [];
+        
+        if (!in_array($userName, $hadirList)) {
+            $hadirList[] = $userName;
+            $notulen->update([
+                'daftar_hadir' => implode(', ', $hadirList)
+            ]);
+            return redirect()->back()->with('success', 'Anda berhasil menandai kehadiran pada rapat ini.');
+        }
+
+        return redirect()->back()->with('info', 'Anda sudah tercatat hadir.');
     }
 }
