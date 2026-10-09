@@ -83,6 +83,12 @@ Route::middleware('auth')->group(function () {
     // ─── Penilaian Kinerja (KPI) ──────────────────────────────────────────────
     Route::get('/performance-evaluations', [\App\Http\Controllers\PerformanceEvaluationController::class, 'userIndex'])->name('performance.index');
 
+    // ─── Notulen Rapat ──────────────────────────────────────────────
+    Route::get('/notulen/create', [\App\Http\Controllers\NotulenController::class, 'create'])->name('notulen.create');
+    Route::get('/notulen', [\App\Http\Controllers\NotulenController::class, 'index'])->name('notulen.index');
+    Route::post('/notulen', [\App\Http\Controllers\NotulenController::class, 'store'])->name('notulen.store');
+    Route::delete('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'destroy'])->name('notulen.destroy');
+
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {
         
