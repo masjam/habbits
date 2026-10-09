@@ -59,8 +59,8 @@ const printNotulen = () => {
                         <div>{{ new Date(notulen.tanggal_waktu).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }}, {{ new Date(notulen.tanggal_waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} WIB</div>
                     </div>
                     <div>
-                        <div class="mb-1"><span class="font-bold inline-block w-24">Tempat</span> : {{ notulen.lokasi }}</div>
-                        <div><span class="font-bold inline-block w-24">Pimpinan Rapat</span> : {{ notulen.pimpinan_rapat }}</div>
+                        <div class="mb-1 flex"><span class="font-bold w-32 shrink-0">Tempat</span> <span class="mr-1">:</span> <span>{{ notulen.lokasi }}</span></div>
+                        <div class="flex"><span class="font-bold w-32 shrink-0">Pimpinan Rapat</span> <span class="mr-1">:</span> <span>{{ notulen.pimpinan_rapat }}</span></div>
                     </div>
                 </div>
 

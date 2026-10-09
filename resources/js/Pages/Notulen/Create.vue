@@ -1,8 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, useForm, Link } from '@inertiajs/vue3'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import Editor from '@tinymce/tinymce-vue'
+import SignaturePad from 'signature_pad'
 
 const props = defineProps({
     users: {
@@ -23,6 +24,7 @@ const form = useForm({
     peserta_rapat: '',
     isi_pembahasan: '',
     tindak_lanjut: '',
+    ttd_notulis: '',
     dokumentasi: null
 })
 
@@ -129,10 +131,59 @@ const handleFileChange = (e) => {
     form.dokumentasi = e.target.files
 }
 
-const submit = () => {
+// --- Signature Pad Logic ---
+const showSignatureModal = ref(false)
+const signatureCanvas = ref(null)
+let signaturePadInstance = null
+
+const openSignatureModal = () => {
+    // Validasi basic sebelum buka modal
+    if (!form.judul_rapat || !form.jenis_rapat || !form.tanggal_waktu || !form.pimpinan_rapat || !form.lokasi || !form.isi_pembahasan) {
+        alert('Harap lengkapi semua field wajib (*) terlebih dahulu sebelum menyimpan.')
+        return
+    }
+
+    showSignatureModal.value = true
+    nextTick(() => {
+        if (signatureCanvas.value) {
+            signaturePadInstance = new SignaturePad(signatureCanvas.value, {
+                backgroundColor: 'rgb(255, 255, 255)'
+            })
+            // Resize canvas to fix display issues
+            const ratio =  Math.max(window.devicePixelRatio || 1, 1);
+            signatureCanvas.value.width = signatureCanvas.value.offsetWidth * ratio;
+            signatureCanvas.value.height = signatureCanvas.value.offsetHeight * ratio;
+            signatureCanvas.value.getContext("2").scale(ratio, ratio);
+            signaturePadInstance.clear();
+        }
+    })
+}
+
+const clearSignature = () => {
+    if (signaturePadInstance) {
+        signaturePadInstance.clear()
+    }
+}
+
+const submitWithSignature = () => {
+    if (signaturePadInstance && signaturePadInstance.isEmpty()) {
+        alert('Tanda tangan tidak boleh kosong!')
+        return
+    }
+    
+    if (signaturePadInstance) {
+        form.ttd_notulis = signaturePadInstance.toDataURL()
+    }
+
+    showSignatureModal.value = false
+    
     form.post(route('notulen.store'), {
         preserveScroll: true
     })
+}
+
+const submit = () => {
+    openSignatureModal()
 }
 
 // Editor setup
@@ -281,11 +332,37 @@ const editorInit = {
 
                     <div class="px-6 md:px-8 py-5 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-700">
                         <Link :href="route('notulen.index')" class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Batal</Link>
-                        <button type="submit" :disabled="form.processing" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors shadow-sm disabled:opacity-50">
-                            {{ form.processing ? 'Menyimpan...' : 'Simpan Notulen' }}
+                        <button type="button" @click="openSignatureModal" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors shadow-sm disabled:opacity-50">
+                            Simpan Notulen
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Signature Modal -->
+        <div v-if="showSignatureModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col border border-slate-200 dark:border-slate-700">
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">Tanda Tangan Notulis</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Silakan gambar tanda tangan Anda di bawah ini sebagai pengesahan dokumen pembuat notulen.</p>
+                </div>
+                
+                <div class="p-6 bg-slate-50 dark:bg-slate-900/50">
+                    <div class="bg-white border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl overflow-hidden touch-none">
+                        <canvas ref="signatureCanvas" class="w-full h-48 cursor-crosshair"></canvas>
+                    </div>
+                </div>
+                
+                <div class="p-6 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                    <button type="button" @click="clearSignature" class="text-sm font-bold text-red-600 hover:text-red-700 transition-colors">Bersihkan</button>
+                    <div class="flex gap-3">
+                        <button type="button" @click="showSignatureModal = false" class="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors">Batal</button>
+                        <button type="button" @click="submitWithSignature" :disabled="form.processing" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center gap-2">
+                            Simpan & Sahkan
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>

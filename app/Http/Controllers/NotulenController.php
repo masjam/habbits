@@ -47,10 +47,27 @@ class NotulenController extends Controller
             'peserta_rapat' => 'nullable|string',
             'isi_pembahasan' => 'required|string',
             'tindak_lanjut' => 'nullable|string',
+            'ttd_notulis' => 'required|string',
             'dokumentasi.*' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048'
         ]);
 
-        $validated['daftar_hadir'] = null; // Mulai dengan daftar hadir kosong
+        $userName = auth()->user()->name;
+        $pimpinan = $validated['pimpinan_rapat'];
+
+        // Siapkan array daftar hadir dan peserta rapat
+        $pesertaList = $validated['peserta_rapat'] ? explode(', ', $validated['peserta_rapat']) : [];
+        $hadirList = [];
+
+        // Masukkan Notulis ke daftar peserta dan hadir (jika belum ada)
+        if (!in_array($userName, $pesertaList)) $pesertaList[] = $userName;
+        if (!in_array($userName, $hadirList)) $hadirList[] = $userName;
+
+        // Masukkan Pimpinan ke daftar peserta dan hadir (jika belum ada)
+        if (!in_array($pimpinan, $pesertaList)) $pesertaList[] = $pimpinan;
+        if (!in_array($pimpinan, $hadirList)) $hadirList[] = $pimpinan;
+
+        $validated['peserta_rapat'] = implode(', ', $pesertaList);
+        $validated['daftar_hadir'] = implode(', ', $hadirList);
 
         $dokPaths = [];
         if ($request->hasFile('dokumentasi')) {
@@ -135,16 +152,40 @@ class NotulenController extends Controller
             'peserta_rapat' => 'nullable|string',
             'isi_pembahasan' => 'required|string',
             'tindak_lanjut' => 'nullable|string',
+            'ttd_notulis' => 'required|string',
         ]);
+
+        $userName = auth()->user()->name;
+        $pimpinan = $validated['pimpinan_rapat'];
+
+        $pesertaList = $validated['peserta_rapat'] ? explode(', ', $validated['peserta_rapat']) : [];
+        $hadirList = $notulen->daftar_hadir ? explode(', ', $notulen->daftar_hadir) : [];
+
+        if (!in_array($userName, $pesertaList)) $pesertaList[] = $userName;
+        if (!in_array($userName, $hadirList)) $hadirList[] = $userName;
+
+        if (!in_array($pimpinan, $pesertaList)) $pesertaList[] = $pimpinan;
+        if (!in_array($pimpinan, $hadirList)) $hadirList[] = $pimpinan;
+
+        $validated['peserta_rapat'] = implode(', ', $pesertaList);
+        $validated['daftar_hadir'] = implode(', ', $hadirList);
 
         $notulen->update($validated);
 
         return redirect()->route('notulen.index')->with('success', 'Notulen berhasil diperbarui.');
     }
 
-    public function approve(Notulen $notulen)
+    public function approve(Request $request, Notulen $notulen)
     {
-        $notulen->update(['is_approved' => true]);
+        $request->validate([
+            'ttd_pimpinan' => 'required|string'
+        ]);
+
+        $notulen->update([
+            'is_approved' => true,
+            'ttd_pimpinan' => $request->ttd_pimpinan
+        ]);
+        
         return redirect()->back()->with('success', 'Notulen berhasil disetujui.');
     }
 }
