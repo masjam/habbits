@@ -244,9 +244,9 @@
 
     <div class="salam-penutup">
         @if($jenis_surat == 'Umum')
-            <p style="text-align: justify; margin-bottom: 10px;">
+            <!-- <p style="text-align: justify; margin-bottom: 10px;">
                 Demikian surat ini kami sampaikan, atas perhatiannya diucapkan <i>jazakumullahu khairan katsiran.</i>
-            </p>
+            </p> -->
             <div class="arabic-text" dir="rtl">
                 {{ $salam_penutup }}
             </div>
