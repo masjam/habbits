@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
     documents: {
@@ -13,6 +13,9 @@ const props = defineProps({
 // Modal State
 const showUploadModal = ref(false)
 
+// Upload Method State
+const uploadMethod = ref('file')
+
 // Form State
 const form = useForm({
     document_type: '',
@@ -20,6 +23,84 @@ const form = useForm({
     document_number: '',
     document_year: '',
     file: null
+})
+
+// Camera Refs
+const videoElement = ref(null)
+const canvasElement = ref(null)
+const photoPreview = ref(null)
+let stream = null
+
+const startCamera = async () => {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+        })
+        if (videoElement.value) {
+            videoElement.value.srcObject = stream
+        }
+    } catch (err) {
+        console.error("Camera access error:", err)
+        alert("Gagal mengakses kamera. Pastikan perangkat Anda memiliki kamera dan telah memberikan izin akses.")
+    }
+}
+
+const stopCamera = () => {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop())
+        stream = null
+    }
+}
+
+const takePhoto = () => {
+    if (!videoElement.value || !canvasElement.value) return
+    const video = videoElement.value
+    const canvas = canvasElement.value
+    
+    canvas.width = video.videoWidth || 640
+    canvas.height = video.videoHeight || 480
+    
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    canvas.toBlob((blob) => {
+        if (!blob) return
+        const file = new File([blob], "camera_capture_" + Date.now() + ".jpg", { type: "image/jpeg" })
+        form.file = file
+        photoPreview.value = URL.createObjectURL(blob)
+        stopCamera()
+    }, 'image/jpeg', 0.8)
+}
+
+const retakePhoto = () => {
+    photoPreview.value = null
+    form.file = null
+    // wait for dom to render video tag again
+    setTimeout(() => {
+        startCamera()
+    }, 100)
+}
+
+watch(uploadMethod, (newVal) => {
+    if (newVal === 'camera') {
+        photoPreview.value = null
+        form.file = null
+        setTimeout(() => startCamera(), 100)
+    } else {
+        stopCamera()
+    }
+})
+
+const closeUploadModal = () => {
+    showUploadModal.value = false
+    stopCamera()
+    photoPreview.value = null
+    uploadMethod.value = 'file'
+    form.reset()
+}
+
+onBeforeUnmount(() => {
+    stopCamera()
 })
 
 // Tipe Dokumen Options
@@ -45,8 +126,7 @@ const submit = () => {
     form.post(route('employee-documents.store'), {
         preserveScroll: true,
         onSuccess: () => {
-            showUploadModal.value = false
-            form.reset()
+            closeUploadModal()
         }
     })
 }
@@ -122,14 +202,53 @@ const deleteDocument = (id) => {
                                     </div>
 
                                     <div>
+                                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Metode Unggah <span class="text-red-500">*</span></label>
+                                        <div class="flex gap-4">
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" v-model="uploadMethod" value="file" class="text-emerald-600 focus:ring-emerald-500" />
+                                                <span class="text-sm text-slate-700 dark:text-slate-300">Unggah File</span>
+                                            </label>
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" v-model="uploadMethod" value="camera" class="text-emerald-600 focus:ring-emerald-500" />
+                                                <span class="text-sm text-slate-700 dark:text-slate-300">Ambil Foto (Kamera)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="uploadMethod === 'file'">
                                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">File Dokumen <span class="text-red-500">*</span></label>
                                         <input type="file" @change="handleFileChange" accept=".pdf,.jpg,.jpeg,.png" required class="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/30 dark:file:text-emerald-400" />
                                         <p class="text-xs text-slate-400 mt-1">Format: PDF, JPG, PNG. Maksimal 2MB.</p>
                                         <div v-if="form.errors.file" class="text-red-500 text-xs mt-1">{{ form.errors.file }}</div>
                                     </div>
+                                    
+                                    <div v-if="uploadMethod === 'camera'">
+                                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Ambil Foto Langsung <span class="text-red-500">*</span></label>
+                                        
+                                        <div v-if="!photoPreview" class="relative rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center min-h-[240px]">
+                                            <video ref="videoElement" autoplay playsinline class="w-full h-auto max-h-[400px] object-cover"></video>
+                                            <div class="absolute bottom-4 left-0 right-0 flex justify-center">
+                                                <button type="button" @click="takePhoto" class="w-14 h-14 rounded-full bg-white/30 backdrop-blur-md border-4 border-white shadow-lg hover:scale-105 transition-transform flex items-center justify-center">
+                                                    <div class="w-10 h-10 bg-white rounded-full"></div>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div v-else class="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                                            <img :src="photoPreview" class="w-full object-cover max-h-[400px]" alt="Captured document" />
+                                            <div class="absolute bottom-4 left-0 right-0 flex justify-center">
+                                                <button type="button" @click="retakePhoto" class="px-4 py-2 bg-slate-900/80 text-white text-sm font-bold rounded-xl backdrop-blur-sm hover:bg-slate-900 transition-colors">
+                                                    Ulangi Foto
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <canvas ref="canvasElement" class="hidden"></canvas>
+                                        <div v-if="form.errors.file" class="text-red-500 text-xs mt-1">{{ form.errors.file }}</div>
+                                    </div>
                                 </div>
                                 <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl">
-                                    <button type="button" @click="showUploadModal = false" class="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Batal</button>
+                                    <button type="button" @click="closeUploadModal" class="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Batal</button>
                                     <button type="submit" :disabled="form.processing" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors disabled:opacity-50">
                                         {{ form.processing ? 'Menyimpan...' : 'Simpan Dokumen' }}
                                     </button>

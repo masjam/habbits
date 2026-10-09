@@ -588,46 +588,46 @@ const formatTanggal = (dateStr) => {
                 <!-- Middle Column (Stat Cards & Analysis) -->
                 <div class="lg:col-span-1 xl:col-span-1 space-y-6">
                     
-                    <!-- Stat Cards -->
-                    <div v-if="featureHabitActive" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6">
-                        <div class="border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
-                            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
-                                Perolehan Skor
-                            </p>
-                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
-                                <div>
-                                    <span class="text-xl font-bold text-emerald-500">{{ skorHariIni }}</span>
-                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalHariIni }} (Harian)</span>
-                                </div>
-                                <div>
-                                    <span class="text-xl font-bold text-blue-500">{{ skorBulanIni }}</span>
-                                    <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalBulanIni }} (Bulanan)</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
-                                    Target Minimal
-                                </p>
-                                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
-                                    <div v-if="isPersonalTarget">
-                                        <span class="text-xl font-bold text-emerald-500">{{ targetSkorMinimal }}</span>
-                                        <span class="text-[10px] text-emerald-600 font-bold ml-1 tracking-wide">(Pribadi: {{ targetBulanan }}%)</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-xl font-bold text-amber-500">{{ adminTargetSkorMinimal }}</span>
-                                        <span class="text-[10px] text-slate-400 ml-1 tracking-wide">(Sekolah : {{ adminTargetBulanan }}%)</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <!-- Charts Area -->
                     <div v-if="featureHabitActive" class="flex flex-col gap-6">
                         <!-- Tabel Rekap Skor Harian Bulanan -->
-                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 flex flex-col max-h-[500px]">
+                        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-6 flex flex-col max-h-[600px]">
+                            <!-- Info Skor dan Target -->
+                            <div class="border-b border-slate-100 dark:border-slate-700 pb-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                                        Perolehan Skor
+                                    </p>
+                                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
+                                        <div>
+                                            <span class="text-xl font-bold text-emerald-500">{{ skorHariIni }}</span>
+                                            <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalHariIni }} (Harian)</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-xl font-bold text-blue-500">{{ skorBulanIni }}</span>
+                                            <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalBulanIni }} (Bulanan)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                                        Target Minimal
+                                    </p>
+                                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-1">
+                                        <div v-if="isPersonalTarget">
+                                            <span class="text-xl font-bold text-emerald-500">{{ targetSkorMinimal }}</span>
+                                            <span class="text-[10px] text-emerald-600 font-bold ml-1 tracking-wide">(Pribadi: {{ targetBulanan }}%)</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-xl font-bold text-amber-500">{{ adminTargetSkorMinimal }}</span>
+                                            <span class="text-[10px] text-slate-400 ml-1 tracking-wide">(Sekolah : {{ adminTargetBulanan }}%)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                     <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Rekap Skor Harian</p>
