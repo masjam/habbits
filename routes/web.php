@@ -87,7 +87,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/notulen/create', [\App\Http\Controllers\NotulenController::class, 'create'])->name('notulen.create');
     Route::get('/notulen', [\App\Http\Controllers\NotulenController::class, 'index'])->name('notulen.index');
     Route::post('/notulen', [\App\Http\Controllers\NotulenController::class, 'store'])->name('notulen.store');
+    Route::get('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'show'])->name('notulen.show');
+    Route::get('/notulen/{notulen}/edit', [\App\Http\Controllers\NotulenController::class, 'edit'])->name('notulen.edit');
+    Route::put('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'update'])->name('notulen.update');
     Route::post('/notulen/{notulen}/hadir', [\App\Http\Controllers\NotulenController::class, 'markHadir'])->name('notulen.hadir');
+    Route::post('/notulen/{notulen}/approve', [\App\Http\Controllers\NotulenController::class, 'approve'])->name('notulen.approve');
     Route::delete('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'destroy'])->name('notulen.destroy');
 
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────

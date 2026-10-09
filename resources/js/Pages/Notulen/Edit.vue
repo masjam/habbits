@@ -8,23 +8,29 @@ const props = defineProps({
     users: {
         type: Array,
         default: () => []
+    },
+    notulen: {
+        type: Object,
+        required: true
     }
 })
 
 const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
 
-// Form
+// Form (diisi dengan data notulen)
 const form = useForm({
-    judul_rapat: '',
-    jenis_rapat: '',
-    tanggal_waktu: '',
-    pimpinan_rapat: '',
-    lokasi: '',
-    peserta_rapat: '',
-    isi_pembahasan: '',
-    tindak_lanjut: '',
-    dokumentasi: null
+    judul_rapat: props.notulen.judul_rapat || '',
+    jenis_rapat: props.notulen.jenis_rapat || '',
+    tanggal_waktu: props.notulen.tanggal_waktu ? new Date(props.notulen.tanggal_waktu).toISOString().slice(0, 16) : '',
+    pimpinan_rapat: props.notulen.pimpinan_rapat || '',
+    lokasi: props.notulen.lokasi || '',
+    peserta_rapat: props.notulen.peserta_rapat || '',
+    isi_pembahasan: props.notulen.isi_pembahasan || '',
+    tindak_lanjut: props.notulen.tindak_lanjut || '',
+    _method: 'put' // untuk update data
 })
+
+const hadirTags = ref(props.notulen.peserta_rapat ? props.notulen.peserta_rapat.split(', ') : [])
 
 const jenisRapatOptions = [
     'Rutin Mingguan',
@@ -56,7 +62,6 @@ const updatePimpinanManual = () => {
 // Custom Daftar Hadir Multi-select / Tagging
 const searchHadir = ref('')
 const showHadirList = ref(false)
-const hadirTags = ref([])
 
 const filteredHadir = computed(() => {
     if (!searchHadir.value) return props.users
@@ -126,11 +131,11 @@ const hidePimpinanList = () => {
 }
 
 const handleFileChange = (e) => {
-    form.dokumentasi = e.target.files
+    // form.dokumentasi = e.target.files
 }
 
 const submit = () => {
-    form.post(route('notulen.store'), {
+    form.post(route('notulen.update', props.notulen.id), {
         preserveScroll: true
     })
 }
@@ -165,8 +170,8 @@ const editorInit = {
                     </svg>
                 </Link>
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Buat Notulen Baru</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Isi formulir di bawah untuk mencatat hasil rapat.</p>
+                    <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Edit Notulen Rapat</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Ubah formulir di bawah jika terdapat kesalahan pencatatan.</p>
                 </div>
             </div>
 
@@ -189,10 +194,10 @@ const editorInit = {
                                     <div v-if="form.errors.tindak_lanjut" class="text-red-500 text-xs mt-1">{{ form.errors.tindak_lanjut }}</div>
                                 </div>
 
+                                <!-- Dokumentasi tidak diubah saat ini -->
                                 <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
-                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Foto / Dokumentasi (Bisa lebih dari 1)</label>
-                                    <input type="file" @change="handleFileChange" accept="image/*,.pdf" multiple class="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/30 dark:file:text-emerald-400 border border-slate-200 dark:border-slate-700 rounded-xl" />
-                                    <div v-if="form.errors.dokumentasi" class="text-red-500 text-xs mt-1">{{ form.errors.dokumentasi }}</div>
+                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Foto / Dokumentasi</label>
+                                    <p class="text-xs text-slate-500 mb-2">Penambahan dokumentasi saat edit belum didukung di versi ini.</p>
                                 </div>
                             </div>
 
@@ -282,7 +287,7 @@ const editorInit = {
                     <div class="px-6 md:px-8 py-5 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-700">
                         <Link :href="route('notulen.index')" class="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Batal</Link>
                         <button type="submit" :disabled="form.processing" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold transition-colors shadow-sm disabled:opacity-50">
-                            {{ form.processing ? 'Menyimpan...' : 'Simpan Notulen' }}
+                            {{ form.processing ? 'Menyimpan Perubahan...' : 'Simpan Perubahan' }}
                         </button>
                     </div>
                 </form>

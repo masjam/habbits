@@ -83,66 +83,83 @@ const hasUserAttended = (notulen) => {
                 </div>
             </div>
 
-            <!-- List Notulen -->
-            <div v-if="notulens.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="notulen in notulens.data" :key="notulen.id" class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
-                    <div class="p-5 flex-1 space-y-3">
-                        <div class="flex items-start justify-between">
-                            <span class="inline-flex px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded text-xs font-bold uppercase tracking-wider">
-                                {{ notulen.jenis_rapat }}
-                            </span>
-                            <span class="text-xs font-medium text-slate-400">
-                                {{ new Date(notulen.tanggal_waktu).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) }}
-                            </span>
-                        </div>
-                        <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug">{{ notulen.judul_rapat }}</h3>
-                        
-                        <div class="text-sm text-slate-500 dark:text-slate-400 flex items-start gap-2">
-                            <svg class="w-4 h-4 shrink-0 text-slate-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                            <span class="truncate">{{ notulen.pimpinan_rapat }}</span>
-                        </div>
-                        <div class="text-sm text-slate-500 dark:text-slate-400 flex items-start gap-2">
-                            <svg class="w-4 h-4 shrink-0 text-slate-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            <span class="truncate">{{ notulen.lokasi }}</span>
-                        </div>
+            <!-- List Notulen (Tabel) -->
+            <div v-if="notulens.data.length > 0" class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left whitespace-nowrap">
+                        <thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 font-bold">Judul & Jenis</th>
+                                <th scope="col" class="px-6 py-4 font-bold">Waktu & Lokasi</th>
+                                <th scope="col" class="px-6 py-4 font-bold">Kehadiran</th>
+                                <th scope="col" class="px-6 py-4 font-bold">Status</th>
+                                <th scope="col" class="px-6 py-4 font-bold text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                            <tr v-for="notulen in notulens.data" :key="notulen.id" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="font-bold text-slate-800 dark:text-slate-200">{{ notulen.judul_rapat }}</div>
+                                    <div class="text-xs text-slate-500 mt-1">{{ notulen.jenis_rapat }}</div>
+                                    <div class="text-xs text-slate-400 mt-1">Oleh: {{ notulen.pimpinan_rapat }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-slate-700 dark:text-slate-300">{{ new Date(notulen.tanggal_waktu).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) }}</div>
+                                    <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        {{ notulen.lokasi }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ notulen.daftar_hadir ? notulen.daftar_hadir.split(', ').length : 0 }}</span>
+                                        <span class="text-xs text-slate-500">/ {{ notulen.peserta_rapat ? notulen.peserta_rapat.split(', ').length : 0 }} Hadir</span>
+                                    </div>
+                                    <div class="mt-2" v-if="isUserInvited(notulen)">
+                                        <button v-if="!hasUserAttended(notulen)" @click="markHadir(notulen.id)" class="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] shadow-sm transition-colors flex items-center gap-1 w-max">
+                                            Konfirmasi Hadir
+                                        </button>
+                                        <span v-else class="px-2 py-1 rounded border border-emerald-500 text-emerald-600 font-bold text-[10px] flex items-center gap-1 w-max">
+                                            Telah Hadir
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span v-if="notulen.is_approved" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 text-xs font-medium">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Disetujui
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 text-xs font-medium">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Menunggu Approval
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <!-- Approve Action (Only if not approved yet, maybe only for Pimpinan or Creator) -->
+                                        <Link v-if="!notulen.is_approved && (currentUser.name === notulen.pimpinan_rapat || currentUser.id === notulen.user_id)" :href="route('notulen.approve', notulen.id)" method="post" as="button" class="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title="Setujui Notulen">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                        </Link>
+                                        
+                                        <!-- Preview -->
+                                        <Link :href="route('notulen.show', notulen.id)" class="p-1.5 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors" title="Preview & Cetak">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        </Link>
 
-                        <div class="pt-3 border-t border-slate-100 dark:border-slate-700">
-                            <div class="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 prose prose-sm prose-emerald dark:prose-invert max-w-none" v-html="notulen.isi_pembahasan">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="p-4 bg-slate-50 dark:bg-slate-900/50 flex flex-col gap-3 border-t border-slate-100 dark:border-slate-700">
-                        <div class="flex items-center justify-between text-xs text-slate-400">
-                            <div>
-                                <span v-if="notulen.daftar_hadir" class="font-bold text-emerald-600 dark:text-emerald-400">{{ notulen.daftar_hadir.split(', ').length }} Hadir</span>
-                                <span v-else>0 Hadir</span>
-                                <span v-if="notulen.peserta_rapat"> / {{ notulen.peserta_rapat.split(', ').length }} Peserta</span>
-                            </div>
-                            <div>{{ notulen.dokumentasi ? notulen.dokumentasi.length + ' Lampiran' : '0 Lampiran' }}</div>
-                        </div>
+                                        <!-- Edit -->
+                                        <Link v-if="!notulen.is_approved && (currentUser.name === notulen.pimpinan_rapat || currentUser.id === notulen.user_id)" :href="route('notulen.edit', notulen.id)" class="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors" title="Edit">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        </Link>
 
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <button v-if="isUserInvited(notulen) && !hasUserAttended(notulen)" @click="markHadir(notulen.id)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Konfirmasi Hadir
-                                </button>
-                                <span v-else-if="isUserInvited(notulen) && hasUserAttended(notulen)" class="px-3 py-1.5 rounded-lg border border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 w-max">
-                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    Telah Hadir
-                                </span>
-                            </div>
-
-                            <button @click="deleteNotulen(notulen.id)" class="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-slate-600 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 transition-colors" title="Hapus">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                        </div>
-                    </div>
+                                        <!-- Delete -->
+                                        <button v-if="!notulen.is_approved && (currentUser.id === notulen.user_id)" @click="deleteNotulen(notulen.id)" class="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Hapus">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

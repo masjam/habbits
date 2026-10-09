@@ -11,5 +11,11 @@ class Notulen extends Model
     protected $casts = [
         'tanggal_waktu' => 'datetime',
         'dokumentasi' => 'array',
+        'is_approved' => 'boolean',
     ];
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

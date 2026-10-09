@@ -61,6 +61,8 @@ class NotulenController extends Controller
         }
         $validated['dokumentasi'] = count($dokPaths) > 0 ? $dokPaths : null;
 
+        $validated['user_id'] = auth()->id();
+        
         Notulen::create($validated);
 
         return redirect()->route('notulen.index')->with('success', 'Notulen berhasil ditambahkan.');
@@ -94,5 +96,55 @@ class NotulenController extends Controller
         }
 
         return redirect()->back()->with('info', 'Anda sudah tercatat hadir.');
+    }
+
+    public function show(Notulen $notulen)
+    {
+        $notulen->load('creator');
+        return Inertia::render('Notulen/Show', [
+            'notulen' => $notulen
+        ]);
+    }
+
+    public function edit(Notulen $notulen)
+    {
+        if ($notulen->is_approved) {
+            return redirect()->route('notulen.index')->with('error', 'Notulen sudah disetujui dan tidak dapat diubah.');
+        }
+
+        $users = User::orderBy('name')->get(['id', 'name']);
+        
+        return Inertia::render('Notulen/Edit', [
+            'notulen' => $notulen,
+            'users' => $users
+        ]);
+    }
+
+    public function update(Request $request, Notulen $notulen)
+    {
+        if ($notulen->is_approved) {
+            return redirect()->route('notulen.index')->with('error', 'Notulen sudah disetujui dan tidak dapat diubah.');
+        }
+
+        $validated = $request->validate([
+            'judul_rapat' => 'required|string|max:255',
+            'jenis_rapat' => 'required|string|max:255',
+            'tanggal_waktu' => 'required|date',
+            'pimpinan_rapat' => 'required|string|max:255',
+            'lokasi' => 'required|string|max:255',
+            'peserta_rapat' => 'nullable|string',
+            'isi_pembahasan' => 'required|string',
+            'tindak_lanjut' => 'nullable|string',
+        ]);
+
+        $notulen->update($validated);
+
+        return redirect()->route('notulen.index')->with('success', 'Notulen berhasil diperbarui.');
+    }
+
+    public function approve(Notulen $notulen)
+    {
+        $notulen->update(['is_approved' => true]);
+        return redirect()->back()->with('success', 'Notulen berhasil disetujui.');
     }
 }
