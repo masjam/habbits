@@ -29,7 +29,9 @@ class NotulenController extends Controller
 
     public function create()
     {
-        $users = User::orderBy('name')->get(['id', 'name']);
+        $users = User::whereDoesntHave('roles', function ($query) {
+            $query->whereIn('name', ['superadmin', 'admin']);
+        })->orderBy('name')->get(['id', 'name']);
         
         return Inertia::render('Notulen/Create', [
             'users' => $users
@@ -129,7 +131,9 @@ class NotulenController extends Controller
             return redirect()->route('notulen.index')->with('error', 'Notulen sudah disetujui dan tidak dapat diubah.');
         }
 
-        $users = User::orderBy('name')->get(['id', 'name']);
+        $users = User::whereDoesntHave('roles', function ($query) {
+            $query->whereIn('name', ['superadmin', 'admin']);
+        })->orderBy('name')->get(['id', 'name']);
         
         return Inertia::render('Notulen/Edit', [
             'notulen' => $notulen,

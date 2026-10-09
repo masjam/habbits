@@ -297,8 +297,11 @@ const editorInit = {
                                     
                                     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col h-[280px]">
                                         <!-- Search input for filter / manual entry -->
-                                        <div class="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                                            <input type="text" v-model="searchHadir" @keydown.enter.prevent="addHadirManual" placeholder="Cari pegawai / ketik nama non-pegawai lalu tekan Enter" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 dark:text-slate-300" />
+                                        <div class="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex gap-2">
+                                            <input type="text" v-model="searchHadir" @keydown.enter.prevent="addHadirManual" placeholder="Cari / ketik nama Tamu" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs focus:ring-emerald-500 focus:border-emerald-500 text-slate-700 dark:text-slate-300" />
+                                            <button type="button" @click.prevent="addHadirManual" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm shrink-0">
+                                                Tambah
+                                            </button>
                                         </div>
                                         
                                         <!-- List of checkboxes -->
