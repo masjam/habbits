@@ -4,12 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Models\Notulen;
 use App\Models\User;
+use App\Jobs\SendNotulenApprovalNotification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class NotulenController extends Controller
 {
+    private function storeBase64Signature($base64String, $prefix = 'signature')
+    {
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64String, $type)) {
+            $data = substr($base64String, strpos($base64String, ',') + 1);
+            $type = strtolower($type[1]);
+            $data = base64_decode($data);
+            $fileName = 'signatures/' . $prefix . '_' . time() . '_' . Str::random(5) . '.' . $type;
+            Storage::disk('public')->put($fileName, $data);
+            return $fileName;
+        }
+        return $base64String;
+    }
+
     public function index(Request $request)
     {
         $query = Notulen::query();
@@ -19,7 +34,7 @@ class NotulenController extends Controller
                   ->orWhere('jenis_rapat', 'like', '%' . $request->search . '%');
         }
 
-        $notulens = $query->orderBy('tanggal_waktu', 'desc')->paginate(10)->withQueryString();
+        $notulens = $query->with('pesertas')->orderBy('tanggal_waktu', 'desc')->paginate(10)->withQueryString();
 
         return Inertia::render('Notulen/Index', [
             'notulens' => $notulens,
@@ -68,8 +83,15 @@ class NotulenController extends Controller
         if (!in_array($pimpinan, $pesertaList)) $pesertaList[] = $pimpinan;
         if (!in_array($pimpinan, $hadirList)) $hadirList[] = $pimpinan;
 
-        $validated['peserta_rapat'] = implode(', ', $pesertaList);
-        $validated['daftar_hadir'] = implode(', ', $hadirList);
+        // Pisahkan user terdaftar vs tamu non-pegawai
+        $registeredUsers = User::whereIn('name', $pesertaList)->get(['id', 'name']);
+        $registeredNames = $registeredUsers->pluck('name')->toArray();
+
+        $tamuPeserta = array_diff($pesertaList, $registeredNames);
+        $tamuHadir = array_diff($hadirList, $registeredNames);
+
+        $validated['peserta_rapat'] = count($tamuPeserta) > 0 ? implode(', ', $tamuPeserta) : null;
+        $validated['daftar_hadir'] = count($tamuHadir) > 0 ? implode(', ', $tamuHadir) : null;
 
         $dokPaths = [];
         if ($request->hasFile('dokumentasi')) {
@@ -80,9 +102,20 @@ class NotulenController extends Controller
         }
         $validated['dokumentasi'] = count($dokPaths) > 0 ? $dokPaths : null;
 
+        if (isset($validated['ttd_notulis']) && str_starts_with($validated['ttd_notulis'], 'data:image')) {
+            $validated['ttd_notulis'] = $this->storeBase64Signature($validated['ttd_notulis'], 'notulis');
+        }
+
         $validated['user_id'] = auth()->id();
         
-        Notulen::create($validated);
+        $notulen = Notulen::create($validated);
+
+        // Simpan ke Pivot Table
+        $pivotData = [];
+        foreach ($registeredUsers as $user) {
+            $pivotData[$user->id] = ['is_hadir' => in_array($user->name, $hadirList)];
+        }
+        $notulen->pesertas()->sync($pivotData);
 
         return redirect()->route('notulen.index')->with('success', 'Notulen berhasil ditambahkan.');
     }
@@ -103,15 +136,24 @@ class NotulenController extends Controller
     public function markHadir(Notulen $notulen)
     {
         $userName = auth()->user()->name;
+        $userId = auth()->id();
+
+        // Cek apakah user ada di relasi pivot
+        $isPeserta = $notulen->pesertas()->where('user_id', $userId)->exists();
         
-        $hadirList = $notulen->daftar_hadir ? explode(', ', $notulen->daftar_hadir) : [];
-        
-        if (!in_array($userName, $hadirList)) {
-            $hadirList[] = $userName;
-            $notulen->update([
-                'daftar_hadir' => implode(', ', $hadirList)
-            ]);
+        if ($isPeserta) {
+            $notulen->pesertas()->updateExistingPivot($userId, ['is_hadir' => true]);
             return redirect()->back()->with('success', 'Anda berhasil menandai kehadiran pada rapat ini.');
+        } else {
+            // Jika tidak ada di pivot, anggap sebagai legacy / fallback teks
+            $hadirList = $notulen->daftar_hadir ? explode(', ', $notulen->daftar_hadir) : [];
+            if (!in_array($userName, $hadirList)) {
+                $hadirList[] = $userName;
+                $notulen->update([
+                    'daftar_hadir' => implode(', ', $hadirList)
+                ]);
+                return redirect()->back()->with('success', 'Anda berhasil menandai kehadiran pada rapat ini.');
+            }
         }
 
         return redirect()->back()->with('info', 'Anda sudah tercatat hadir.');
@@ -119,7 +161,7 @@ class NotulenController extends Controller
 
     public function show(Notulen $notulen)
     {
-        $notulen->load('creator');
+        $notulen->load(['creator', 'pesertas']);
         return Inertia::render('Notulen/Show', [
             'notulen' => $notulen
         ]);
@@ -127,6 +169,7 @@ class NotulenController extends Controller
 
     public function edit(Notulen $notulen)
     {
+        $notulen->load('pesertas');
         if ($notulen->is_approved) {
             return redirect()->route('notulen.index')->with('error', 'Notulen sudah disetujui dan tidak dapat diubah.');
         }
@@ -172,8 +215,15 @@ class NotulenController extends Controller
         if (!in_array($pimpinan, $pesertaList)) $pesertaList[] = $pimpinan;
         if (!in_array($pimpinan, $hadirList)) $hadirList[] = $pimpinan;
 
-        $validated['peserta_rapat'] = implode(', ', $pesertaList);
-        $validated['daftar_hadir'] = implode(', ', $hadirList);
+        // Pisahkan user terdaftar vs tamu non-pegawai
+        $registeredUsers = User::whereIn('name', $pesertaList)->get(['id', 'name']);
+        $registeredNames = $registeredUsers->pluck('name')->toArray();
+
+        $tamuPeserta = array_diff($pesertaList, $registeredNames);
+        $tamuHadir = array_diff($hadirList, $registeredNames);
+
+        $validated['peserta_rapat'] = count($tamuPeserta) > 0 ? implode(', ', $tamuPeserta) : null;
+        $validated['daftar_hadir'] = count($tamuHadir) > 0 ? implode(', ', $tamuHadir) : null;
 
         $dokPaths = $notulen->dokumentasi ?? [];
         if ($request->hasFile('dokumentasi')) {
@@ -184,7 +234,18 @@ class NotulenController extends Controller
         }
         $validated['dokumentasi'] = count($dokPaths) > 0 ? $dokPaths : null;
 
+        if (isset($validated['ttd_notulis']) && str_starts_with($validated['ttd_notulis'], 'data:image')) {
+            $validated['ttd_notulis'] = $this->storeBase64Signature($validated['ttd_notulis'], 'notulis');
+        }
+
         $notulen->update($validated);
+
+        // Update Pivot Table
+        $pivotData = [];
+        foreach ($registeredUsers as $user) {
+            $pivotData[$user->id] = ['is_hadir' => in_array($user->name, $hadirList)];
+        }
+        $notulen->pesertas()->sync($pivotData);
 
         return redirect()->route('notulen.index')->with('success', 'Notulen berhasil diperbarui.');
     }
@@ -195,10 +256,18 @@ class NotulenController extends Controller
             'ttd_pimpinan' => 'required|string'
         ]);
 
+        $ttdPimpinan = $request->ttd_pimpinan;
+        if (str_starts_with($ttdPimpinan, 'data:image')) {
+            $ttdPimpinan = $this->storeBase64Signature($ttdPimpinan, 'pimpinan');
+        }
+
         $notulen->update([
             'is_approved' => true,
-            'ttd_pimpinan' => $request->ttd_pimpinan
+            'ttd_pimpinan' => $ttdPimpinan
         ]);
+        
+        // Dispatch Job ke Background Worker
+        SendNotulenApprovalNotification::dispatch($notulen);
         
         return redirect()->back()->with('success', 'Notulen berhasil disetujui.');
     }

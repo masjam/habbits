@@ -5,6 +5,7 @@ use Inertia\Inertia;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('welcome');
 Route::get('/verifikasi-surat/{uuid}', [\App\Http\Controllers\PublicVerificationController::class, 'verifySuratKeluar'])->name('public.verifikasi-surat');
+Route::get('/verifikasi-notulen/{uuid}', [\App\Http\Controllers\PublicVerificationController::class, 'verifyNotulen'])->name('public.verifikasi-notulen');
 
 // Authentication Routes
 Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');

@@ -107,7 +107,7 @@ const printNotulen = () => {
 
                     <!-- QR Code Validasi di Tengah -->
                     <div class="text-center flex flex-col items-center justify-center order-first md:order-none mb-4 md:mb-0">
-                        <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(route('notulen.show', notulen.id))" alt="QR Code Validasi" class="w-20 h-20 mb-2 print:border-none">
+                        <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(route('public.verifikasi-notulen', notulen.uuid))" alt="QR Code Validasi" class="w-20 h-20 mb-2 print:border-none">
                         <p class="text-[10px] text-gray-500 font-mono">Scan untuk Validasi</p>
                     </div>
 
