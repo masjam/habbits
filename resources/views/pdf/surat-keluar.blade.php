@@ -19,7 +19,7 @@
         body {
             font-family: 'Times New Roman', Times, serif;
             font-size: 12pt;
-            line-height: 1.5;
+            line-height: 1.15;
             color: #000;
         }
         .kop-surat {
