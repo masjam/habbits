@@ -131,7 +131,7 @@ const hidePimpinanList = () => {
 }
 
 const handleFileChange = (e) => {
-    // form.dokumentasi = e.target.files
+    form.dokumentasi = e.target.files
 }
 
 const submit = () => {
@@ -194,10 +194,12 @@ const editorInit = {
                                     <div v-if="form.errors.tindak_lanjut" class="text-red-500 text-xs mt-1">{{ form.errors.tindak_lanjut }}</div>
                                 </div>
 
-                                <!-- Dokumentasi tidak diubah saat ini -->
+                                <!-- Penambahan Dokumentasi -->
                                 <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
-                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Foto / Dokumentasi</label>
-                                    <p class="text-xs text-slate-500 mb-2">Penambahan dokumentasi saat edit belum didukung di versi ini.</p>
+                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Tambah Foto / Dokumentasi</label>
+                                    <p class="text-xs text-slate-500 mb-2">Pilih file baru jika Anda ingin menambahkan dokumentasi ke dalam notulen ini.</p>
+                                    <input type="file" @change="handleFileChange" accept="image/*,.pdf" multiple class="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/30 dark:file:text-emerald-400 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                                    <div v-if="form.errors.dokumentasi" class="text-red-500 text-xs mt-1">{{ form.errors.dokumentasi }}</div>
                                 </div>
                             </div>
 

@@ -157,6 +157,7 @@ class NotulenController extends Controller
             'isi_pembahasan' => 'required|string',
             'tindak_lanjut' => 'nullable|string',
             'ttd_notulis' => 'required|string',
+            'dokumentasi.*' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048'
         ]);
 
         $userName = auth()->user()->name;
@@ -173,6 +174,15 @@ class NotulenController extends Controller
 
         $validated['peserta_rapat'] = implode(', ', $pesertaList);
         $validated['daftar_hadir'] = implode(', ', $hadirList);
+
+        $dokPaths = $notulen->dokumentasi ?? [];
+        if ($request->hasFile('dokumentasi')) {
+            foreach ($request->file('dokumentasi') as $file) {
+                $path = $file->store('notulen', 'public');
+                $dokPaths[] = $path;
+            }
+        }
+        $validated['dokumentasi'] = count($dokPaths) > 0 ? $dokPaths : null;
 
         $notulen->update($validated);
 
