@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Personal;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\MenstruationLog;
 use Carbon\Carbon;
@@ -30,8 +32,9 @@ class MenstruationController extends Controller
         // Ambil riwayat sebelumnya
         $historyLogs = MenstruationLog::where('user_id', $user->id)
             ->whereNotNull('waktu_selesai')
-            ->orderBy('waktu_mulai', 'desc')
-            ->get();
+            ->get()
+            ->sortByDesc('waktu_mulai')
+            ->values();
 
         return Inertia::render('Haid/Index', [
             'isSedangHaid' => $activeLog !== null,

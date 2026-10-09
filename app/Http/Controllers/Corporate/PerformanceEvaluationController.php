@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Corporate;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\PerformanceEvaluation;
 use App\Models\User;

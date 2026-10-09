@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Corporate;
+
+use App\Http\Controllers\Controller;
 
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -13,12 +15,19 @@ class AttendanceRFIDController extends Controller
     /**
      * Tampilkan Kiosk RFID.
      */
-    public function kiosk()
+    public function kiosk(Request $request)
     {
-        // Pastikan fitur RFID aktif
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        
+        // Pastikan fitur RFID aktif
         if (($settings['attendance_mode_rfid'] ?? 'false') !== '1' && ($settings['attendance_mode_rfid'] ?? 'false') !== 'true') {
             abort(403, 'Mode Presensi RFID saat ini dinonaktifkan oleh Superadmin.');
+        }
+
+        // Kiosk Security: Validate Token
+        $validToken = $settings['kiosk_api_token'] ?? 'SDAM-KIOSK-SECRET';
+        if ($request->token !== $validToken) {
+            abort(403, 'Akses Ditolak: Token Keamanan Kiosk tidak valid. Pastikan Anda membuka URL dengan ?token= yang benar.');
         }
 
         $today = Carbon::now()->toDateString();
@@ -39,7 +48,8 @@ class AttendanceRFIDController extends Controller
             });
 
         return Inertia::render('Attendance/RFIDKiosk', [
-            'initialAttendances' => $attendances
+            'initialAttendances' => $attendances,
+            'kioskToken' => $validToken
         ]);
     }
 
@@ -50,6 +60,7 @@ class AttendanceRFIDController extends Controller
     {
         $request->validate([
             'rfid_uid' => 'required|string',
+            'token' => 'required|string',
         ]);
 
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
@@ -57,6 +68,14 @@ class AttendanceRFIDController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Fitur Presensi RFID sedang dinonaktifkan.',
+            ], 403);
+        }
+
+        $validToken = $settings['kiosk_api_token'] ?? 'SDAM-KIOSK-SECRET';
+        if ($request->token !== $validToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Token Keamanan tidak valid.',
             ], 403);
         }
 

@@ -8,6 +8,7 @@ import SholatRawatib from '@/Components/HabitTemplates/SholatRawatib.vue'
 import AlQuran from '@/Components/HabitTemplates/AlQuran.vue'
 import Hadist from '@/Components/HabitTemplates/Hadist.vue'
 import Buku from '@/Components/HabitTemplates/Buku.vue'
+import { usePWA } from '@/Composables/usePWA.js'
 
 const props = defineProps({
     habits:       { type: Array,   default: () => [] },
@@ -270,8 +271,26 @@ const closeConfirmModal = () => {
     showConfirmModal.value = false
 }
 
-const doSubmit = () => {
+const { savePendingForm } = usePWA()
+
+const doSubmit = async () => {
     showConfirmModal.value = false
+    
+    if (!navigator.onLine) {
+        // Offline mode: Simpan ke IndexedDB via Background Sync
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        await savePendingForm({
+            tanggal: form.tanggal,
+            logs: form.logs
+        }, csrfToken);
+        
+        alert("Anda sedang offline. Data telah disimpan di HP Anda dan akan otomatis disinkronkan ke server saat internet kembali terhubung.");
+        
+        // Optional: redirect atau reload untuk merefleksikan form
+        router.visit(route('habit.form'), { preserveScroll: true });
+        return;
+    }
+
     form.post(route('habit.form.store'), {
         preserveScroll: true,
     })
@@ -452,7 +471,7 @@ const toggleBoolean = (index) => {
                             :key="'opt-'+habit.id"
                             :value="habit.id"
                         >
-                            {{ habit.nama_habit.replace('[Pengganti Haid] ', '') }}
+                            {{ habit?.nama_habit?.replace('[Pengganti Haid] ', '') }}
                         </option>
                     </select>
                     # Custom Arrow Icon 
@@ -462,47 +481,34 @@ const toggleBoolean = (index) => {
                         </svg>
                     </div>
                 </div> -->
-                <!-- Grid Icon Cards (Versi SUPER Mungil) -->
-                <div class="md:hidden mb-2 grid grid-cols-4 gap-1">
+                <!-- Horizontal Scroll Tabs (Native Mobile Look) -->
+                <div class="md:hidden mb-4 -mx-2 px-2 overflow-x-auto snap-x scrollbar-hide flex items-center gap-2 pb-2">
                     <button 
                         v-for="habit in habits" 
-                        :key="'grid-'+habit.id"
+                        :key="'chip-'+habit.id"
                         @click="activeTabId = habit.id"
                         type="button"
-                        class="relative flex flex-col items-center justify-center p-1 rounded-lg transition-all duration-200 focus:outline-none"
+                        class="relative flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 snap-center shadow-sm"
                         :class="[
                             activeTabId === habit.id 
-                                ? 'bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-500' 
-                                : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 opacity-90'
+                                ? 'bg-emerald-600 text-white shadow-emerald-600/30' 
+                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                         ]"
                     >
-                        <!-- Lingkaran Ikon (Diperkecil drastis menjadi w-5 h-5) -->
                         <div 
-                            class="w-5 h-5 rounded-full flex items-center justify-center mb-0.5 transition-colors shrink-0"
-                            :class="activeTabId === habit.id ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'"
+                            class="w-5 h-5 flex items-center justify-center shrink-0 transition-colors"
+                            :class="activeTabId === habit.id ? 'text-white' : 'text-emerald-500'"
                         >
-                            <!-- Garis SVG diperkecil menjadi w-3 h-3 -->
-                            <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" 
-                                class="w-3 h-3"
-                                v-html="getHabitIcon(habit.template)"
-                            ></svg>
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" v-html="getHabitIcon(habit.template)"></svg>
                         </div>
-                        
-                        <!-- Teks Habit (Dibuat lebih padat dan kecil) -->
-                        <span 
-                            class="text-[8px] font-bold text-center px-0.5 line-clamp-2"
-                            style="line-height: 1.1; letter-spacing: -0.2px;"
-                            :class="activeTabId === habit.id ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'"
-                        >
-                            {{ habit.nama_habit.replace('[Pengganti Haid] ', '') }}
+                        <span class="text-[11px] font-bold tracking-wide" :class="activeTabId === habit.id ? 'text-white' : 'text-slate-600 dark:text-slate-400'">
+                            {{ habit?.nama_habit?.replace('[Pengganti Haid] ', '').substring(0, 15) }}{{ habit?.nama_habit?.length > 15 ? '...' : '' }}
                         </span>
-
-                        <!-- Indikator Selesai (Menjadi titik tanpa border putih) -->
+                        
+                        <!-- Indikator Selesai -->
                         <span 
                             v-if="form.logs[getLogIndex(habit.id)]?.nilai_input > 0 || form.logs[getLogIndex(habit.id)]?.details?.durasi" 
-                            class="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full"
+                            class="absolute top-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border border-white dark:border-slate-800"
                         ></span>
                     </button>
                 </div>
@@ -762,7 +768,7 @@ const toggleBoolean = (index) => {
                                 <div class="flex items-center justify-between gap-2 mb-2">
                                     <div class="flex flex-col">
                                         <span class="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                                            {{ item.habit.nama_habit.replace('[Pengganti Haid] ', '') }}
+                                            {{ item.habit?.nama_habit?.replace('[Pengganti Haid] ', '') }}
                                         </span>
                                         <span class="text-[10px] text-slate-500 font-semibold mt-0.5">
                                             Skor Diperoleh: <span :class="item.skor > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400 dark:text-slate-500'">{{ item.skor }} / {{ item.habit.skor_maksimal }} pt</span>

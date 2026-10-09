@@ -138,6 +138,18 @@ const deleteDocument = (id) => {
         })
     }
 }
+
+// Preview Modal
+const showPreviewModal = ref(false)
+const previewUrl = ref('')
+const previewTitle = ref('')
+
+const openPreviewModal = (doc) => {
+    previewUrl.value = route('employee-documents.preview', doc.id)
+    previewTitle.value = doc.title
+    showPreviewModal.value = true
+}
+
 </script>
 
 <template>
@@ -301,7 +313,10 @@ const deleteDocument = (id) => {
                             Diunggah: {{ new Date(doc.created_at).toLocaleDateString('id-ID') }}
                         </div>
                         <div class="flex items-center gap-2">
-                            <a :href="route('employee-documents.download', doc.id)" target="_blank" class="p-2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-600 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 transition-colors" title="Unduh">
+                            <button @click="openPreviewModal(doc)" class="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-600 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 transition-colors" title="Lihat (Preview)">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            </button>
+                            <a :href="route('employee-documents.download', doc.id)" class="p-2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 bg-white dark:bg-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-600 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 transition-colors" title="Unduh">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                             </a>
                             <button v-if="!doc.is_verified" @click="deleteDocument(doc.id)" class="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 bg-white dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-slate-600 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 transition-colors" title="Hapus">
@@ -319,6 +334,26 @@ const deleteDocument = (id) => {
                 </div>
                 <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">Belum Ada Dokumen</h3>
                 <p class="text-slate-500 dark:text-slate-400 mt-2 max-w-sm mx-auto">Anda belum mengunggah dokumen apapun. Silakan klik tombol "Unggah Dokumen" untuk mulai menyimpan arsip Anda.</p>
+            </div>
+        </div>
+        <!-- Preview Modal -->
+        <div v-if="showPreviewModal" class="relative z-[60]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" @click="showPreviewModal = false"></div>
+            <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                    <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all w-full max-w-5xl h-[85vh] flex flex-col border border-slate-100 dark:border-slate-700">
+                        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                            <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 truncate pr-4">{{ previewTitle }}</h3>
+                            <button @click="showPreviewModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 w-full bg-slate-100 dark:bg-slate-900 overflow-hidden relative">
+                            <iframe v-if="previewUrl" :src="previewUrl" class="w-full h-full border-0" title="Document Preview"></iframe>
+                            <div v-else class="flex items-center justify-center h-full text-slate-500">Memuat...</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>

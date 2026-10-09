@@ -35,4 +35,24 @@ class Habit extends Model
     {
         return $this->hasMany(HabitLog::class);
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($habit) {
+            self::clearHabitCaches();
+        });
+
+        static::deleted(function ($habit) {
+            self::clearHabitCaches();
+        });
+    }
+
+    public static function clearHabitCaches()
+    {
+        \Illuminate\Support\Facades\Cache::forget("habits_active_1_1");
+        \Illuminate\Support\Facades\Cache::forget("habits_active_0_1");
+        \Illuminate\Support\Facades\Cache::forget("habits_active_0_0");
+    }
 }

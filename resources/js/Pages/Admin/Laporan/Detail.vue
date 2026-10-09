@@ -140,22 +140,34 @@ const chartOptions = {
 
             <!-- Global Stats -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between relative overflow-hidden">
-                    <div class="relative z-10">
-                        <div class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Bulan Berjalan</div>
-                        <div class="text-4xl font-black text-blue-600">{{ persentaseBulanIni }}%</div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between relative overflow-hidden group">
+                    <div class="relative z-10 w-full">
+                        <div class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1 flex justify-between items-center w-full">
+                            <span>Bulan Berjalan</span>
+                            <span :class="persentaseBulanIni >= pegawai.target ? 'text-emerald-500 bg-emerald-50' : 'text-rose-500 bg-rose-50'" class="px-2 py-0.5 rounded text-[10px]">{{ persentaseBulanIni >= pegawai.target ? 'Tercapai' : 'Belum Tercapai' }}</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <div class="text-4xl font-black text-blue-600">{{ persentaseBulanIni }}%</div>
+                            <div class="text-sm font-bold text-slate-400">/ Target {{ pegawai.target }}%</div>
+                        </div>
                     </div>
                     <!-- Background progress bar visual -->
-                    <div class="absolute inset-y-0 left-0 bg-blue-50 z-0 transition-all duration-1000" :style="`width: ${persentaseBulanIni}%`"></div>
+                    <div class="absolute inset-y-0 left-0 bg-blue-50/50 z-0 transition-all duration-1000" :style="`width: ${persentaseBulanIni}%`"></div>
                 </div>
                 
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between relative overflow-hidden">
-                    <div class="relative z-10">
-                        <div class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">{{ semesterName }} Berjalan</div>
-                        <div class="text-4xl font-black text-emerald-600">{{ persentaseSemester }}%</div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center justify-between relative overflow-hidden group">
+                    <div class="relative z-10 w-full">
+                        <div class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1 flex justify-between items-center w-full">
+                            <span>{{ semesterName }} Berjalan</span>
+                            <span :class="persentaseSemester >= pegawai.target ? 'text-emerald-500 bg-emerald-50' : 'text-rose-500 bg-rose-50'" class="px-2 py-0.5 rounded text-[10px]">{{ persentaseSemester >= pegawai.target ? 'Tercapai' : 'Belum Tercapai' }}</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <div class="text-4xl font-black text-emerald-600">{{ persentaseSemester }}%</div>
+                            <div class="text-sm font-bold text-slate-400">/ Target {{ pegawai.target }}%</div>
+                        </div>
                     </div>
                     <!-- Background progress bar visual -->
-                    <div class="absolute inset-y-0 left-0 bg-emerald-50 z-0 transition-all duration-1000" :style="`width: ${persentaseSemester}%`"></div>
+                    <div class="absolute inset-y-0 left-0 bg-emerald-50/50 z-0 transition-all duration-1000" :style="`width: ${persentaseSemester}%`"></div>
                 </div>
             </div>
 

@@ -14,8 +14,8 @@ class MenstruationLog extends Model
     ];
 
     protected $casts = [
-        'waktu_mulai'    => 'datetime',
-        'waktu_selesai'  => 'datetime',
+        'waktu_mulai'    => 'encrypted:datetime',
+        'waktu_selesai'  => 'encrypted:datetime',
     ];
 
     public function user(): BelongsTo

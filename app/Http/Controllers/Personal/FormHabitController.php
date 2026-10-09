@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Personal;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\Habit;
 use App\Models\HabitLog;
@@ -61,8 +63,7 @@ class FormHabitController extends Controller
             }
         }
 
-        // Filter habit
-        $habitsQuery = Habit::where('status_aktif', true);
+        $habitsQuery = \App\Models\Habit::where('status_aktif', true);
 
         if ($isTransisiSelesaiHaid) {
             // Buka seluruh habit (normal dan pengganti) pada hari transisi selesai haid
@@ -84,7 +85,7 @@ class FormHabitController extends Controller
             ->keyBy('habit_id');
 
         return Inertia::render('FormHabit', [
-            'habits'           => $habits,
+            'habits'           => $habits->values(),
             'logsHariIni'      => $logsSelected,
             'isSedangHaid'     => $isSedangHaid,
             'waktuSelesaiHaid' => $isTransisiSelesaiHaid && isset($haidLog) ? $haidLog->waktu_selesai : null,

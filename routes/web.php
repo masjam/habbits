@@ -3,105 +3,109 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('welcome');
-Route::get('/verifikasi-surat/{uuid}', [\App\Http\Controllers\PublicVerificationController::class, 'verifySuratKeluar'])->name('public.verifikasi-surat');
-Route::get('/verifikasi-notulen/{uuid}', [\App\Http\Controllers\PublicVerificationController::class, 'verifyNotulen'])->name('public.verifikasi-notulen');
+Route::get('/', [\App\Http\Controllers\System\WelcomeController::class, 'index'])->name('welcome');
+Route::get('/verifikasi-surat/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifySuratKeluar'])->name('public.verifikasi-surat');
+Route::get('/verifikasi-notulen/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifyNotulen'])->name('public.verifikasi-notulen');
 
 // Authentication Routes
-Route::get('/login', [\App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [\App\Http\Controllers\AuthController::class, 'login'])
+Route::get('/login', [\App\Http\Controllers\System\AuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [\App\Http\Controllers\System\AuthController::class, 'login'])
     ->middleware('throttle:10,1')
     ->name('login.attempt');
 
 // Kiosk RFID
-Route::get('/kiosk-rfid', [\App\Http\Controllers\AttendanceRFIDController::class, 'kiosk'])->name('attendance.rfid.kiosk');
-Route::post('/kiosk-rfid/scan', [\App\Http\Controllers\AttendanceRFIDController::class, 'processScan'])->name('attendance.rfid.scan');
+Route::get('/kiosk-rfid', [\App\Http\Controllers\Corporate\AttendanceRFIDController::class, 'kiosk'])->name('attendance.rfid.kiosk');
+Route::post('/kiosk-rfid/scan', [\App\Http\Controllers\Corporate\AttendanceRFIDController::class, 'processScan'])
+    ->middleware('throttle:30,1')
+    ->name('attendance.rfid.scan');
 
 Route::middleware('auth')->group(function () {
-    Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+    Route::post('/logout', [\App\Http\Controllers\System\AuthController::class, 'logout'])->name('logout');
     
     // Multi Account Routes
-    Route::get('/multi-account/add', [\App\Http\Controllers\MultiAccountController::class, 'addAccount'])->name('multi-account.add');
-    Route::get('/multi-account/cancel', [\App\Http\Controllers\MultiAccountController::class, 'cancelAddAccount'])->name('multi-account.cancel');
-    Route::post('/multi-account/switch/{id}', [\App\Http\Controllers\MultiAccountController::class, 'switchAccount'])->name('multi-account.switch');
-    Route::post('/multi-account/remove/{id}', [\App\Http\Controllers\MultiAccountController::class, 'removeAccount'])->name('multi-account.remove');
+    Route::get('/multi-account/add', [\App\Http\Controllers\System\MultiAccountController::class, 'addAccount'])->name('multi-account.add');
+    Route::get('/multi-account/cancel', [\App\Http\Controllers\System\MultiAccountController::class, 'cancelAddAccount'])->name('multi-account.cancel');
+    Route::post('/multi-account/switch/{id}', [\App\Http\Controllers\System\MultiAccountController::class, 'switchAccount'])->name('multi-account.switch');
+    Route::post('/multi-account/remove/{id}', [\App\Http\Controllers\System\MultiAccountController::class, 'removeAccount'])->name('multi-account.remove');
 
     // ─── Route Pegawai (semua role auth) ───────────────────────────────────────
-    Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
-    Route::post('/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile'])->name('profile.update');
-    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::get('/dashboard', [\App\Http\Controllers\System\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/panduan', function () { return Inertia::render('System/Panduan'); })->name('panduan');
+    Route::get('/profile', [\App\Http\Controllers\System\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile', [\App\Http\Controllers\System\ProfileController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [\App\Http\Controllers\System\ProfileController::class, 'updatePassword'])->name('profile.password');
 
-    Route::get('/habit/form', [\App\Http\Controllers\FormHabitController::class, 'index'])->name('habit.form');
-    Route::post('/habit/form', [\App\Http\Controllers\FormHabitController::class, 'store'])->name('habit.form.store');
+    Route::get('/habit/form', [\App\Http\Controllers\Personal\FormHabitController::class, 'index'])->name('habit.form');
+    Route::post('/habit/form', [\App\Http\Controllers\Personal\FormHabitController::class, 'store'])->name('habit.form.store');
     
-    Route::get('/rekap-quran', [\App\Http\Controllers\QuranRecapController::class, 'index'])->name('quran.recap');
+    Route::get('/rekap-quran', [\App\Http\Controllers\Personal\QuranRecapController::class, 'index'])->name('quran.recap');
     
-    Route::get('/haid', [\App\Http\Controllers\MenstruationController::class, 'index'])->name('haid.index');
-    Route::post('/haid/toggle', [\App\Http\Controllers\MenstruationController::class, 'toggle'])->name('haid.toggle');
-    Route::put('/haid/{log}', [\App\Http\Controllers\MenstruationController::class, 'update'])->name('haid.update');
+    Route::get('/haid', [\App\Http\Controllers\Personal\MenstruationController::class, 'index'])->name('haid.index');
+    Route::post('/haid/toggle', [\App\Http\Controllers\Personal\MenstruationController::class, 'toggle'])->name('haid.toggle');
+    Route::put('/haid/{log}', [\App\Http\Controllers\Personal\MenstruationController::class, 'update'])->name('haid.update');
     
-    Route::get('/kajian', [\App\Http\Controllers\KajianController::class, 'index'])->name('kajian.index');
-    Route::get('/quran-hadis', [\App\Http\Controllers\QuranHadisController::class, 'index'])->name('quran.hadis');
-    Route::get('/dzikir', [\App\Http\Controllers\DzikirController::class, 'index'])->name('dzikir.index');
+    Route::get('/kajian', [\App\Http\Controllers\Personal\KajianController::class, 'index'])->name('kajian.index');
+    Route::get('/quran-hadis', [\App\Http\Controllers\Personal\QuranHadisController::class, 'index'])->name('quran.hadis');
+    Route::get('/dzikir', [\App\Http\Controllers\Personal\DzikirController::class, 'index'])->name('dzikir.index');
     Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qibla.index');
 
     // Jurnal Harian Guru
-    Route::resource('teacher-journals', \App\Http\Controllers\TeacherJournalController::class)->parameters([
+    Route::resource('teacher-journals', \App\Http\Controllers\Corporate\TeacherJournalController::class)->parameters([
         'teacher-journals' => 'teacherJournal'
     ]);
 
     // Notifikasi / Pesan
-    Route::get('/pesan', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('/pesan/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
-    Route::post('/pesan/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::get('/pesan', [\App\Http\Controllers\System\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/pesan/{id}/read', [\App\Http\Controllers\System\NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+    Route::post('/pesan/read-all', [\App\Http\Controllers\System\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 
     // Presensi Pegawai
-    Route::get('/presensi', [\App\Http\Controllers\AttendanceController::class, 'index'])->name('attendance.index');
-    Route::post('/presensi/check-in', [\App\Http\Controllers\AttendanceController::class, 'checkIn'])->name('attendance.check-in');
-    Route::post('/presensi/check-out', [\App\Http\Controllers\AttendanceController::class, 'checkOut'])->name('attendance.check-out');
-    Route::post('/presensi/izin', [\App\Http\Controllers\AttendanceController::class, 'storePermit'])->name('attendance.store-permit');
+    Route::get('/presensi', [\App\Http\Controllers\Corporate\AttendanceController::class, 'index'])->name('attendance.index');
+    Route::post('/presensi/check-in', [\App\Http\Controllers\Corporate\AttendanceController::class, 'checkIn'])->name('attendance.check-in');
+    Route::post('/presensi/check-out', [\App\Http\Controllers\Corporate\AttendanceController::class, 'checkOut'])->name('attendance.check-out');
+    Route::post('/presensi/izin', [\App\Http\Controllers\Corporate\AttendanceController::class, 'storePermit'])->name('attendance.store-permit');
     
     // Kiosk RFID (Bisa diakses public atau admin khusus, ditaruh di dalam auth sbg fallback admin Kiosk, namun lebih baik ditaruh di luar middleware auth jika Kiosk dibiarkan tanpa login. Mari biarkan di auth dulu jika kiosK di-login pakai akun dummy). Tapi wait, Kiosk RFID idealnya terbuka tanpa auth.
     // Mari saya letakkan di luar auth agar bisa dipakai tanpa login.
     
 
     // Web Push Subscriptions & Test
-    Route::post('/push-subscriptions', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.store');
-    Route::post('/push-subscriptions/destroy', [\App\Http\Controllers\PushSubscriptionController::class, 'destroy'])->name('push.destroy');
-    Route::get('/push-subscriptions/status', [\App\Http\Controllers\PushSubscriptionController::class, 'status'])->name('push.status');
-    Route::get('/push-subscriptions/vapid-public-key', [\App\Http\Controllers\PushSubscriptionController::class, 'vapidPublicKey'])->name('push.vapid-key');
-    Route::post('/push-subscriptions/test', [\App\Http\Controllers\PushSubscriptionController::class, 'sendTest'])->name('push.test');
-    Route::post('/push-subscriptions/broadcast', [\App\Http\Controllers\PushSubscriptionController::class, 'sendBroadcast'])->name('push.broadcast')->middleware('role:admin|superadmin');
+    Route::post('/push-subscriptions', [\App\Http\Controllers\System\PushSubscriptionController::class, 'store'])->name('push.store');
+    Route::post('/push-subscriptions/destroy', [\App\Http\Controllers\System\PushSubscriptionController::class, 'destroy'])->name('push.destroy');
+    Route::get('/push-subscriptions/status', [\App\Http\Controllers\System\PushSubscriptionController::class, 'status'])->name('push.status');
+    Route::get('/push-subscriptions/vapid-public-key', [\App\Http\Controllers\System\PushSubscriptionController::class, 'vapidPublicKey'])->name('push.vapid-key');
+    Route::post('/push-subscriptions/test', [\App\Http\Controllers\System\PushSubscriptionController::class, 'sendTest'])->name('push.test');
+    Route::post('/push-subscriptions/broadcast', [\App\Http\Controllers\System\PushSubscriptionController::class, 'sendBroadcast'])->name('push.broadcast')->middleware('role:admin|superadmin');
 
     // ─── Arsip Kepegawaian (E-Filing) ─────────────────────────────────────────
-    Route::get('/employee-documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'index'])->name('employee-documents.index');
-    Route::post('/employee-documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'store'])->name('employee-documents.store');
-    Route::get('/employee-documents/{employeeDocument}/download', [\App\Http\Controllers\EmployeeDocumentController::class, 'download'])->name('employee-documents.download');
-    Route::delete('/employee-documents/{employeeDocument}', [\App\Http\Controllers\EmployeeDocumentController::class, 'destroy'])->name('employee-documents.destroy');
-    Route::patch('/employee-documents/{employeeDocument}/verify', [\App\Http\Controllers\EmployeeDocumentController::class, 'verify'])->name('employee-documents.verify')->middleware('role:admin|superadmin');
+    Route::get('/employee-documents', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'index'])->name('employee-documents.index');
+    Route::post('/employee-documents', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'store'])->name('employee-documents.store');
+    Route::get('/employee-documents/{employeeDocument}/download', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'download'])->name('employee-documents.download');
+    Route::get('/employee-documents/{employeeDocument}/preview', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'preview'])->name('employee-documents.preview');
+    Route::delete('/employee-documents/{employeeDocument}', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'destroy'])->name('employee-documents.destroy');
+    Route::patch('/employee-documents/{employeeDocument}/verify', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'verify'])->name('employee-documents.verify')->middleware('role:admin|superadmin');
 
     // ─── Penilaian Kinerja (KPI) ──────────────────────────────────────────────
-    Route::get('/performance-evaluations', [\App\Http\Controllers\PerformanceEvaluationController::class, 'userIndex'])->name('performance.index');
+    Route::get('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'userIndex'])->name('performance.index');
 
     // ─── Notulen Rapat ──────────────────────────────────────────────
-    Route::get('/notulen/create', [\App\Http\Controllers\NotulenController::class, 'create'])->name('notulen.create');
-    Route::get('/notulen', [\App\Http\Controllers\NotulenController::class, 'index'])->name('notulen.index');
-    Route::post('/notulen', [\App\Http\Controllers\NotulenController::class, 'store'])->name('notulen.store');
-    Route::get('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'show'])->name('notulen.show');
-    Route::get('/notulen/{notulen}/edit', [\App\Http\Controllers\NotulenController::class, 'edit'])->name('notulen.edit');
-    Route::put('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'update'])->name('notulen.update');
-    Route::post('/notulen/{notulen}/hadir', [\App\Http\Controllers\NotulenController::class, 'markHadir'])->name('notulen.hadir');
-    Route::post('/notulen/{notulen}/approve', [\App\Http\Controllers\NotulenController::class, 'approve'])->name('notulen.approve');
-    Route::delete('/notulen/{notulen}', [\App\Http\Controllers\NotulenController::class, 'destroy'])->name('notulen.destroy');
+    Route::get('/notulen/create', [\App\Http\Controllers\Corporate\NotulenController::class, 'create'])->name('notulen.create');
+    Route::get('/notulen', [\App\Http\Controllers\Corporate\NotulenController::class, 'index'])->name('notulen.index');
+    Route::post('/notulen', [\App\Http\Controllers\Corporate\NotulenController::class, 'store'])->name('notulen.store');
+    Route::get('/notulen/{notulen}', [\App\Http\Controllers\Corporate\NotulenController::class, 'show'])->name('notulen.show');
+    Route::get('/notulen/{notulen}/edit', [\App\Http\Controllers\Corporate\NotulenController::class, 'edit'])->name('notulen.edit');
+    Route::put('/notulen/{notulen}', [\App\Http\Controllers\Corporate\NotulenController::class, 'update'])->name('notulen.update');
+    Route::post('/notulen/{notulen}/hadir', [\App\Http\Controllers\Corporate\NotulenController::class, 'markHadir'])->name('notulen.hadir');
+    Route::post('/notulen/{notulen}/approve', [\App\Http\Controllers\Corporate\NotulenController::class, 'approve'])->name('notulen.approve');
+    Route::delete('/notulen/{notulen}', [\App\Http\Controllers\Corporate\NotulenController::class, 'destroy'])->name('notulen.destroy');
 
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {
         
         // Arsip & KPI
-        Route::get('/arsip-pegawai', [\App\Http\Controllers\EmployeeDocumentController::class, 'manage'])->name('admin.employee-documents.index');
-        Route::get('/performance-evaluations', [\App\Http\Controllers\PerformanceEvaluationController::class, 'adminIndex'])->name('admin.performance.index');
-        Route::post('/performance-evaluations', [\App\Http\Controllers\PerformanceEvaluationController::class, 'store'])->name('admin.performance.store');
+        Route::get('/arsip-pegawai', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'manage'])->name('admin.employee-documents.index');
+        Route::get('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'adminIndex'])->name('admin.performance.index');
+        Route::post('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'store'])->name('admin.performance.store');
 
         Route::get('/presensi', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'index'])->name('admin.attendance.index');
         Route::post('/presensi/approval', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateApproval'])->name('admin.attendance.approval');
@@ -175,8 +179,8 @@ Route::middleware('auth')->group(function () {
     });
 
     // ─── Maintenance Mode Controls (Khusus Super Admin) ─────────────────────
-    Route::post('/admin/maintenance/switch-role', [\App\Http\Controllers\MaintenanceController::class, 'switchRole'])->name('admin.maintenance.switch-role');
-    Route::post('/admin/maintenance/toggle', [\App\Http\Controllers\MaintenanceController::class, 'toggle'])->name('admin.maintenance.toggle');
+    Route::post('/admin/maintenance/switch-role', [\App\Http\Controllers\System\MaintenanceController::class, 'switchRole'])->name('admin.maintenance.switch-role');
+    Route::post('/admin/maintenance/toggle', [\App\Http\Controllers\System\MaintenanceController::class, 'toggle'])->name('admin.maintenance.toggle');
 
     // Print disposisi (bisa diakses pegawai penerima, pemberi, dan tata usaha)
     Route::get('/tata-usaha/disposisi/{disposisi}/print', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'print'])->name('tata-usaha.disposisi.print');
@@ -210,4 +214,4 @@ Route::middleware('auth')->group(function () {
 });
 
 // ─── Halaman Maintenance Publik ─────────────────────────────────────────────
-Route::get('/maintenance', [\App\Http\Controllers\MaintenanceController::class, 'index'])->name('maintenance');
+Route::get('/maintenance', [\App\Http\Controllers\System\MaintenanceController::class, 'index'])->name('maintenance');

@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Corporate;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\EmployeeDocument;
 use Illuminate\Http\Request;
@@ -101,6 +103,24 @@ class EmployeeDocumentController extends Controller
         }
 
         return Storage::disk('local')->download($employeeDocument->file_path, $employeeDocument->title . '.' . $employeeDocument->file_extension);
+    }
+
+    /**
+     * Preview the specified document in browser.
+     */
+    public function preview(EmployeeDocument $employeeDocument)
+    {
+        $user = Auth::user();
+        // Hanya pemilik dokumen atau admin yang berhak melihat
+        if ($employeeDocument->user_id !== $user->id && !$user->hasAnyRole(['superadmin', 'admin'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!Storage::disk('local')->exists($employeeDocument->file_path)) {
+            abort(404, 'File not found.');
+        }
+
+        return Storage::disk('local')->response($employeeDocument->file_path);
     }
 
     /**

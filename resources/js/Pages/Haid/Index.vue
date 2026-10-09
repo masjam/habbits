@@ -19,7 +19,9 @@ const toggleHaid = () => {
 
 const formatTanggal = (dateStr) => {
     if (!dateStr) return '-'
-    const d = new Date(dateStr)
+    const cleanDateStr = typeof dateStr === 'string' ? dateStr.replace(' ', 'T') : dateStr
+    const d = new Date(cleanDateStr)
+    if (isNaN(d.getTime())) return '-'
     return d.toLocaleDateString('id-ID', {
         day: 'numeric', month: 'long', year: 'numeric',
         hour: '2-digit', minute: '2-digit'
@@ -28,8 +30,17 @@ const formatTanggal = (dateStr) => {
 
 // Menghitung durasi (dalam hari)
 const hitungDurasi = (mulai, selesai) => {
-    const start = new Date(mulai)
-    const end = selesai ? new Date(selesai) : new Date()
+    if (!mulai) return '-'
+    const cleanMulai = typeof mulai === 'string' ? mulai.replace(' ', 'T') : mulai
+    const start = new Date(cleanMulai)
+    
+    let end = new Date()
+    if (selesai) {
+        const cleanSelesai = typeof selesai === 'string' ? selesai.replace(' ', 'T') : selesai
+        end = new Date(cleanSelesai)
+    }
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return '-'
     const diffTime = Math.abs(end - start)
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays + ' hari'
@@ -46,7 +57,9 @@ const editForm = useForm({
 
 const formatForInput = (dateStr) => {
     if (!dateStr) return ''
-    const d = new Date(dateStr)
+    const cleanDateStr = typeof dateStr === 'string' ? dateStr.replace(' ', 'T') : dateStr
+    const d = new Date(cleanDateStr)
+    if (isNaN(d.getTime())) return ''
     return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16)
 }
 

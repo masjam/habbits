@@ -159,7 +159,8 @@ const exportExcel = () => {
         date: selectedDate.value,
         division: selectedDivision.value,
     })
-    window.location.href = `${route('admin.attendance.export')}?${params.toString()}`
+    const url = `${route('admin.attendance.export')}?${params.toString()}`
+    router.get(url, {}, { preserveState: true, preserveScroll: true })
 }
 
 // Ekspor laporan Tugas Luar khusus
@@ -169,7 +170,8 @@ const exportTugasLuar = () => {
         month: selectedMonth.value,
         division: selectedDivision.value,
     })
-    window.location.href = `${route('admin.attendance.export')}?${params.toString()}`
+    const url = `${route('admin.attendance.export')}?${params.toString()}`
+    router.get(url, {}, { preserveState: true, preserveScroll: true })
 }
 
 // ─── HELPER CEK PENGAJUAN IZIN / PULANG CEPAT ───────────────────────────────

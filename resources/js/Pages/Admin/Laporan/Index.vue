@@ -182,18 +182,18 @@ const getBadgeClass = (persentase, target) => {
                         </form>
                         
                         <div class="flex gap-2 self-end">
-                            <a :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'excel' })" class="h-[52px] px-4 bg-emerald-700 text-white text-sm font-bold rounded-xl hover:bg-emerald-800 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap Excel">
+                            <Link preserve-state preserve-scroll :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'excel' })" class="h-[52px] px-4 bg-emerald-700 text-white text-sm font-bold rounded-xl hover:bg-emerald-800 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap Excel">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
                                 <span class="hidden sm:inline">Excel</span>
-                            </a>
-                            <a :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'pdf' })" class="h-[52px] px-4 bg-rose-600 text-white text-sm font-bold rounded-xl hover:bg-rose-700 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap PDF">
+                            </Link>
+                            <Link preserve-state preserve-scroll :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'pdf' })" class="h-[52px] px-4 bg-rose-600 text-white text-sm font-bold rounded-xl hover:bg-rose-700 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap PDF">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
                                 <span class="hidden sm:inline">PDF</span>
-                            </a>
+                            </Link>
                         </div>
                     </div>
                     

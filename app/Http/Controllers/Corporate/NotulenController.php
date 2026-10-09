@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Corporate;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\Notulen;
 use App\Models\User;
@@ -88,7 +90,9 @@ class NotulenController extends Controller
         $registeredNames = $registeredUsers->pluck('name')->toArray();
 
         $tamuPeserta = array_diff($pesertaList, $registeredNames);
-        $tamuHadir = array_diff($hadirList, $registeredNames);
+        
+        // Tamu non-pegawai otomatis dianggap hadir
+        $tamuHadir = $tamuPeserta;
 
         $validated['peserta_rapat'] = count($tamuPeserta) > 0 ? implode(', ', $tamuPeserta) : null;
         $validated['daftar_hadir'] = count($tamuHadir) > 0 ? implode(', ', $tamuHadir) : null;
@@ -220,7 +224,9 @@ class NotulenController extends Controller
         $registeredNames = $registeredUsers->pluck('name')->toArray();
 
         $tamuPeserta = array_diff($pesertaList, $registeredNames);
-        $tamuHadir = array_diff($hadirList, $registeredNames);
+        
+        // Tamu non-pegawai otomatis dianggap hadir
+        $tamuHadir = $tamuPeserta;
 
         $validated['peserta_rapat'] = count($tamuPeserta) > 0 ? implode(', ', $tamuPeserta) : null;
         $validated['daftar_hadir'] = count($tamuHadir) > 0 ? implode(', ', $tamuHadir) : null;

@@ -154,18 +154,24 @@ const closeModal = () => {
 
 const submit = () => {
     if (isEdit.value) {
-        form.post(route('teacher-journals.update', currentJournalId.value), {
+        form.transform((data) => ({
+            ...data,
+            _method: 'PUT'
+        })).post(route('teacher-journals.update', currentJournalId.value), {
             preserveScroll: true,
-            forceFormData: true, 
-            onBefore: () => {
-                form._method = 'PUT'
-            },
-            onSuccess: () => closeModal()
+            forceFormData: true,
+            onSuccess: () => {
+                form.reset()
+                closeModal()
+            }
         })
     } else {
-        form.post(route('teacher-journals.store'), {
+        form.transform((data) => data).post(route('teacher-journals.store'), {
             preserveScroll: true,
-            onSuccess: () => closeModal()
+            onSuccess: () => {
+                form.reset()
+                closeModal()
+            }
         })
     }
 }

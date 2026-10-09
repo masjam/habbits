@@ -151,113 +151,14 @@ class LaporanController extends Controller
         $year = $request->input('year', $now->year);
         $search = $request->input('search');
         $kategori_skor = $request->input('kategori_skor');
-
-        $date = Carbon::create($year, $month, 1);
-        $startOfMonth = $date->copy()->startOfMonth();
-        $endOfMonth   = $date->copy()->endOfMonth();
-        $daysInMonth  = $date->daysInMonth;
-        
-        $dailyMaxScore = \App\Models\Habit::where('status_aktif', true)
-            ->where('is_pengganti_haid', false)
-            ->sum('skor_maksimal') ?: 100;
-        $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
-
-        $settingTarget = Setting::where('key', 'monthly_target_score')->first();
-        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
-
-        $users = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->when($request->input('divisi'), function ($query, $divisi) {
-                $query->where('divisi', $divisi);
-            })
-            ->withSum(
-                ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
-                'skor_diperoleh'
-            )
-            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
-                // Build CASE statement for division targets
-                $divisions = \App\Models\Division::whereNotNull('target_divisi')->get();
-                $divisionCases = "";
-                foreach($divisions as $div) {
-                    $name = addslashes($div->name);
-                    $divisionCases .= " WHEN users.divisi = '{$name}' THEN {$div->target_divisi} ";
-                }
-                $divisionCaseSql = $divisionCases ? "CASE $divisionCases ELSE NULL END" : "NULL";
-
-                // Gunakan target dinamis admin: target khusus inaktif > target divisi > target global
-                $userTargetSql = "COALESCE(
-                    CASE WHEN status_kehadiran != 'Aktif' THEN target_tidak_aktif ELSE NULL END,
-                    $divisionCaseSql,
-                    $targetBulanan
-                )";
-
-                $scoreSql = "(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?)";
-                
-                if ($kategori === '0-30') {
-                    $query->whereRaw("$scoreSql <= (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === '30-50') {
-                    $query->whereRaw("$scoreSql > (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
-                          ->whereRaw("$scoreSql <= (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === '50-target') {
-                    $query->whereRaw("$scoreSql > (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
-                          ->whereRaw("$scoreSql < (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === 'tercapai') {
-                    $query->whereRaw("$scoreSql >= (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                }
-            })
-            ->get();
-
-        $divisionsLookup = \App\Models\Division::pluck('target_divisi', 'name')->toArray();
-
-        $leaderboard = $users->map(function ($user) use ($skorMaksimalSebulan, $targetBulanan, $divisionsLookup) {
-            $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
-            $persentase = ($skorMaksimalSebulan > 0) ? ($skorDiperoleh / $skorMaksimalSebulan) * 100 : 0;
-            
-            $userTarget = $targetBulanan;
-            
-            $divisionTarget = null;
-            if (!empty($user->divisi) && isset($divisionsLookup[$user->divisi])) {
-                $divisionTarget = $divisionsLookup[$user->divisi];
-            }
-
-            if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
-                $userTarget = (float) $user->target_tidak_aktif;
-            } elseif (!is_null($divisionTarget)) {
-                $userTarget = (float) $divisionTarget;
-            }
-
-            return [
-                'id'         => $user->id,
-                'name'       => $user->name,
-                'gender'     => $user->gender,
-                'skor'       => $skorDiperoleh,
-                'persentase' => round($persentase, 1),
-                'target'     => $userTarget,
-                'status'     => $user->status_kehadiran,
-            ];
-        })->sortByDesc('persentase')->values();
-
-        $namaBulan = $date->translatedFormat('F Y');
+        $divisi = $request->input('divisi');
         $type = $request->input('type', 'excel');
+        $userToNotify = auth()->user();
 
-        if ($type === 'pdf') {
-            $fileName = 'Laporan_Ibadah_Pegawai_' . $date->format('Y_m') . '.pdf';
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.laporan_pdf', [
-                'leaderboard' => $leaderboard,
-                'skorMaksimal' => $skorMaksimalSebulan,
-                'namaBulan' => $namaBulan,
-                'targetBulanan' => $targetBulanan
-            ]);
-            return $pdf->download($fileName);
-        }
+        // Dispatch Job ke Background Queue
+        \App\Jobs\ProcessLaporanExport::dispatch($month, $year, $search, $kategori_skor, $divisi, $type, $userToNotify);
 
-        $fileName = 'Laporan_Ibadah_Pegawai_' . $date->format('Y_m') . '.xlsx';
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\LaporanExport($leaderboard, $skorMaksimalSebulan, $namaBulan, $targetBulanan),
-            $fileName
-        );
+        return redirect()->back()->with('success', 'Laporan sedang digenerate di background. Silakan cek menu Pesan/Notifikasi dalam beberapa menit untuk mengunduh.');
     }
 
     /**
@@ -367,8 +268,22 @@ class LaporanController extends Controller
             ];
         }
 
+        // Ambil target skor dari pengaturan atau divisi
+        $settingTarget = Setting::where('key', 'monthly_target_score')->first();
+        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        
+        $userTarget = $targetBulanan;
+        if ($user->status_kehadiran !== 'Aktif' && $user->target_tidak_aktif) {
+            $userTarget = $user->target_tidak_aktif;
+        } else {
+            $div = \App\Models\Division::where('name', $user->divisi)->first();
+            if ($div && $div->target_divisi) {
+                $userTarget = $div->target_divisi;
+            }
+        }
+
         return Inertia::render('Admin/Laporan/Detail', [
-            'pegawai'            => ['id' => $user->id, 'name' => $user->name, 'gender' => $user->gender],
+            'pegawai'            => ['id' => $user->id, 'name' => $user->name, 'gender' => $user->gender, 'target' => $userTarget],
             'persentaseBulanIni' => round($persentaseBulanIni, 1),
             'persentaseSemester' => round($persentaseSemesterIni, 1),
             'semesterName'       => $isSemester1 ? 'Semester 1' : 'Semester 2',

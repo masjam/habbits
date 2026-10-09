@@ -7,6 +7,10 @@ const props = defineProps({
     initialAttendances: {
         type: Array,
         default: () => []
+    },
+    kioskToken: {
+        type: String,
+        default: ''
     }
 })
 
@@ -60,7 +64,8 @@ const handleScan = async () => {
     
     try {
         const response = await axios.post(route('attendance.rfid.scan'), {
-            rfid_uid: uid
+            rfid_uid: uid,
+            token: props.kioskToken
         })
         
         if (response.data.success) {
