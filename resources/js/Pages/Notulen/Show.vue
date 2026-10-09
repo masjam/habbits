@@ -48,19 +48,19 @@ const printNotulen = () => {
                     <h2 class="text-lg font-bold uppercase">{{ notulen.judul_rapat }}</h2>
                 </div>
 
-                <!-- Informasi Dasar (3 Kolom) -->
-                <div class="grid grid-cols-3 gap-6 text-sm mb-6 pb-6 border-b border-gray-300">
-                    <div>
+                <!-- Informasi Dasar -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 text-sm mb-6 pb-6 border-b border-gray-300">
+                    <div class="md:col-span-1">
                         <div class="font-bold mb-1">Jenis Rapat</div>
                         <div>{{ notulen.jenis_rapat }}</div>
                     </div>
-                    <div>
+                    <div class="md:col-span-1">
                         <div class="font-bold mb-1">Hari / Tanggal / Waktu</div>
                         <div>{{ new Date(notulen.tanggal_waktu).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }}, {{ new Date(notulen.tanggal_waktu).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} WIB</div>
                     </div>
-                    <div>
-                        <div class="mb-1 flex"><span class="font-bold w-32 shrink-0">Tempat</span> <span class="mr-1">:</span> <span>{{ notulen.lokasi }}</span></div>
-                        <div class="flex"><span class="font-bold w-32 shrink-0">Pimpinan Rapat</span> <span class="mr-1">:</span> <span>{{ notulen.pimpinan_rapat }}</span></div>
+                    <div class="md:col-span-1">
+                        <div class="mb-1 flex"><span class="font-bold w-24 md:w-32 shrink-0">Tempat</span> <span class="mr-1">:</span> <span>{{ notulen.lokasi }}</span></div>
+                        <div class="flex"><span class="font-bold w-24 md:w-32 shrink-0">Pimpinan</span> <span class="mr-1">:</span> <span>{{ notulen.pimpinan_rapat }}</span></div>
                     </div>
                 </div>
 
@@ -82,18 +82,11 @@ const printNotulen = () => {
                     <p class="text-sm mb-2">Total Peserta Hadir: <strong>{{ notulen.daftar_hadir ? notulen.daftar_hadir.split(', ').length : 0 }} orang</strong> (Dari {{ notulen.peserta_rapat ? notulen.peserta_rapat.split(', ').length : 0 }} Undangan)</p>
                     
                     <div v-if="notulen.daftar_hadir" class="mt-4">
-                        <table class="w-full border-collapse border border-gray-400 text-xs">
-                            <tbody>
-                                <tr v-for="rowIndex in Math.ceil(notulen.daftar_hadir.split(', ').length / 5)" :key="rowIndex">
-                                    <td v-for="colIndex in 5" :key="colIndex" class="border border-gray-400 p-2 w-1/5 align-top">
-                                        <div v-if="notulen.daftar_hadir.split(', ')[(rowIndex - 1) * 5 + (colIndex - 1)]">
-                                            <span class="font-bold">{{ (rowIndex - 1) * 5 + colIndex }}.</span> 
-                                            {{ notulen.daftar_hadir.split(', ')[(rowIndex - 1) * 5 + (colIndex - 1)] }}
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 border-t border-l border-gray-400 text-xs">
+                            <div v-for="(nama, index) in notulen.daftar_hadir.split(', ')" :key="index" class="border-r border-b border-gray-400 p-2 align-top break-words">
+                                <span class="font-bold">{{ index + 1 }}.</span> {{ nama }}
+                            </div>
+                        </div>
                     </div>
                     <div v-else class="text-sm italic text-gray-500">
                         Belum ada yang tercatat hadir.
@@ -101,9 +94,9 @@ const printNotulen = () => {
                 </div>
 
                 <!-- Tanda Tangan -->
-                <div class="flex justify-between items-end mt-12 page-break-inside-avoid">
+                <div class="flex flex-col md:flex-row justify-between items-center md:items-end mt-12 gap-8 md:gap-0 page-break-inside-avoid">
                     <!-- TTD Notulis (Pembuat) -->
-                    <div class="text-center w-64">
+                    <div class="text-center w-full md:w-64">
                         <p class="text-sm mb-4">Notulis,</p>
                         <div class="h-20 flex items-center justify-center mb-2">
                             <img v-if="notulen.ttd_notulis" :src="notulen.ttd_notulis" class="max-h-full" alt="TTD Notulis">
@@ -113,13 +106,13 @@ const printNotulen = () => {
                     </div>
 
                     <!-- QR Code Validasi di Tengah -->
-                    <div class="text-center flex flex-col items-center justify-center">
+                    <div class="text-center flex flex-col items-center justify-center order-first md:order-none mb-4 md:mb-0">
                         <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent(route('notulen.show', notulen.id))" alt="QR Code Validasi" class="w-20 h-20 mb-2 print:border-none">
                         <p class="text-[10px] text-gray-500 font-mono">Scan untuk Validasi</p>
                     </div>
 
                     <!-- TTD Pimpinan -->
-                    <div class="text-center w-64">
+                    <div class="text-center w-full md:w-64">
                         <p class="text-sm mb-4">Pimpinan Rapat,</p>
                         <div class="h-20 flex items-center justify-center mb-2">
                             <img v-if="notulen.ttd_pimpinan" :src="notulen.ttd_pimpinan" class="max-h-full" alt="TTD Pimpinan">
