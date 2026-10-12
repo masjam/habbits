@@ -7,16 +7,48 @@ on:
       - master
 
 jobs:
-  deploy:
-    runs-on: self-hosted
-    
+  build-frontend:
+    name: Build Frontend (Cloud Runner)
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install NPM & Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-assets
+          path: public/build/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to Server
+    needs: build-frontend
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-assets
+          path: public/build/
+
       - name: Install Composer Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-        
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
       - name: Deploy to Web Directory
         run: |
           rsync -avz --delete \
@@ -26,14 +58,7 @@ jobs:
           --exclude='/storage' \
           --exclude='/node_modules' \
           --exclude='/public/storage' \
-          --exclude='/public/build' \
           ./ /var/www/habit/
-          
-      - name: Install NPM & Build
-        run: |
-          cd /var/www/habit
-          npm install
-          npm run build
 
       - name: Optimizations & Migrations
         run: |
