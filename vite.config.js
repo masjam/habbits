@@ -1,3 +1,5 @@
+process.env.RAYON_NUM_THREADS = process.env.RAYON_NUM_THREADS || '1';
+
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';

@@ -328,8 +328,43 @@ const getLogIndex = (habitId) => {
     return form.logs.findIndex(log => log.habit_id === habitId);
 }
 
-// --- Helper untuk Ikon Berdasarkan Template Habit ---
-const getHabitIcon = (template) => {
+// --- Helper untuk Mempersingkat Nama Habit untuk Grid Menu Mobile ---
+const formatShortHabitName = (name) => {
+    if (!name) return '';
+    let clean = name
+        .replace('[Pengganti Haid] ', '')
+        .replace(/\s*Min\..*$/i, '')
+        .replace(/^Membaca\s+/i, '')
+        .replace(/^Berwudhu\s+/i, 'Wudhu ')
+        .replace(/^Menjaga\s+/i, '')
+        .trim();
+    if (clean === 'Sholat Wajib Berjamaah') clean = 'Sholat Wajib';
+    if (clean === 'Sedekah Harian') clean = 'Sedekah';
+    return clean;
+};
+
+// --- Helper untuk Ikon Berdasarkan Template & Nama Habit ---
+const getHabitIcon = (template, habitName = '') => {
+    const name = (habitName || '').toLowerCase();
+    
+    // Khusus berdasarkan nama habit jika template bersifat umum/default
+    if (name.includes('sedekah') || name.includes('infaq')) {
+        // Ikon Hati / Cinta / Sedekah
+        return '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />';
+    }
+    if (name.includes('wudhu')) {
+        // Ikon Tetesan Air / Wudhu
+        return '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-1.5 2-6 7.5-6 11a6 6 0 0012 0c0-3.5-4.5-9-6-11z" />';
+    }
+    if (name.includes('aqidah')) {
+        // Ikon Perisai / Shield
+        return '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />';
+    }
+    if (name.includes('dzikir')) {
+        // Ikon Kilauan / Dzikir
+        return '<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />';
+    }
+
     switch(template) {
         case 'sholat_wajib':
         case 'sholat_rawatib':
@@ -481,36 +516,49 @@ const toggleBoolean = (index) => {
                         </svg>
                     </div>
                 </div> -->
-                <!-- Horizontal Scroll Tabs (Native Mobile Look) -->
-                <div class="md:hidden mb-4 -mx-2 px-2 overflow-x-auto snap-x scrollbar-hide flex items-center gap-2 pb-2">
-                    <button 
-                        v-for="habit in habits" 
-                        :key="'chip-'+habit.id"
-                        @click="activeTabId = habit.id"
-                        type="button"
-                        class="relative flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 snap-center shadow-sm"
-                        :class="[
-                            activeTabId === habit.id 
-                                ? 'bg-emerald-600 text-white shadow-emerald-600/30' 
-                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                        ]"
-                    >
-                        <div 
-                            class="w-5 h-5 flex items-center justify-center shrink-0 transition-colors"
-                            :class="activeTabId === habit.id ? 'text-white' : 'text-emerald-500'"
+                <!-- Habit Tabs Mobile Grid (Tampil Semua Dalam 1 Layar Tanpa Geser) -->
+                <div class="md:hidden mb-4 bg-white dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button 
+                            v-for="habit in habits" 
+                            :key="'grid-tab-'+habit.id"
+                            @click="activeTabId = habit.id"
+                            type="button"
+                            class="relative flex flex-col items-center justify-center p-1.5 py-2 rounded-xl transition-all duration-200 text-center min-h-[62px]"
+                            :class="[
+                                activeTabId === habit.id 
+                                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-500' 
+                                    : 'bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ]"
                         >
-                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" v-html="getHabitIcon(habit.template)"></svg>
-                        </div>
-                        <span class="text-[11px] font-bold tracking-wide" :class="activeTabId === habit.id ? 'text-white' : 'text-slate-600 dark:text-slate-400'">
-                            {{ habit?.nama_habit?.replace('[Pengganti Haid] ', '').substring(0, 15) }}{{ habit?.nama_habit?.length > 15 ? '...' : '' }}
-                        </span>
-                        
-                        <!-- Indikator Selesai -->
-                        <span 
-                            v-if="form.logs[getLogIndex(habit.id)]?.nilai_input > 0 || form.logs[getLogIndex(habit.id)]?.details?.durasi" 
-                            class="absolute top-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border border-white dark:border-slate-800"
-                        ></span>
-                    </button>
+                            <!-- Habit Icon Container -->
+                            <div 
+                                class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mb-1 transition-colors"
+                                :class="activeTabId === habit.id ? 'bg-white/20 text-white' : 'bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'"
+                            >
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" v-html="getHabitIcon(habit.template, habit.nama_habit)"></svg>
+                            </div>
+                            
+                            <!-- Label Singkat Habit -->
+                            <span 
+                                class="text-[10px] font-bold leading-tight line-clamp-2 w-full px-0.5 break-words"
+                                :class="activeTabId === habit.id ? 'text-white' : 'text-slate-600 dark:text-slate-400'"
+                            >
+                                {{ formatShortHabitName(habit.nama_habit) }}
+                            </span>
+                            
+                            <!-- Indikator Selesai (Badge Checkmark Hijau) -->
+                            <span 
+                                v-if="form.logs[getLogIndex(habit.id)]?.nilai_input > 0 || form.logs[getLogIndex(habit.id)]?.details?.durasi" 
+                                class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-sm border border-white dark:border-slate-800"
+                                title="Sudah diisi"
+                            >
+                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
 

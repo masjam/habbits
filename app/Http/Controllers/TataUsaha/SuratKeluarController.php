@@ -100,6 +100,8 @@ class SuratKeluarController extends Controller
             'isi_surat' => 'required|string',
             'pegawai_ditugaskan' => 'nullable|array',
             'pokok_tugas' => 'nullable|string',
+            'line_spacing' => 'nullable|string',
+            'paragraph_indent' => 'nullable|string',
         ]);
 
         if ($validated['jenis_surat'] === 'Tugas') {
@@ -151,6 +153,8 @@ class SuratKeluarController extends Controller
             'isi_surat' => 'required|string',
             'pegawai_ditugaskan' => 'nullable|array',
             'pokok_tugas' => 'nullable|string',
+            'line_spacing' => 'nullable|string',
+            'paragraph_indent' => 'nullable|string',
         ]);
 
         if ($validated['jenis_surat'] === 'Tugas') {
@@ -258,6 +262,8 @@ class SuratKeluarController extends Controller
             'isi_surat' => 'required|string',
             'pegawai_ditugaskan' => 'nullable|array',
             'pokok_tugas' => 'nullable|string',
+            'line_spacing' => 'nullable|string',
+            'paragraph_indent' => 'nullable|string',
         ]);
 
         if ($validated['jenis_surat'] === 'Tugas') {

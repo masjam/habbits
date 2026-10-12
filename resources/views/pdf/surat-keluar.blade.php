@@ -19,7 +19,7 @@
         body {
             font-family: 'Times New Roman', Times, serif;
             font-size: 12pt;
-            line-height: 1.15;
+            line-height: {{ $line_spacing ?? '1.15' }};
             color: #000;
         }
         .kop-surat {
@@ -123,7 +123,7 @@
         .isi-surat p {
             margin-top: 0;
             margin-bottom: 10px;
-            text-indent: 0 !important; /* Paksa agar tidak menjorok */
+            text-indent: {{ $paragraph_indent ?? '0' }} !important; /* Tergantung setting user */
             padding-left: 0 !important; /* Hilangkan padding bawaan editor */
         }
         .isi-surat ol, .isi-surat ul {

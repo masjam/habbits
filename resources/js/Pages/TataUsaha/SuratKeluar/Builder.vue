@@ -27,7 +27,9 @@ const form = useForm({
     di: props.builderData?.di || 'tempat',
     pegawai_ditugaskan: props.builderData?.pegawai_ditugaskan || [],
     pokok_tugas: props.builderData?.pokok_tugas || '',
-    isi_surat: props.builderData?.isi_surat || '<p>Dalam rangka menindaklanjuti...</p>'
+    isi_surat: props.builderData?.isi_surat || '<p>Dalam rangka menindaklanjuti...</p>',
+    line_spacing: props.builderData?.line_spacing || '1.15',
+    paragraph_indent: props.builderData?.paragraph_indent || '0'
 })
 
 const searchPegawai = ref('')
@@ -175,10 +177,28 @@ const submit = () => {
                         <p class="text-xs text-slate-500">
                             <i>Format Surat Keterangan tidak menggunakan field Hal, Lampiran, dan Kepada Yth. Format ini akan menggunakan judul tengah otomatis.</i>
                         </p>
-                        <!-- Hidden Inputs -->
                         <input type="hidden" v-model="form.nomor_surat">
                         <input type="hidden" v-model="form.tanggal_hijriah">
                         <input type="hidden" v-model="form.tanggal_masehi">
+                    </div>
+
+                    <!-- Layout Settings -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Spasi Antar Baris</label>
+                            <select v-model="form.line_spacing" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500">
+                                <option value="1.0">Spasi 1.0 (Rapat)</option>
+                                <option value="1.15">Spasi 1.15 (Normal)</option>
+                                <option value="1.5">Spasi 1.5 (Longgar)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Indentasi Awal Paragraf</label>
+                            <select v-model="form.paragraph_indent" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500">
+                                <option value="0">Tidak (Rata Kiri)</option>
+                                <option value="40px">Ya (Menjorok ke Dalam)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div>
