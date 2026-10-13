@@ -4,8 +4,6 @@ import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3'
 import { ref, watch, computed } from 'vue'
 import Editor from '@tinymce/tinymce-vue'
 
-const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
-
 const props = defineProps({
     suratKeluar: Object,
     filters: Object,
@@ -282,7 +280,7 @@ const usePhoto = async () => {
                                     <div>
                                         <label class="block text-xs font-bold text-slate-500 mb-1">Perihal</label>
                                         <Editor
-                                            :api-key="tinymceApiKey"
+                                            tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js"
                                             v-model="form.perihal"
                                             :init="{
                                                 height: 250,

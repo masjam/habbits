@@ -14,8 +14,6 @@ const props = defineProps({
     users: { type: Array, default: () => [] },
 })
 
-const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
-
 const form = useForm({
     jenis_surat: props.builderData?.jenis_surat || 'Umum',
     nomor_surat: props.builderData?.nomor_surat || props.next_nomor,
@@ -207,7 +205,7 @@ const submit = () => {
                             <span class="text-xs text-slate-500">Kop, Tanggal Surat (Otomatis), Salam, dan Penutup sudah ditambahkan oleh sistem.</span>
                         </div>
                         <Editor
-                            :api-key="tinymceApiKey"
+                            tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js"
                             v-model="form.isi_surat"
                             :init="{
                                 height: 450,

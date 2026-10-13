@@ -16,8 +16,6 @@ const isEdit = ref(false)
 const currentJournalId = ref(null)
 const activeFormTab = ref('detail')
 
-const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
-
 // --- Camera Modal State ---
 const isCameraModalOpen = ref(false)
 const cameraStream = ref(null)
@@ -383,7 +381,7 @@ const submit = () => {
                                 <div class="flex-1 flex flex-col">
                                     <label class="block font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">Uraian Materi / Kegiatan</label>
                                     <Editor
-                                        :api-key="tinymceApiKey"
+                                        tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js"
                                         v-model="form.material"
                                         :init="{
                                             height: 300,
@@ -398,7 +396,7 @@ const submit = () => {
                                 <div>
                                     <label class="block font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">Catatan / Keterangan Tambahan</label>
                                     <Editor
-                                        :api-key="tinymceApiKey"
+                                        tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js"
                                         v-model="form.notes"
                                         :init="{
                                             height: 200,

@@ -15,8 +15,6 @@ const props = defineProps({
     }
 })
 
-const tinymceApiKey = import.meta.env.VITE_TINYMCE_API_KEY || 'no-api-key'
-
 // Form (diisi dengan data notulen)
 const form = useForm({
     judul_rapat: props.notulen.judul_rapat || '',
@@ -251,7 +249,7 @@ const editorInit = {
                                             {{ isListeningIsi ? 'Mendengarkan...' : 'Dikte Suara' }}
                                         </button>
                                     </div>
-                                    <Editor :api-key="tinymceApiKey" :init="editorInit" v-model="form.isi_pembahasan" />
+                                    <Editor tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js" :init="editorInit" v-model="form.isi_pembahasan" />
                                     <div v-if="form.errors.isi_pembahasan" class="text-red-500 text-xs mt-1">{{ form.errors.isi_pembahasan }}</div>
                                 </div>
 
@@ -263,7 +261,7 @@ const editorInit = {
                                             {{ isListeningTindak ? 'Mendengarkan...' : 'Dikte Suara' }}
                                         </button>
                                     </div>
-                                    <Editor :api-key="tinymceApiKey" :init="{ ...editorInit, height: 200 }" v-model="form.tindak_lanjut" />
+                                    <Editor tinymce-script-src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js" :init="{ ...editorInit, height: 200 }" v-model="form.tindak_lanjut" />
                                     <div v-if="form.errors.tindak_lanjut" class="text-red-500 text-xs mt-1">{{ form.errors.tindak_lanjut }}</div>
                                 </div>
 
