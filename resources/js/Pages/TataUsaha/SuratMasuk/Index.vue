@@ -6,6 +6,7 @@ import Editor from '@tinymce/tinymce-vue'
 
 const props = defineProps({
     suratMasuk: Object,
+    kepalaSekolah: Object,
     filters: Object,
 })
 
@@ -118,6 +119,54 @@ const deleteSurat = (id) => {
     }
 }
 
+const stripHtml = (html) => {
+    if (!html) return ''
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    return (tmp.textContent || tmp.innerText || '').trim()
+}
+
+const sendWaToKs = (surat) => {
+    const ksName = props.kepalaSekolah?.name ? `Bapak/Ibu ${props.kepalaSekolah.name}` : 'Bapak/Ibu Kepala Sekolah'
+    let phone = props.kepalaSekolah?.phone ? String(props.kepalaSekolah.phone).replace(/[^0-9]/g, '') : ''
+    if (phone.startsWith('0')) {
+        phone = '62' + phone.slice(1)
+    }
+
+    if (!phone) {
+        const inputPhone = window.prompt("Nomor WhatsApp Kepala Sekolah belum tercatat di sistem.\n\nMasukkan nomor WhatsApp KS (contoh: 08123456789) atau klik OK/Batal untuk memilih kontak langsung di aplikasi WhatsApp:", "")
+        if (inputPhone) {
+            let cleaned = inputPhone.replace(/[^0-9]/g, '')
+            if (cleaned.startsWith('0')) cleaned = '62' + cleaned.slice(1)
+            phone = cleaned
+        }
+    }
+
+    const tglSurat = surat.tanggal_surat ? formatDate(surat.tanggal_surat) : '-'
+    const perihalClean = stripHtml(surat.perihal)
+    const jenis = getJenisSurat(surat)
+    const linkApp = window.location.origin + '/tata-usaha/disposisi'
+
+    const message = `*PEMBERITAHUAN DISPOSISI SURAT MASUK*\n\n` +
+        `Assalamu'alaikum Wr. Wb.\n` +
+        `Yth. ${ksName},\n\n` +
+        `Terdapat surat masuk baru yang membutuhkan arahan / disposisi dari Kepala Sekolah:\n\n` +
+        `📋 *No. Surat:* ${surat.nomor_surat}\n` +
+        `🏢 *Pengirim:* ${surat.pengirim}\n` +
+        `📅 *Tgl Surat:* ${tglSurat}\n` +
+        `🏷️ *Jenis:* ${jenis}\n` +
+        `📝 *Perihal:* ${perihalClean}\n\n` +
+        `Mohon berkenan membuka aplikasi untuk memberikan arahan/disposisi penugasan:\n` +
+        `🔗 ${linkApp}\n\n` +
+        `Terima kasih.\n_Tata Usaha SAHABAT SDAM_`
+
+    const url = phone 
+        ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`
+
+    window.open(url, '_blank')
+}
+
 // Camera handling
 const isCameraOpen = ref(false)
 const videoRef = ref(null)
@@ -221,7 +270,7 @@ const usePhoto = async () => {
                         </thead>
                         <tbody class="divide-y divide-slate-200">
                             <tr v-if="suratMasuk.data.length === 0">
-                                <td colspan="7" class="px-4 py-8 text-center text-slate-500">Belum ada data surat masuk.</td>
+                                <td colspan="8" class="px-4 py-8 text-center text-slate-500">Belum ada data surat masuk.</td>
                             </tr>
                             <tr v-for="surat in suratMasuk.data" :key="surat.id" class="bg-white hover:bg-slate-50 transition-colors">
                                 <td class="px-4 py-4 font-medium text-slate-800">{{ surat.nomor_surat }}</td>
@@ -246,16 +295,33 @@ const usePhoto = async () => {
                                           }">
                                         {{ surat.status }}
                                     </span>
+                                    <div v-if="surat.perlu_disposisi" class="mt-1">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                            Butuh Disposisi
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-4 text-right">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <button v-if="surat.file_path" @click="openPreview(`/storage/${surat.file_path}`)" title="Lihat File" class="text-blue-500 hover:text-blue-700">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <button 
+                                            v-if="surat.perlu_disposisi && surat.status !== 'selesai'" 
+                                            @click="sendWaToKs(surat)" 
+                                            type="button"
+                                            title="Kirim Notifikasi Disposisi ke Kepala Sekolah via WhatsApp" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300 text-xs font-semibold transition-all shadow-sm"
+                                        >
+                                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                                            </svg>
+                                            <span>WA KS</span>
+                                        </button>
+                                        <button v-if="surat.file_path" @click="openPreview(`/storage/${surat.file_path}`)" title="Lihat File" class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </button>
-                                        <button @click="editSurat(surat)" title="Edit" class="text-amber-500 hover:text-amber-700">
+                                        <button @click="editSurat(surat)" title="Edit" class="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                         </button>
-                                        <button @click="deleteSurat(surat.id)" title="Hapus" class="text-rose-500 hover:text-rose-700">
+                                        <button @click="deleteSurat(surat.id)" title="Hapus" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>

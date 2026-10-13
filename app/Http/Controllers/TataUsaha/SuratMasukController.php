@@ -4,6 +4,8 @@ namespace App\Http\Controllers\TataUsaha;
 
 use App\Http\Controllers\Controller;
 use App\Models\SuratMasuk;
+use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -26,9 +28,22 @@ class SuratMasukController extends Controller
         }
         
         $suratMasuk = $query->paginate(10)->withQueryString();
+
+        $ksUser = null;
+        try {
+            $ksUser = User::role('kepala_sekolah')->first();
+        } catch (\Throwable $e) {
+            // Fallback if role is not configured
+        }
+        $ksNamaSetting = Setting::where('key', 'kepsek_nama')->value('value');
+        $kepalaSekolah = [
+            'name' => $ksUser?->name ?? $ksNamaSetting ?? 'Kepala Sekolah',
+            'phone' => $ksUser?->phone ?? null,
+        ];
         
         return Inertia::render('TataUsaha/SuratMasuk/Index', [
             'suratMasuk' => $suratMasuk,
+            'kepalaSekolah' => $kepalaSekolah,
             'filters' => ['search' => $search]
         ]);
     }

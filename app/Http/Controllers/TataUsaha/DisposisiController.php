@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Disposisi;
 use App\Models\SuratMasuk;
 use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -38,12 +39,25 @@ class DisposisiController extends Controller
         $pegawai = User::whereHas('roles', function ($q) {
             $q->where('name', 'user');
         })->orderBy('name')->get(['id', 'name']);
+
+        $ksUser = null;
+        try {
+            $ksUser = User::role('kepala_sekolah')->first();
+        } catch (\Throwable $e) {
+            // Fallback if role is not configured
+        }
+        $ksNamaSetting = Setting::where('key', 'kepsek_nama')->value('value');
+        $kepalaSekolah = [
+            'name' => $ksUser?->name ?? $ksNamaSetting ?? 'Kepala Sekolah',
+            'phone' => $ksUser?->phone ?? null,
+        ];
         
         return Inertia::render('TataUsaha/Disposisi/Index', [
             'disposisi' => $disposisi,
             'suratMasuk' => $suratMasuk,
             'suratPerluDisposisi' => $suratPerluDisposisi,
             'pegawai' => $pegawai,
+            'kepalaSekolah' => $kepalaSekolah,
             'filters' => ['search' => $search]
         ]);
     }
