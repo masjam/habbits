@@ -128,18 +128,13 @@ const stripHtml = (html) => {
 
 const sendWaToKs = (surat) => {
     const ksName = props.kepalaSekolah?.name ? `Bapak/Ibu ${props.kepalaSekolah.name}` : 'Bapak/Ibu Kepala Sekolah'
-    let phone = props.kepalaSekolah?.phone ? String(props.kepalaSekolah.phone).replace(/[^0-9]/g, '') : ''
+    let rawPhone = props.kepalaSekolah?.phone || '6282223527261'
+    let phone = String(rawPhone).replace(/[^0-9]/g, '')
     if (phone.startsWith('0')) {
         phone = '62' + phone.slice(1)
     }
-
     if (!phone) {
-        const inputPhone = window.prompt("Nomor WhatsApp Kepala Sekolah belum tercatat di sistem.\n\nMasukkan nomor WhatsApp KS (contoh: 08123456789) atau klik OK/Batal untuk memilih kontak langsung di aplikasi WhatsApp:", "")
-        if (inputPhone) {
-            let cleaned = inputPhone.replace(/[^0-9]/g, '')
-            if (cleaned.startsWith('0')) cleaned = '62' + cleaned.slice(1)
-            phone = cleaned
-        }
+        phone = '6282223527261'
     }
 
     const tglSurat = surat.tanggal_surat ? formatDate(surat.tanggal_surat) : '-'
@@ -160,10 +155,7 @@ const sendWaToKs = (surat) => {
         `🔗 ${linkApp}\n\n` +
         `Terima kasih.\n_Tata Usaha SAHABAT SDAM_`
 
-    const url = phone 
-        ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`
-        : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`
-
+    const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`
     window.open(url, '_blank')
 }
 

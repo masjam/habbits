@@ -21,7 +21,8 @@ class SettingController extends Controller
             'kop_alamat',
             'kop_kontak',
             'kepsek_nama',
-            'kepsek_nbm'
+            'kepsek_nbm',
+            'kepsek_phone',
         ])->pluck('value', 'key')->toArray();
 
         // set defaults if empty
@@ -32,6 +33,7 @@ class SettingController extends Controller
         $settings['kop_kontak'] = $settings['kop_kontak'] ?? 'e-mail : admin@sdmujahidin-wns.sch.id http://www.sdmujahidin-wns.sch.id';
         $settings['kepsek_nama'] = $settings['kepsek_nama'] ?? 'Joko Kiswanto, S.Pd.I, M.Pd';
         $settings['kepsek_nbm'] = $settings['kepsek_nbm'] ?? '1.032.440';
+        $settings['kepsek_phone'] = $settings['kepsek_phone'] ?? '6282223527261';
 
         return Inertia::render('TataUsaha/Settings/Index', [
             'settings' => $settings
@@ -48,13 +50,14 @@ class SettingController extends Controller
             'kop_kontak' => 'nullable|string',
             'kepsek_nama' => 'nullable|string',
             'kepsek_nbm' => 'nullable|string',
+            'kepsek_phone' => 'nullable|string',
             'logo_kiri' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'logo_kanan' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ];
 
         $data = $request->validate($rules);
 
-        $keysToUpdate = ['kop_baris_1', 'kop_baris_2', 'kop_baris_3', 'kop_alamat', 'kop_kontak', 'kepsek_nama', 'kepsek_nbm'];
+        $keysToUpdate = ['kop_baris_1', 'kop_baris_2', 'kop_baris_3', 'kop_alamat', 'kop_kontak', 'kepsek_nama', 'kepsek_nbm', 'kepsek_phone'];
         foreach ($keysToUpdate as $key) {
             Setting::updateOrCreate(
                 ['key' => $key],

@@ -15,6 +15,7 @@ const form = useForm({
     kop_kontak: props.settings.kop_kontak || '',
     kepsek_nama: props.settings.kepsek_nama || '',
     kepsek_nbm: props.settings.kepsek_nbm || '',
+    kepsek_phone: props.settings.kepsek_phone || '6282223527261',
     logo_kiri: null,
     logo_kanan: null,
     remove_logo_kiri: false,
@@ -155,6 +156,11 @@ const submit = () => {
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1">NBM Kepala Sekolah</label>
                                 <input type="text" v-model="form.kepsek_nbm" class="w-full p-2 text-sm border-slate-300 rounded-lg" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">No. WhatsApp Kepala Sekolah (Notifikasi Disposisi)</label>
+                                <input type="text" v-model="form.kepsek_phone" class="w-full p-2 text-sm border-slate-300 rounded-lg text-emerald-600 font-semibold" placeholder="Contoh: 6282223527261" />
+                                <p class="text-[11px] text-slate-400 mt-1">Nomor ini otomatis digunakan saat tombol "Kirim WA ke KS" diklik pada surat masuk.</p>
                             </div>
                         </div>
                     </div>

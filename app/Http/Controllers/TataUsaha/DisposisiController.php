@@ -47,9 +47,10 @@ class DisposisiController extends Controller
             // Fallback if role is not configured
         }
         $ksNamaSetting = Setting::where('key', 'kepsek_nama')->value('value');
+        $ksPhoneSetting = Setting::where('key', 'kepsek_phone')->value('value');
         $kepalaSekolah = [
             'name' => $ksUser?->name ?? $ksNamaSetting ?? 'Kepala Sekolah',
-            'phone' => $ksUser?->phone ?? null,
+            'phone' => $ksUser?->phone ?: ($ksPhoneSetting ?: '6282223527261'),
         ];
         
         return Inertia::render('TataUsaha/Disposisi/Index', [
