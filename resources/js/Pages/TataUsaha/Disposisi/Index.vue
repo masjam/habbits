@@ -118,6 +118,7 @@ const sendWaToKs = (surat) => {
         `Mohon berkenan membuka aplikasi untuk memberikan arahan/disposisi penugasan:\n` +
         `🔗 ${linkApp}\n\n` +
         `Terima kasih.\n_Tata Usaha SAHABAT SDAM_`
+        `pesan ini dikirim otomatis dari Aplikasi`
 
     const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`
     window.open(url, '_blank')
