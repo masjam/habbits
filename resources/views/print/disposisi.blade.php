@@ -25,7 +25,7 @@
         .btn-print { margin-bottom: 20px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
     </style>
 </head>
-<body onload="window.print()">
+<body @if(request()->boolean('autoprint')) onload="window.print()" @endif>
     <button class="btn-print" onclick="window.print()">Cetak</button>
 
     <div class="kop-surat">
@@ -61,9 +61,35 @@
             <td colspan="3">{{ $disposisi->batas_waktu ? \Carbon\Carbon::parse($disposisi->batas_waktu)->format('d-m-Y') : 'Tidak ada' }}</td>
         </tr>
         <tr>
-            <td class="label" style="height: 100px;">Instruksi / Pesan</td>
+            <td class="label" style="height: 80px;">Instruksi / Pesan</td>
             <td colspan="3">{{ $disposisi->instruksi }}</td>
         </tr>
+        <tr>
+            <td class="label">Status Disposisi</td>
+            <td colspan="3">
+                <strong style="text-transform: uppercase;">
+                    @if($disposisi->status === 'menunggu')
+                        <span style="color: #64748b;">MENUNGGU (Belum Dibaca)</span>
+                    @elseif($disposisi->status === 'dibaca')
+                        <span style="color: #0284c7;">SUDAH DIBACA YBS</span>
+                    @elseif($disposisi->status === 'dikerjakan')
+                        <span style="color: #d97706;">SEDANG DIKERJAKAN YBS</span>
+                    @elseif($disposisi->status === 'selesai')
+                        <span style="color: #16a34a;">SELESAI DILAKSANAKAN</span>
+                    @else
+                        {{ strtoupper($disposisi->status) }}
+                    @endif
+                </strong>
+            </td>
+        </tr>
+        @if($disposisi->catatan_penyelesaian)
+        <tr>
+            <td class="label">Catatan Penyelesaian / Tindak Lanjut</td>
+            <td colspan="3" style="background-color: #f8fafc; font-style: italic;">
+                {{ $disposisi->catatan_penyelesaian }}
+            </td>
+        </tr>
+        @endif
     </table>
 
     <div class="signatures">

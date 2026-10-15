@@ -115,6 +115,7 @@ class SettingController extends Controller
             $rules['attendance_mode_gps'] = 'boolean';
             $rules['attendance_mode_rfid'] = 'boolean';
             $rules['attendance_mode_fingerprint'] = 'boolean';
+            $rules['kiosk_api_token'] = 'nullable|string|max:100';
 
             $rules['gamification_active'] = 'boolean';
             $rules['dark_mode_active'] = 'boolean';
@@ -141,6 +142,9 @@ class SettingController extends Controller
             if (is_bool($value)) {
                 $value = $value ? '1' : '0';
             }
+            if ($key === 'kiosk_api_token' && empty($value)) {
+                $value = 'SDAM-KIOSK-SECRET';
+            }
             Setting::updateOrCreate(
                 ['key' => $key],
                 ['value' => $value]
@@ -148,6 +152,37 @@ class SettingController extends Controller
         }
 
         return redirect()->back()->with('success', 'Pengaturan berhasil diperbarui.');
+    }
+
+    /**
+     * Simpan Kiosk API Token secara instan (AJAX)
+     */
+    public function updateKioskToken(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->isActualSuperadmin() && !$user->hasRole('superadmin'))) {
+            return response()->json(['success' => false, 'message' => 'Hanya Superadmin yang berhak mengubah token Kiosk.'], 403);
+        }
+
+        $request->validate([
+            'token' => 'required|string|max:100',
+        ]);
+
+        $token = trim($request->token);
+        if (empty($token)) {
+            $token = 'SDAM-KIOSK-SECRET';
+        }
+
+        Setting::updateOrCreate(
+            ['key' => 'kiosk_api_token'],
+            ['value' => $token]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Token Kiosk berhasil disimpan dan langsung aktif!',
+            'token'   => $token,
+        ]);
     }
 
     /**

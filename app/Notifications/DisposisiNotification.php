@@ -58,6 +58,8 @@ class DisposisiNotification extends Notification
 
         return [
             'type' => 'disposisi',
+            'disposisi_id' => $this->disposisi->id,
+            'status' => $this->disposisi->status,
             'title' => 'Disposisi Baru: ' . $surat->perihal,
             'body' => "Instruksi dari {$pemberi}: \"{$instruksi}\"",
             'url' => null, // don't redirect the whole card if there are action links

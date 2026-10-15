@@ -35,10 +35,10 @@ class DisposisiController extends Controller
                                          ->whereDoesntHave('disposisi')
                                          ->latest()
                                          ->get();
-        // Hanya ambil user dengan role 'user' (pegawai biasa)
+        // Ambil user pegawai (role user dan tata_usaha)
         $pegawai = User::whereHas('roles', function ($q) {
-            $q->where('name', 'user');
-        })->orderBy('name')->get(['id', 'name']);
+            $q->whereIn('name', ['user', 'tata_usaha']);
+        })->orderBy('name')->get(['id', 'name', 'phone']);
 
         $ksUser = null;
         try {
@@ -126,8 +126,31 @@ class DisposisiController extends Controller
         return redirect()->back()->with('success', 'Disposisi berhasil diperbarui.');
     }
 
+    public function show(Disposisi $disposisi)
+    {
+        $user = Auth::user();
+        if ($disposisi->penerima_id !== $user->id && 
+            $disposisi->pemberi_id !== $user->id && 
+            !$user->hasAnyRole(['tata_usaha', 'kepala_sekolah', 'superadmin'])) {
+            abort(403, 'Anda tidak berhak melihat disposisi ini.');
+        }
+
+        $disposisi->load(['suratMasuk', 'pemberi', 'penerima']);
+        return response()->json([
+            'success' => true,
+            'disposisi' => $disposisi
+        ]);
+    }
+
     public function updateStatus(Request $request, Disposisi $disposisi)
     {
+        $user = Auth::user();
+        if ($disposisi->penerima_id !== $user->id && 
+            $disposisi->pemberi_id !== $user->id && 
+            !$user->hasAnyRole(['tata_usaha', 'kepala_sekolah', 'superadmin'])) {
+            abort(403, 'Anda tidak berhak memperbarui status disposisi ini.');
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:menunggu,dibaca,dikerjakan,selesai',
             'catatan_penyelesaian' => 'nullable|string'
@@ -135,7 +158,25 @@ class DisposisiController extends Controller
 
         $disposisi->update($validated);
 
-        return redirect()->back()->with('success', 'Status disposisi diperbarui.');
+        // Jika semua disposisi terkait surat ini telah selesai, update status surat masuk menjadi selesai
+        if ($validated['status'] === 'selesai' && $disposisi->surat_masuk_id) {
+            $hasUnfinished = Disposisi::where('surat_masuk_id', $disposisi->surat_masuk_id)
+                ->where('status', '!=', 'selesai')
+                ->exists();
+            if (!$hasUnfinished && $disposisi->suratMasuk) {
+                $disposisi->suratMasuk->update(['status' => 'selesai']);
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Status disposisi berhasil diperbarui.',
+                'disposisi' => $disposisi->fresh(['suratMasuk', 'pemberi', 'penerima'])
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Status disposisi berhasil diperbarui.');
     }
 
     public function print(Disposisi $disposisi)
@@ -146,6 +187,11 @@ class DisposisiController extends Controller
             $disposisi->pemberi_id !== $user->id && 
             !$user->hasAnyRole(['tata_usaha', 'kepala_sekolah', 'superadmin'])) {
             abort(403, 'Anda tidak berhak melihat disposisi ini.');
+        }
+
+        // Jika penerima (ybs) membuka lembar disposisi dan statusnya masih menunggu, ubah otomatis menjadi 'dibaca'
+        if ($disposisi->penerima_id === $user->id && $disposisi->status === 'menunggu') {
+            $disposisi->update(['status' => 'dibaca']);
         }
 
         $disposisi->load(['suratMasuk', 'pemberi', 'penerima']);

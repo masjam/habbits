@@ -19,6 +19,37 @@ const isModalOpen = ref(false)
 const editingId = ref(null)
 const searchQuery = ref(props.filters?.search || '')
 
+// Status Modal State
+const isStatusModalOpen = ref(false)
+const selectedDisposisi = ref(null)
+const statusForm = useForm({
+    status: 'menunggu',
+    catatan_penyelesaian: '',
+})
+
+const openStatusModal = (item) => {
+    selectedDisposisi.value = item
+    statusForm.status = item.status || 'menunggu'
+    statusForm.catatan_penyelesaian = item.catatan_penyelesaian || ''
+    statusForm.clearErrors()
+    isStatusModalOpen.value = true
+}
+
+const closeStatusModal = () => {
+    isStatusModalOpen.value = false
+    selectedDisposisi.value = null
+    statusForm.reset()
+    statusForm.clearErrors()
+}
+
+const saveStatus = () => {
+    if (!selectedDisposisi.value) return
+    statusForm.put(route('tata-usaha.disposisi.update-status', selectedDisposisi.value.id), {
+        preserveScroll: true,
+        onSuccess: () => closeStatusModal(),
+    })
+}
+
 let searchTimeout = null
 watch(searchQuery, (newVal) => {
     clearTimeout(searchTimeout)
@@ -228,25 +259,70 @@ const sendWaToKs = (surat) => {
                                     <span v-else class="text-slate-400 italic">Tidak ada</span>
                                 </td>
                                 <td class="px-4 py-4 text-center">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                                          :class="{
-                                              'bg-slate-100 text-slate-700': item.status === 'menunggu',
-                                              'bg-blue-100 text-blue-700': item.status === 'dibaca',
-                                              'bg-amber-100 text-amber-700': item.status === 'dikerjakan',
-                                              'bg-emerald-100 text-emerald-700': item.status === 'selesai'
-                                          }">
-                                        {{ item.status }}
-                                    </span>
+                                    <div class="flex flex-col items-center">
+                                        <button 
+                                            @click="openStatusModal(item)"
+                                            type="button"
+                                            title="Klik untuk ubah status atau lihat catatan penyelesaian"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all hover:scale-105 cursor-pointer shadow-2xs border"
+                                            :class="{
+                                                'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100': item.status === 'menunggu',
+                                                'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100': item.status === 'dibaca',
+                                                'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100': item.status === 'dikerjakan',
+                                                'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100': item.status === 'selesai'
+                                            }">
+                                            <span class="w-2 h-2 rounded-full"
+                                                :class="{
+                                                    'bg-slate-400': item.status === 'menunggu',
+                                                    'bg-blue-500': item.status === 'dibaca',
+                                                    'bg-amber-500': item.status === 'dikerjakan',
+                                                    'bg-emerald-500': item.status === 'selesai'
+                                                }"></span>
+                                            <span>
+                                                {{ item.status === 'menunggu' ? 'Menunggu' : (item.status === 'dibaca' ? 'Dibaca YBS' : (item.status === 'dikerjakan' ? 'Dikerjakan' : 'Selesai')) }}
+                                            </span>
+                                            <svg class="w-3 h-3 opacity-60 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+
+                                        <button 
+                                            @click="openStatusModal(item)"
+                                            type="button"
+                                            class="mt-1 text-[10px] text-purple-600 hover:text-purple-800 font-semibold transition-colors cursor-pointer"
+                                        >
+                                            Ubah Status
+                                        </button>
+
+                                        <div 
+                                            v-if="item.catatan_penyelesaian" 
+                                            class="mt-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-1.5 max-w-[220px] text-left leading-tight"
+                                            title="Catatan Penyelesaian"
+                                        >
+                                            <span class="font-bold text-slate-700 block text-[10px]">Catatan:</span>
+                                            <p class="truncate italic">{{ item.catatan_penyelesaian }}</p>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-4 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <a :href="route('tata-usaha.disposisi.print', item.id)" target="_blank" title="Cetak Disposisi" class="text-blue-500 hover:text-blue-700">
+                                        <button 
+                                            @click="openStatusModal(item)" 
+                                            type="button"
+                                            title="Ubah Status & Catatan" 
+                                            class="text-purple-600 hover:text-purple-800 transition-colors p-1"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </button>
+                                        <a :href="route('tata-usaha.disposisi.print', item.id)" target="_blank" title="Cetak Disposisi" class="text-blue-500 hover:text-blue-700 transition-colors p-1">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                         </a>
-                                        <button v-if="hasRole('kepala_sekolah') || hasRole('superadmin')" @click="editDisposisi(item)" title="Edit" class="text-amber-500 hover:text-amber-700">
+                                        <button v-if="hasRole('kepala_sekolah') || hasRole('superadmin')" @click="editDisposisi(item)" title="Edit" class="text-amber-500 hover:text-amber-700 transition-colors p-1">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                         </button>
-                                        <button v-if="hasRole('kepala_sekolah') || hasRole('superadmin')" @click="deleteDisposisi(item.id)" title="Hapus" class="text-rose-500 hover:text-rose-700">
+                                        <button v-if="hasRole('kepala_sekolah') || hasRole('superadmin')" @click="deleteDisposisi(item.id)" title="Hapus" class="text-rose-500 hover:text-rose-700 transition-colors p-1">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
@@ -311,6 +387,120 @@ const sendWaToKs = (surat) => {
                                     Simpan
                                 </button>
                                 <button type="button" @click="closeModal" class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto">
+                                    Batal
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Status Modal -->
+        <div v-if="isStatusModalOpen" class="relative z-50">
+            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeStatusModal"></div>
+            <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div class="flex min-h-full items-center justify-center p-4">
+                    <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl w-full max-w-lg border border-slate-100">
+                        <form @submit.prevent="saveStatus">
+                            <div class="bg-white px-5 pt-5 pb-4 sm:p-6">
+                                <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                                    <div>
+                                        <h3 class="text-base font-bold text-slate-900">Perbarui Status Disposisi</h3>
+                                        <p class="text-xs text-slate-500 mt-0.5">
+                                            Surat: <span class="font-semibold text-slate-700">{{ selectedDisposisi?.surat_masuk?.nomor_surat }}</span>
+                                        </p>
+                                    </div>
+                                    <button type="button" @click="closeStatusModal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-600 space-y-1">
+                                        <div><span class="font-semibold text-slate-700">Tujuan (YBS):</span> {{ selectedDisposisi?.penerima?.name }}</div>
+                                        <div><span class="font-semibold text-slate-700">Instruksi:</span> "{{ selectedDisposisi?.instruksi }}"</div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-2">Pilih Status</label>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            <label 
+                                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                                :class="statusForm.status === 'menunggu' ? 'border-slate-500 bg-slate-100/70 text-slate-900 ring-2 ring-slate-400/20' : 'border-slate-200 hover:bg-slate-50/60 text-slate-600'"
+                                            >
+                                                <input type="radio" value="menunggu" v-model="statusForm.status" class="mt-0.5 text-slate-600 focus:ring-slate-500" />
+                                                <div class="text-xs">
+                                                    <span class="font-bold text-slate-800 block">Menunggu</span>
+                                                    <span class="text-[11px] text-slate-500">Baru dikirim, penerima belum membaca</span>
+                                                </div>
+                                            </label>
+
+                                            <label 
+                                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                                :class="statusForm.status === 'dibaca' ? 'border-blue-500 bg-blue-50/70 text-blue-900 ring-2 ring-blue-500/20' : 'border-slate-200 hover:bg-slate-50/60 text-slate-600'"
+                                            >
+                                                <input type="radio" value="dibaca" v-model="statusForm.status" class="mt-0.5 text-blue-600 focus:ring-blue-500" />
+                                                <div class="text-xs">
+                                                    <span class="font-bold text-blue-800 block">Dibaca YBS</span>
+                                                    <span class="text-[11px] text-slate-500">Penerima telah membuka & membaca</span>
+                                                </div>
+                                            </label>
+
+                                            <label 
+                                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                                :class="statusForm.status === 'dikerjakan' ? 'border-amber-500 bg-amber-50/70 text-amber-900 ring-2 ring-amber-500/20' : 'border-slate-200 hover:bg-slate-50/60 text-slate-600'"
+                                            >
+                                                <input type="radio" value="dikerjakan" v-model="statusForm.status" class="mt-0.5 text-amber-600 focus:ring-amber-500" />
+                                                <div class="text-xs">
+                                                    <span class="font-bold text-amber-800 block">Dikerjakan</span>
+                                                    <span class="text-[11px] text-slate-500">Penerima sedang menindaklanjuti</span>
+                                                </div>
+                                            </label>
+
+                                            <label 
+                                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                                :class="statusForm.status === 'selesai' ? 'border-emerald-500 bg-emerald-50/70 text-emerald-900 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:bg-slate-50/60 text-slate-600'"
+                                            >
+                                                <input type="radio" value="selesai" v-model="statusForm.status" class="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
+                                                <div class="text-xs">
+                                                    <span class="font-bold text-emerald-800 block">Selesai</span>
+                                                    <span class="text-[11px] text-slate-500">Instruksi telah tuntas dilaksanakan</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-1">
+                                            Catatan Penyelesaian / Hasil Tindak Lanjut (Opsional)
+                                        </label>
+                                        <textarea 
+                                            v-model="statusForm.catatan_penyelesaian" 
+                                            rows="3" 
+                                            class="w-full p-2.5 text-sm border-slate-300 rounded-xl focus:ring-purple-500 focus:border-purple-500" 
+                                            placeholder="Contoh: Sudah ditindaklanjuti, berkas/surat balasan telah diserahkan..."
+                                        ></textarea>
+                                        <p v-if="statusForm.errors.catatan_penyelesaian" class="text-xs text-rose-500 mt-1">
+                                            {{ statusForm.errors.catatan_penyelesaian }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-50 px-5 py-3.5 flex flex-row-reverse gap-2 rounded-b-2xl border-t border-slate-100">
+                                <button 
+                                    type="submit" 
+                                    :disabled="statusForm.processing" 
+                                    class="inline-flex justify-center rounded-xl bg-purple-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-purple-700 disabled:opacity-50 transition-all cursor-pointer"
+                                >
+                                    {{ statusForm.processing ? 'Menyimpan...' : 'Simpan Status' }}
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="closeStatusModal" 
+                                    class="inline-flex justify-center rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 transition-all cursor-pointer"
+                                >
                                     Batal
                                 </button>
                             </div>

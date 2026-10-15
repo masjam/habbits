@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -93,6 +94,7 @@ const form = useForm({
     attendance_mode_gps: props.settings.attendance_mode_gps === '1' || props.settings.attendance_mode_gps === 'true' || props.settings.attendance_mode_gps === undefined, // default true if not set
     attendance_mode_rfid: props.settings.attendance_mode_rfid === '1' || props.settings.attendance_mode_rfid === 'true',
     attendance_mode_fingerprint: props.settings.attendance_mode_fingerprint === '1' || props.settings.attendance_mode_fingerprint === 'true',
+    kiosk_api_token: props.settings.kiosk_api_token || 'SDAM-KIOSK-SECRET',
 })
 
 // ─── MOBILE FLOATING TAB MENU ───────────────────────────────────────────────
@@ -352,6 +354,97 @@ const handleInstantToggle = () => {
     })
 }
 
+// ─── KIOSK RFID TOKEN & GENERATOR ──────────────────────────────────────────
+const savedKioskToken = ref(props.settings.kiosk_api_token || 'SDAM-KIOSK-SECRET')
+const isSavingToken = ref(false)
+const tokenSaveMessage = ref('')
+const tokenSaveStatus = ref('') // 'success' | 'error' | 'pending' | 'loading'
+
+const isTokenDirty = computed(() => {
+    return (form.kiosk_api_token || '').trim() !== (savedKioskToken.value || '').trim()
+})
+
+const generateRandomKioskToken = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+    let part1 = ''
+    let part2 = ''
+    for (let i = 0; i < 4; i++) {
+        part1 += chars.charAt(Math.floor(Math.random() * chars.length))
+        part2 += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    form.kiosk_api_token = `KIOSK-${part1}-${part2}`
+    tokenSaveStatus.value = 'pending'
+    tokenSaveMessage.value = 'Token baru dibuat. Simpan sekarang atau langsung klik Buka Kiosk untuk menyimpannya.'
+}
+
+const resetKioskToken = () => {
+    form.kiosk_api_token = 'SDAM-KIOSK-SECRET'
+    tokenSaveStatus.value = 'pending'
+    tokenSaveMessage.value = 'Token dikembalikan ke default. Klik Simpan Token untuk menerapkan.'
+}
+
+const saveKioskTokenInstantly = async () => {
+    if (isSavingToken.value) return false
+    isSavingToken.value = true
+    tokenSaveStatus.value = 'loading'
+    tokenSaveMessage.value = 'Menyimpan token ke server...'
+
+    try {
+        const res = await axios.post(route('admin.settings.kiosk-token'), {
+            token: form.kiosk_api_token
+        })
+        if (res.data.success) {
+            savedKioskToken.value = res.data.token
+            form.kiosk_api_token = res.data.token
+            tokenSaveStatus.value = 'success'
+            tokenSaveMessage.value = '✓ Token berhasil disimpan ke database & langsung aktif!'
+            setTimeout(() => {
+                if (tokenSaveStatus.value === 'success') {
+                    tokenSaveMessage.value = ''
+                }
+            }, 5000)
+            return true
+        }
+    } catch (err) {
+        tokenSaveStatus.value = 'error'
+        tokenSaveMessage.value = 'Gagal menyimpan token: ' + (err.response?.data?.message || err.message)
+        return false
+    } finally {
+        isSavingToken.value = false
+    }
+    return false
+}
+
+const kioskFullUrl = computed(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const token = form.kiosk_api_token?.trim() || 'SDAM-KIOSK-SECRET'
+    return `${origin}/kiosk-rfid?token=${encodeURIComponent(token)}`
+})
+
+const isCopiedKioskUrl = ref(false)
+const copyKioskUrl = async () => {
+    if (isTokenDirty.value) {
+        await saveKioskTokenInstantly()
+    }
+    try {
+        await navigator.clipboard.writeText(kioskFullUrl.value)
+        isCopiedKioskUrl.value = true
+        setTimeout(() => {
+            isCopiedKioskUrl.value = false
+        }, 2500)
+    } catch (err) {
+        console.error('Gagal menyalin:', err)
+    }
+}
+
+const openKiosk = async () => {
+    if (isTokenDirty.value) {
+        const ok = await saveKioskTokenInstantly()
+        if (!ok) return
+    }
+    window.open(kioskFullUrl.value, '_blank')
+}
+
 const submit = () => {
     form.post(route('admin.settings.update'), {
         preserveScroll: true,
@@ -592,13 +685,172 @@ const submit = () => {
                                         <input type="checkbox" v-model="form.attendance_mode_gps" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
                                     </label>
                                     
-                                    <label class="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
-                                        <div>
-                                            <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi RFID (Mesin Scanner)</span>
-                                            <span class="block text-xs text-slate-500 mt-0.5">Menggunakan kartu RFID yang ditempel pada Kiosk.</span>
+                                    <!-- Presensi RFID & Kiosk Token Panel -->
+                                    <div class="rounded-xl border border-slate-100 dark:border-slate-800 transition-all overflow-hidden"
+                                         :class="{ 'bg-emerald-50/20 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60': form.attendance_mode_rfid }">
+                                        <label class="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
+                                            <div>
+                                                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi RFID (Mesin Scanner)</span>
+                                                <span class="block text-xs text-slate-500 mt-0.5">Menggunakan kartu RFID yang ditempel pada Kiosk.</span>
+                                            </div>
+                                            <input type="checkbox" v-model="form.attendance_mode_rfid" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
+                                        </label>
+
+                                        <!-- Panel Pengaturan Token & Link Kiosk RFID -->
+                                        <div v-if="form.attendance_mode_rfid" class="p-4 pt-3 border-t border-emerald-100 dark:border-emerald-900/40 bg-white/70 dark:bg-slate-900/70 space-y-4">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="relative flex h-2.5 w-2.5">
+                                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                                    </span>
+                                                    <span class="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                                                        Token Keamanan &amp; Link Akses Kiosk RFID
+                                                    </span>
+                                                </div>
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                                    Kiosk Security
+                                                </span>
+                                            </div>
+
+                                            <!-- Token Input & Generator Actions -->
+                                            <div class="space-y-2">
+                                                <div class="flex items-center justify-between">
+                                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                        Token Keamanan Kiosk:
+                                                    </label>
+                                                    <span v-if="!isTokenDirty" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                        Aktif di Server
+                                                    </span>
+                                                    <span v-else class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 animate-pulse">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                        Belum Disimpan
+                                                    </span>
+                                                </div>
+                                                <div class="flex flex-col sm:flex-row gap-2">
+                                                    <div class="relative flex-1">
+                                                        <input
+                                                            type="text"
+                                                            v-model="form.kiosk_api_token"
+                                                            placeholder="Contoh: SDAM-KIOSK-SECRET"
+                                                            class="w-full px-3.5 py-2 font-mono text-xs font-bold bg-white dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 tracking-wider uppercase transition-colors"
+                                                            :class="isTokenDirty ? 'border-amber-300 dark:border-amber-700 bg-amber-50/20' : 'border-slate-300 dark:border-slate-600'"
+                                                        />
+                                                    </div>
+                                                    <div class="flex items-center flex-wrap gap-2">
+                                                        <!-- Tombol Simpan Instan -->
+                                                        <button
+                                                            type="button"
+                                                            @click="saveKioskTokenInstantly"
+                                                            :disabled="isSavingToken"
+                                                            :class="[
+                                                                'inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer shadow-xs',
+                                                                isTokenDirty
+                                                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/30'
+                                                                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                                                            ]"
+                                                            title="Simpan token ini ke server sekarang"
+                                                        >
+                                                            <svg v-if="isSavingToken" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                            <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                                            <span>{{ isSavingToken ? 'Menyimpan...' : 'Simpan Token' }}</span>
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            @click="generateRandomKioskToken"
+                                                            class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
+                                                            title="Generate token acak baru"
+                                                        >
+                                                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                            </svg>
+                                                            <span>Generate Acak</span>
+                                                        </button>
+                                                        
+                                                        <button
+                                                            type="button"
+                                                            @click="resetKioskToken"
+                                                            class="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-95 cursor-pointer"
+                                                            title="Kembalikan ke token default (SDAM-KIOSK-SECRET)"
+                                                        >
+                                                            <span>Default</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Status / Notification Message -->
+                                                <div v-if="tokenSaveMessage" :class="[
+                                                    'p-2.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all',
+                                                    tokenSaveStatus === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : '',
+                                                    tokenSaveStatus === 'error' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : '',
+                                                    tokenSaveStatus === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800' : '',
+                                                    tokenSaveStatus === 'loading' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' : ''
+                                                ]">
+                                                    <span>{{ tokenSaveMessage }}</span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Live URL & Shortcut Buttons -->
+                                            <div class="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">URL Kiosk Presensi Sekolah:</span>
+                                                    <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Otomatis Terisi Token</span>
+                                                </div>
+                                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        readonly
+                                                        :value="kioskFullUrl"
+                                                        class="flex-1 px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 select-all cursor-text"
+                                                    />
+                                                    <div class="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            @click="copyKioskUrl"
+                                                            :class="[
+                                                                'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer shadow-2xs flex-1 sm:flex-initial',
+                                                                isCopiedKioskUrl
+                                                                    ? 'bg-emerald-600 text-white'
+                                                                    : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                                            ]"
+                                                        >
+                                                            <svg v-if="!isCopiedKioskUrl" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                                            </svg>
+                                                            <svg v-else class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                            <span>{{ isCopiedKioskUrl ? 'Tersalin! ✓' : 'Salin URL' }}</span>
+                                                        </button>
+
+                                                        <!-- Tombol Buka Kiosk dengan Auto-Save -->
+                                                        <button
+                                                            type="button"
+                                                            @click="openKiosk"
+                                                            class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all cursor-pointer shadow-2xs flex-1 sm:flex-initial"
+                                                            title="Buka tampilan Kiosk di tab baru (otomatis menyimpan token)"
+                                                        >
+                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                            </svg>
+                                                            <span>Buka Kiosk</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300">
+                                                <svg class="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span>
+                                                    <strong>Otomatis Tersimpan:</strong> Tombol <em>Buka Kiosk</em> dan <em>Salin URL</em> di atas sudah otomatis menyimpan token ke database sebelum membuka halaman.
+                                                </span>
+                                            </div>
                                         </div>
-                                        <input type="checkbox" v-model="form.attendance_mode_rfid" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
-                                    </label>
+                                    </div>
 
                                     <label class="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
                                         <div>

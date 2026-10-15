@@ -82,6 +82,10 @@ class DashboardController extends Controller
             ]);
         }
 
+        $skorBulanDipilih = HabitLog::where('user_id', $targetUserId)
+            ->whereBetween('tanggal', [$startOfSelectedMonth, $endOfSelectedMonth])
+            ->sum('skor_diperoleh');
+
         // ─── 4. Grafik 6 Bulanan (Semester) ────────────────────────────────────
         $currentMonth = Carbon::now()->month;
         $currentYear  = Carbon::now()->year;
@@ -192,6 +196,7 @@ class DashboardController extends Controller
 
         $daysInMonth = Carbon::now()->daysInMonth;
         $skorMaksimalBulanIni = $skorMaksimalHariIni * $daysInMonth;
+        $skorMaksimalBulanDipilih = $skorMaksimalHariIni * $daysInSelectedMonth;
 
         $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
         $adminTargetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
@@ -367,6 +372,8 @@ class DashboardController extends Controller
             'skorMaksimalHariIni'=> (int) $skorMaksimalHariIni,
             'skorBulanIni'     => (int) $skorBulanIni,
             'skorMaksimalBulanIni'=> (int) $skorMaksimalBulanIni,
+            'skorBulanDipilih' => (int) $skorBulanDipilih,
+            'skorMaksimalBulanDipilih' => (int) $skorMaksimalBulanDipilih,
             'targetSkorMinimal'=> $targetSkorMinimal,
             'targetBulanan'    => $targetBulanan,
             'adminTargetBulanan' => $adminTargetBulanan,

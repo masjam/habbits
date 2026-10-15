@@ -36,6 +36,8 @@ const props = defineProps({
     skorMaksimalHariIni:{ type: Number, default: 100 },
     skorBulanIni:     { type: Number,  default: 0 },
     skorMaksimalBulanIni:{ type: Number, default: 0 },
+    skorBulanDipilih: { type: Number,  default: null },
+    skorMaksimalBulanDipilih: { type: Number, default: null },
     targetSkorMinimal:{ type: Number, default: 0 },
     targetBulanan:    { type: Number, default: 0 },
     adminTargetBulanan: { type: Number, default: 0 },
@@ -89,6 +91,38 @@ const monthNamesOptions = [
     { value: 9, label: 'September' }, { value: 10, label: 'Oktober' },
     { value: 11, label: 'November' }, { value: 12, label: 'Desember' }
 ]
+
+const selectedMonthLabel = computed(() => {
+    const found = monthNamesOptions.find(m => m.value === Number(currentMonth.value))
+    return found ? found.label : ''
+})
+
+const totalSkorBulanDipilih = computed(() => {
+    if (props.skorBulanDipilih !== undefined && props.skorBulanDipilih !== null) {
+        return props.skorBulanDipilih
+    }
+    return (props.dailyChartData || []).reduce((acc, curr) => acc + (Number(curr.skor) || 0), 0)
+})
+
+const skorMaksimalBulanDipilihComputed = computed(() => {
+    if (props.skorMaksimalBulanDipilih) {
+        return props.skorMaksimalBulanDipilih
+    }
+    const days = (props.dailyChartData || []).length || 30
+    return (props.skorMaksimalHariIni || 0) * days
+})
+
+const persentaseBulanDipilih = computed(() => {
+    const max = skorMaksimalBulanDipilihComputed.value
+    if (!max || max <= 0) return 0
+    return Math.round((totalSkorBulanDipilih.value / max) * 100 * 10) / 10
+})
+
+const rataRataSkorHarian = computed(() => {
+    const days = (props.dailyChartData || []).length
+    if (!days) return 0
+    return Math.round((totalSkorBulanDipilih.value / days) * 10) / 10
+})
 
 const yearOptions = computed(() => {
     const current = new Date().getFullYear();
@@ -606,8 +640,8 @@ const formatTanggal = (dateStr) => {
                                             <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalHariIni }} (Harian)</span>
                                         </div>
                                         <div>
-                                            <span class="text-xl font-bold text-blue-500">{{ skorBulanIni }}</span>
-                                            <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalBulanIni }} (Bulanan)</span>
+                                            <span class="text-xl font-bold text-blue-500">{{ totalSkorBulanDipilih }}</span>
+                                            <span class="text-[10px] text-slate-400 ml-1 tracking-wide">/ {{ skorMaksimalBulanDipilihComputed }} ({{ selectedMonthLabel }})</span>
                                         </div>
                                     </div>
                                 </div>
@@ -630,7 +664,12 @@ const formatTanggal = (dateStr) => {
 
                             <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
-                                    <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Rekap Skor Harian</p>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-sm font-bold text-slate-800 dark:text-slate-200">Rekap Skor Harian</p>
+                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 shadow-2xs">
+                                            {{ totalSkorBulanDipilih }} Poin
+                                        </span>
+                                    </div>
                                     <p class="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pilih Bulan & Tahun</p>
                                 </div>
                                 <div class="flex flex-wrap items-center gap-2">
@@ -649,6 +688,37 @@ const formatTanggal = (dateStr) => {
                                     <select v-model="currentYear" @change="changeMonth" class="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                                         <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <!-- Card Ringkasan Skor Bulan Terpilih -->
+                            <div class="mb-3 px-3.5 py-2.5 bg-gradient-to-r from-emerald-50 to-teal-50/60 dark:from-emerald-950/40 dark:to-slate-800 border border-emerald-100 dark:border-emerald-800/60 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                            Total Skor Bulan {{ selectedMonthLabel }} {{ currentYear }}
+                                        </p>
+                                        <div class="flex items-baseline gap-1.5">
+                                            <span class="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                                                {{ totalSkorBulanDipilih }}
+                                            </span>
+                                            <span class="text-xs text-slate-400 font-medium">
+                                                / {{ skorMaksimalBulanDipilihComputed }} Poin
+                                            </span>
+                                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 ml-1">
+                                                {{ persentaseBulanDipilih }}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Rata-rata</span>
+                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ rataRataSkorHarian }} poin/hari</span>
                                 </div>
                             </div>
                             
@@ -671,6 +741,18 @@ const formatTanggal = (dateStr) => {
                                             </td>
                                         </tr>
                                     </tbody>
+                                    <tfoot class="bg-slate-50/95 dark:bg-slate-900/95 sticky bottom-0 z-10 border-t-2 border-slate-200 dark:border-slate-700 shadow-xs backdrop-blur-xs">
+                                        <tr>
+                                            <th class="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                                Total Skor {{ selectedMonthLabel }} {{ currentYear }}
+                                            </th>
+                                            <th class="py-2.5 px-4 text-right">
+                                                <span class="inline-flex items-center justify-center px-2.5 py-1 text-xs font-black rounded-lg bg-emerald-600 text-white shadow-2xs">
+                                                    {{ totalSkorBulanDipilih }} Poin
+                                                </span>
+                                            </th>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                                 <div v-else class="h-full flex items-center justify-center text-sm text-slate-400 dark:text-slate-500 py-10">Tidak ada data</div>
                             </div>

@@ -170,6 +170,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings');
         Route::get('/settings/hr', [\App\Http\Controllers\Admin\SettingController::class, 'hrIndex'])->name('admin.settings.hr');
         Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
+        Route::post('/settings/kiosk-token', [\App\Http\Controllers\Admin\SettingController::class, 'updateKioskToken'])->name('admin.settings.kiosk-token');
     });
 
     // ─── Superadmin Only Routes ─────────────────────────────────────────────
@@ -182,8 +183,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/maintenance/switch-role', [\App\Http\Controllers\System\MaintenanceController::class, 'switchRole'])->name('admin.maintenance.switch-role');
     Route::post('/admin/maintenance/toggle', [\App\Http\Controllers\System\MaintenanceController::class, 'toggle'])->name('admin.maintenance.toggle');
 
-    // Print disposisi (bisa diakses pegawai penerima, pemberi, dan tata usaha)
+    // Print, detail, & update status disposisi (bisa diakses pegawai penerima ybs, pemberi, dan tata usaha)
     Route::get('/tata-usaha/disposisi/{disposisi}/print', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'print'])->name('tata-usaha.disposisi.print');
+    Route::get('/tata-usaha/disposisi/{disposisi}/detail', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'show'])->name('tata-usaha.disposisi.detail');
+    Route::put('/tata-usaha/disposisi/{disposisi}/status', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'updateStatus'])->name('tata-usaha.disposisi.update-status');
 
     // ─── Tata Usaha & Kepala Sekolah Routes ─────────────────────────────────────────────
     Route::middleware('role:tata_usaha|superadmin|kepala_sekolah')->prefix('tata-usaha')->name('tata-usaha.')->group(function () {
@@ -208,7 +211,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/disposisi', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'index'])->name('disposisi.index');
         Route::post('/disposisi', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'store'])->name('disposisi.store');
         Route::put('/disposisi/{disposisi}', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'update'])->name('disposisi.update');
-        Route::put('/disposisi/{disposisi}/status', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'updateStatus'])->name('disposisi.update-status');
         Route::delete('/disposisi/{disposisi}', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'destroy'])->name('disposisi.destroy');
     });
 });
