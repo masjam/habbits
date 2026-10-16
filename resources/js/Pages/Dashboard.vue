@@ -651,9 +651,9 @@ const formatTanggal = (dateStr) => {
                                 <div class="space-y-1.5">
                                     <div class="flex items-center gap-2">
                                         <p class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100">Rekap Skor Harian</p>
-                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 shadow-2xs">
+                                        <!-- <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 shadow-2xs">
                                             {{ totalSkorBulanDipilih }} Poin
-                                        </span>
+                                        </span> -->
                                     </div>
 
                                     <!-- Target Minimal 1 Baris Cantik & Responsif -->
@@ -687,7 +687,7 @@ const formatTanggal = (dateStr) => {
                                         <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1z" />
                                         </svg>
-                                        {{ !showDailyChart ? 'Progres Ibadahku' : 'Lihat Tabel' }}
+                                        {{ !showDailyChart ? 'Grafik' : 'Tabel' }}
                                     </button>
                                     <select v-model="currentMonth" @change="changeMonth" class="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 focus:ring-emerald-500 focus:border-emerald-500">
                                         <option v-for="m in monthNamesOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
