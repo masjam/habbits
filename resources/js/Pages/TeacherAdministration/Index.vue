@@ -664,9 +664,35 @@ const progressPercent = computed(() => {
                             <input
                                 type="text"
                                 v-model="form.grade_level"
-                                placeholder="Misal: Kelas 1, Kelas 4, Umum"
+                                list="createClassesListOptions"
+                                placeholder="Pilih atau ketik misal: Kelas 1, Kelas 2, Umum"
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
                             />
+                            <datalist id="createClassesListOptions">
+                                <option value="Kelas 1" />
+                                <option value="Kelas 2" />
+                                <option value="Kelas 3" />
+                                <option value="Kelas 4" />
+                                <option value="Kelas 5" />
+                                <option value="Kelas 6" />
+                                <option value="Umum" />
+                            </datalist>
+                            <div class="flex items-center gap-1 flex-wrap mt-1.5">
+                                <button
+                                    v-for="c in ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6', 'Umum']"
+                                    :key="c"
+                                    type="button"
+                                    @click="form.grade_level = c"
+                                    :class="[
+                                        'px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer transition-colors',
+                                        form.grade_level === c
+                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-subtle hover:border-emerald-400'
+                                    ]"
+                                >
+                                    {{ c }}
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Mata Pelajaran -->
@@ -805,8 +831,35 @@ const progressPercent = computed(() => {
                             <input
                                 type="text"
                                 v-model="editForm.grade_level"
+                                list="editClassesListOptions"
+                                placeholder="Pilih atau ketik misal: Kelas 1, Kelas 2, Umum"
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
                             />
+                            <datalist id="editClassesListOptions">
+                                <option value="Kelas 1" />
+                                <option value="Kelas 2" />
+                                <option value="Kelas 3" />
+                                <option value="Kelas 4" />
+                                <option value="Kelas 5" />
+                                <option value="Kelas 6" />
+                                <option value="Umum" />
+                            </datalist>
+                            <div class="flex items-center gap-1 flex-wrap mt-1.5">
+                                <button
+                                    v-for="c in ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6', 'Umum']"
+                                    :key="c"
+                                    type="button"
+                                    @click="editForm.grade_level = c"
+                                    :class="[
+                                        'px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer transition-colors',
+                                        editForm.grade_level === c
+                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-subtle hover:border-emerald-400'
+                                    ]"
+                                >
+                                    {{ c }}
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Mata Pelajaran -->
