@@ -32,6 +32,7 @@ const roleLabel = computed(() => {
     if (hasRole('superadmin')) return 'Super Admin'
     if (hasRole('admin'))      return 'Admin'
     if (hasRole('kepala_sekolah')) return 'Kepala Sekolah'
+    if (hasRole('kurikulum'))  return 'Kurikulum'
     if (hasRole('tata_usaha')) return 'Tata Usaha'
     return 'Pegawai'
 })
@@ -452,11 +453,11 @@ const isManajemenUserOpen = ref(
                 </Link>
             </template>
 
-            <!-- Monitoring Guru (Khusus Kepala Sekolah) -->
-            <template v-if="hasRole('kepala_sekolah') && !hasAnyRole(['admin', 'superadmin'])">
+            <!-- Monitoring Guru / Kurikulum (Khusus Kepala Sekolah & Kurikulum) -->
+            <template v-if="(hasRole('kepala_sekolah') || hasRole('kurikulum')) && !hasAnyRole(['admin', 'superadmin'])">
                 <div class="pt-3 pb-1">
                     <p class="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                        Monitoring Guru
+                        {{ hasRole('kurikulum') && !hasRole('kepala_sekolah') ? 'Kurikulum' : 'Monitoring Guru' }}
                     </p>
                 </div>
 
@@ -476,6 +477,7 @@ const isManajemenUserOpen = ref(
                 </Link>
 
                 <Link
+                    v-if="hasRole('kepala_sekolah')"
                     :href="route('admin.teacher-journals.index')"
                     :class="navLinkClass('admin.teacher-journals.index')"
                     @click="closeSidebar"

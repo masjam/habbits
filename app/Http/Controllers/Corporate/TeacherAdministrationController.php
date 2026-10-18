@@ -287,7 +287,7 @@ class TeacherAdministrationController extends Controller
     public function preview(TeacherAdministration $teacherAdministration)
     {
         $user = Auth::user();
-        $canAccess = $teacherAdministration->user_id === $user->id || $user->hasAnyRole(['superadmin', 'admin', 'kepala_sekolah']);
+        $canAccess = $teacherAdministration->user_id === $user->id || $user->hasAnyRole(['superadmin', 'admin', 'kepala_sekolah', 'kurikulum']);
 
         if (!$canAccess) {
             abort(403, 'Anda tidak memiliki akses ke berkas ini.');
@@ -313,7 +313,7 @@ class TeacherAdministrationController extends Controller
     public function download(TeacherAdministration $teacherAdministration)
     {
         $user = Auth::user();
-        $canAccess = $teacherAdministration->user_id === $user->id || $user->hasAnyRole(['superadmin', 'admin', 'kepala_sekolah']);
+        $canAccess = $teacherAdministration->user_id === $user->id || $user->hasAnyRole(['superadmin', 'admin', 'kepala_sekolah', 'kurikulum']);
 
         if (!$canAccess) {
             abort(403, 'Anda tidak memiliki akses ke berkas ini.');

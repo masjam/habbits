@@ -29,9 +29,9 @@ class UserController extends Controller
         $query = User::with(['roles', 'badges'])->orderBy('created_at', 'desc');
 
         if (!$currentUser->hasRole('superadmin')) {
-            // Admin biasa hanya melihat pegawai (role: user)
+            // Admin biasa hanya melihat pegawai (role: user atau kurikulum)
             $query->whereHas('roles', function ($q) {
-                $q->where('name', 'user');
+                $q->whereIn('name', ['user', 'kurikulum']);
             });
         }
 
@@ -102,10 +102,11 @@ class UserController extends Controller
         ];
 
         if ($isSuperadmin) {
-            $rules['role'] = 'required|in:user,admin,superadmin';
+            $rules['role'] = 'required|in:user,admin,superadmin,kurikulum';
             $rules['can_multi_login'] = 'nullable|boolean';
             $rules['is_tata_usaha'] = 'nullable|boolean';
             $rules['is_kepala_sekolah'] = 'nullable|boolean';
+            $rules['is_kurikulum'] = 'nullable|boolean';
         }
 
         $validated = $request->validate($rules);
@@ -140,6 +141,11 @@ class UserController extends Controller
             $rolesToAssign[] = 'kepala_sekolah';
         }
 
+        if ($isSuperadmin && !empty($validated['is_kurikulum'])) {
+            $rolesToAssign[] = 'kurikulum';
+        }
+
+        $rolesToAssign = array_values(array_unique($rolesToAssign));
         $user->syncRoles($rolesToAssign);
 
         return redirect()->route('admin.users.index')
@@ -154,8 +160,8 @@ class UserController extends Controller
         $currentUser = Auth::user();
         $isSuperadmin = $currentUser->hasRole('superadmin');
 
-        // Keamanan: Admin biasa hanya boleh edit role user. Superadmin bebas.
-        if (!$isSuperadmin && !$user->hasRole('user')) {
+        // Keamanan: Admin biasa hanya boleh edit role user / kurikulum. Superadmin bebas.
+        if (!$isSuperadmin && !$user->hasAnyRole(['user', 'kurikulum'])) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengedit pengguna ini.');
         }
 
@@ -180,10 +186,11 @@ class UserController extends Controller
         }
 
         if ($isSuperadmin) {
-            $rules['role'] = 'required|in:user,admin,superadmin';
+            $rules['role'] = 'required|in:user,admin,superadmin,kurikulum';
             $rules['can_multi_login'] = 'nullable|boolean';
             $rules['is_tata_usaha'] = 'nullable|boolean';
             $rules['is_kepala_sekolah'] = 'nullable|boolean';
+            $rules['is_kurikulum'] = 'nullable|boolean';
         }
 
         // Admin & Superadmin sama-sama bisa isi catatan jika fitur Notes aktif
@@ -232,6 +239,10 @@ class UserController extends Controller
             if (!empty($validated['is_kepala_sekolah'])) {
                 $rolesToAssign[] = 'kepala_sekolah';
             }
+            if (!empty($validated['is_kurikulum'])) {
+                $rolesToAssign[] = 'kurikulum';
+            }
+            $rolesToAssign = array_values(array_unique($rolesToAssign));
             $user->syncRoles($rolesToAssign);
         }
 

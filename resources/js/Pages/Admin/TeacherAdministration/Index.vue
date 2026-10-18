@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
@@ -143,6 +143,44 @@ const deleteDocument = (doc) => {
         })
     }
 }
+
+// Preview Modal State
+const showPreviewModal = ref(false)
+const selectedDocForPreview = ref(null)
+
+const openPreviewModal = (doc) => {
+    selectedDocForPreview.value = doc
+    showPreviewModal.value = true
+}
+
+const closePreviewModal = () => {
+    showPreviewModal.value = false
+    selectedDocForPreview.value = null
+}
+
+const isPdf = (fileName) => {
+    if (!fileName) return false
+    return fileName.toLowerCase().endsWith('.pdf')
+}
+
+const isImage = (fileName) => {
+    if (!fileName) return false
+    return /\.(jpe?g|png|webp|gif|svg)$/i.test(fileName)
+}
+
+const handleKeyDown = (e) => {
+    if (e.key === 'Escape' && showPreviewModal.value) {
+        closePreviewModal()
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeyDown)
+})
 
 // Helpers
 const getStatusBadge = (status) => {
@@ -665,17 +703,17 @@ const getFileIconColor = (ext) => {
                                                         </button>
 
                                                         <!-- Tombol Pratinjau -->
-                                                        <a
-                                                            :href="route('teacher-administrations.preview', doc.id)"
-                                                            target="_blank"
-                                                            class="p-1.5 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                        <button
+                                                            type="button"
+                                                            @click="openPreviewModal(doc)"
+                                                            class="p-1.5 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                                             title="Pratinjau Berkas"
                                                         >
                                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                             </svg>
-                                                        </a>
+                                                        </button>
 
                                                         <!-- Tombol Unduh -->
                                                         <a
@@ -820,17 +858,17 @@ const getFileIconColor = (ext) => {
                                                 </button>
 
                                                 <!-- Pratinjau -->
-                                                <a
-                                                    :href="route('teacher-administrations.preview', doc.id)"
-                                                    target="_blank"
+                                                <button
+                                                    type="button"
+                                                    @click="openPreviewModal(doc)"
                                                     title="Pratinjau Berkas"
-                                                    class="p-2 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors"
+                                                    class="p-2 rounded-xl text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                                                 >
                                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
-                                                </a>
+                                                </button>
 
                                                 <!-- Unduh -->
                                                 <a
@@ -1024,13 +1062,13 @@ const getFileIconColor = (ext) => {
                     <div class="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-subtle">
                         <span>{{ selectedDocForReview.file_name }} ({{ selectedDocForReview.formatted_file_size }})</span>
                         <div class="flex items-center gap-2">
-                            <a
-                                :href="route('teacher-administrations.preview', selectedDocForReview.id)"
-                                target="_blank"
-                                class="text-emerald-600 font-bold hover:underline"
+                            <button
+                                type="button"
+                                @click="openPreviewModal(selectedDocForReview)"
+                                class="text-emerald-600 font-bold hover:underline cursor-pointer"
                             >
                                 Pratinjau
-                            </a>
+                            </button>
                             <span>&bull;</span>
                             <a
                                 :href="route('teacher-administrations.download', selectedDocForReview.id)"
@@ -1112,6 +1150,138 @@ const getFileIconColor = (ext) => {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- ── Modal Pratinjau Dokumen (Pop-Up In-Page) ───────────── -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div
+            v-if="showPreviewModal && selectedDocForPreview"
+            class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/75 backdrop-blur-xs overflow-hidden"
+            @click.self="closePreviewModal"
+        >
+            <div class="w-full max-w-5xl h-[90vh] flex flex-col rounded-3xl bg-surface border border-theme shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between px-5 py-4 border-b border-subtle bg-slate-50/70 dark:bg-slate-900/60">
+                    <div class="flex items-center gap-3 min-w-0 pr-4">
+                        <div class="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 truncate max-w-md sm:max-w-xl">
+                                    {{ selectedDocForPreview.title }}
+                                </h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/50">
+                                    {{ selectedDocForPreview.category_label || selectedDocForPreview.category }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                Guru: <span class="font-semibold text-slate-700 dark:text-slate-200">{{ selectedDocForPreview.user?.name || '-' }}</span>
+                                <span v-if="selectedDocForPreview.grade_level" class="ml-2 font-medium text-emerald-600">&bull; {{ selectedDocForPreview.grade_level }}</span>
+                                <span class="ml-2 text-slate-400">&bull; {{ selectedDocForPreview.file_name }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Header Actions -->
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <a
+                            :href="route('teacher-administrations.download', selectedDocForPreview.id)"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800/60 transition-colors"
+                            title="Unduh Berkas Asli"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span class="hidden sm:inline">Unduh</span>
+                        </a>
+
+                        <button
+                            type="button"
+                            @click="closePreviewModal"
+                            class="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Tutup Pratinjau (Esc)"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body: File Viewer -->
+                <div class="flex-1 bg-slate-100 dark:bg-slate-950/80 overflow-hidden relative flex items-center justify-center">
+                    <!-- PDF Viewer -->
+                    <iframe
+                        v-if="isPdf(selectedDocForPreview.file_name)"
+                        :src="route('teacher-administrations.preview', selectedDocForPreview.id)"
+                        class="w-full h-full border-0"
+                        title="PDF Viewer"
+                    ></iframe>
+
+                    <!-- Image Viewer -->
+                    <div
+                        v-else-if="isImage(selectedDocForPreview.file_name)"
+                        class="w-full h-full p-4 overflow-auto flex items-center justify-center"
+                    >
+                        <img
+                            :src="route('teacher-administrations.preview', selectedDocForPreview.id)"
+                            :alt="selectedDocForPreview.title"
+                            class="max-w-full max-h-full object-contain rounded-xl shadow-lg border border-slate-200 dark:border-slate-800"
+                        />
+                    </div>
+
+                    <!-- Non-PDF / Office Documents -->
+                    <div
+                        v-else
+                        class="text-center p-8 max-w-md mx-auto space-y-4"
+                    >
+                        <div class="w-16 h-16 mx-auto rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shadow-inner">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-bold text-slate-800 dark:text-slate-100">
+                                Berkas {{ selectedDocForPreview.file_extension?.toUpperCase() || 'Dokumen' }}
+                            </h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                Berkas dengan format ini (Word/Excel/PowerPoint) tidak dapat dipratinjau langsung di dalam browser tanpa aplikasi Office. Silakan unduh berkas untuk membukanya.
+                            </p>
+                        </div>
+                        <div class="pt-2">
+                            <a
+                                :href="route('teacher-administrations.download', selectedDocForPreview.id)"
+                                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+                            >
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Unduh {{ selectedDocForPreview.file_name }}</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-between px-5 py-3 border-t border-subtle bg-slate-50 dark:bg-slate-900/60 text-xs text-slate-500">
+                    <div class="flex items-center gap-2">
+                        <span>Ukuran: <strong class="text-slate-700 dark:text-slate-300">{{ selectedDocForPreview.formatted_file_size }}</strong></span>
+                        <span>&bull;</span>
+                        <span>Diunggah: <strong class="text-slate-700 dark:text-slate-300">{{ selectedDocForPreview.created_at }}</strong></span>
+                    </div>
+                    <button
+                        type="button"
+                        @click="closePreviewModal"
+                        class="px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                        Tutup
+                    </button>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>

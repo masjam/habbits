@@ -181,8 +181,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/settings/kiosk-token', [\App\Http\Controllers\Admin\SettingController::class, 'updateKioskToken'])->name('admin.settings.kiosk-token');
     });
 
-    // ─── Rekap & Verifikasi Administrasi Guru (Admin, Superadmin, Kepala Sekolah) ───
-    Route::middleware('role:admin|superadmin|kepala_sekolah')->prefix('admin')->group(function () {
+    // ─── Rekap & Verifikasi Administrasi Guru (Admin, Superadmin, Kepala Sekolah, Kurikulum) ───
+    Route::middleware('role:admin|superadmin|kepala_sekolah|kurikulum')->prefix('admin')->group(function () {
         Route::get('/teacher-administrations', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'index'])->name('admin.teacher-administrations.index');
         Route::post('/teacher-administrations/{teacherAdministration}/verify', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'verify'])->name('admin.teacher-administrations.verify');
         Route::delete('/teacher-administrations/{teacherAdministration}', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'destroy'])->name('admin.teacher-administrations.destroy');
