@@ -76,6 +76,7 @@ const form = useForm({
     feature_arsip: props.settings.feature_arsip === '1' || props.settings.feature_arsip === 'true' || props.settings.feature_arsip === undefined,
     feature_kpi: props.settings.feature_kpi === '1' || props.settings.feature_kpi === 'true' || props.settings.feature_kpi === undefined,
     feature_habit: props.settings.feature_habit === '1' || props.settings.feature_habit === 'true' || props.settings.feature_habit === undefined,
+    feature_administrasi_guru: props.settings.feature_administrasi_guru === '1' || props.settings.feature_administrasi_guru === 'true' || props.settings.feature_administrasi_guru === undefined,
     maintenance_mode: props.settings.maintenance_mode === '1' || props.settings.maintenance_mode === 'true',
     maintenance_title: props.settings.maintenance_title || 'Sistem Sedang Dalam Pemeliharaan',
     maintenance_message: props.settings.maintenance_message || 'Kami sedang melakukan pemeliharaan rutin dan peningkatan performa sistem habit tracker. Mohon maaf atas ketidaknyamanan Anda. Sistem akan segera kembali normal.',
@@ -1361,6 +1362,27 @@ const submit = () => {
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
                                     <input type="checkbox" v-model="form.feature_kpi" class="sr-only peer" />
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Administrasi Guru (Perangkat Pembelajaran) -->
+                            <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-10 h-10 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-950/60 flex items-center justify-center text-fuchsia-600 shrink-0 shadow-xs mt-0.5">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Administrasi Guru (Perangkat Ajar)</h4>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                            Guru dapat mengunggah Modul Ajar/RPP, Prota, Promes, ATP, KKTP &amp; Kepala Sekolah/Admin dapat menelaahnya.
+                                        </p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+                                    <input type="checkbox" v-model="form.feature_administrasi_guru" class="sr-only peer" />
                                     <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-fuchsia-600"></div>
                                 </label>
                             </div>

@@ -85,6 +85,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/employee-documents/{employeeDocument}', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'destroy'])->name('employee-documents.destroy');
     Route::patch('/employee-documents/{employeeDocument}/verify', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'verify'])->name('employee-documents.verify')->middleware('role:admin|superadmin');
 
+    // ─── Administrasi Guru (Perangkat Pembelajaran) ───────────────────────────
+    Route::get('/administrasi-guru', [\App\Http\Controllers\Corporate\TeacherAdministrationController::class, 'index'])->name('teacher-administrations.index');
+    Route::post('/administrasi-guru', [\App\Http\Controllers\Corporate\TeacherAdministrationController::class, 'store'])->name('teacher-administrations.store');
+    Route::post('/administrasi-guru/{teacherAdministration}', [\App\Http\Controllers\Corporate\TeacherAdministrationController::class, 'update'])->name('teacher-administrations.update');
+    Route::delete('/administrasi-guru/{teacherAdministration}', [\App\Http\Controllers\Corporate\TeacherAdministrationController::class, 'destroy'])->name('teacher-administrations.destroy');
+    Route::get('/administrasi-guru/{teacherAdministration}/preview', [\App\Http\Controllers\Corporate\TeacherAdministrationController::class, 'preview'])->name('teacher-administrations.preview');
+    Route::get('/administrasi-guru/{teacherAdministration}/download', [\App\Http\Controllers\Corporate\TeacherAdministrationController::class, 'download'])->name('teacher-administrations.download');
+
     // ─── Penilaian Kinerja (KPI) ──────────────────────────────────────────────
     Route::get('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'userIndex'])->name('performance.index');
 
@@ -171,6 +179,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings/hr', [\App\Http\Controllers\Admin\SettingController::class, 'hrIndex'])->name('admin.settings.hr');
         Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
         Route::post('/settings/kiosk-token', [\App\Http\Controllers\Admin\SettingController::class, 'updateKioskToken'])->name('admin.settings.kiosk-token');
+    });
+
+    // ─── Rekap & Verifikasi Administrasi Guru (Admin, Superadmin, Kepala Sekolah) ───
+    Route::middleware('role:admin|superadmin|kepala_sekolah')->prefix('admin')->group(function () {
+        Route::get('/teacher-administrations', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'index'])->name('admin.teacher-administrations.index');
+        Route::post('/teacher-administrations/{teacherAdministration}/verify', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'verify'])->name('admin.teacher-administrations.verify');
+        Route::delete('/teacher-administrations/{teacherAdministration}', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'destroy'])->name('admin.teacher-administrations.destroy');
     });
 
     // ─── Superadmin Only Routes ─────────────────────────────────────────────

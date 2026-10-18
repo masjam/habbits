@@ -60,6 +60,15 @@ return [
             'report' => false,
         ],
 
+        'administrasi_guru' => [
+            'driver' => 'local',
+            'root' => env('ADMINISTRASI_GURU_PATH', storage_path('app/administrasi_guru')),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/administrasi',
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

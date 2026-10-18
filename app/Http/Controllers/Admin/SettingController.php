@@ -130,6 +130,7 @@ class SettingController extends Controller
             $rules['feature_arsip'] = 'boolean';
             $rules['feature_kpi'] = 'boolean';
             $rules['feature_habit'] = 'boolean';
+            $rules['feature_administrasi_guru'] = 'boolean';
             $rules['maintenance_mode'] = 'boolean';
             $rules['maintenance_title'] = 'nullable|string|max:255';
             $rules['maintenance_message'] = 'nullable|string';
