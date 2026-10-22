@@ -6,6 +6,7 @@ import { ref, computed } from 'vue'
 
 const props = defineProps({
     next_nomor: String,
+    current_nomor: String,
     tanggal_masehi: String,
     tanggal_hijriah: String,
     isEdit: { type: Boolean, default: false },
@@ -14,9 +15,12 @@ const props = defineProps({
     users: { type: Array, default: () => [] },
 })
 
+const defaultMode = props.builderData?.nomor_mode || (props.isEdit ? 'manual' : 'otomatis')
+
 const form = useForm({
     jenis_surat: props.builderData?.jenis_surat || 'Umum',
-    nomor_surat: props.builderData?.nomor_surat || props.next_nomor,
+    nomor_mode: defaultMode,
+    nomor_surat: props.builderData?.nomor_surat || props.current_nomor || props.next_nomor || '',
     lampiran: props.builderData?.lampiran || '-',
     perihal: props.builderData?.perihal || 'Surat Edaran',
     tanggal_masehi: props.builderData?.tanggal_masehi || props.tanggal_masehi,
@@ -29,6 +33,25 @@ const form = useForm({
     line_spacing: props.builderData?.line_spacing || '1.15',
     paragraph_indent: props.builderData?.paragraph_indent || '0'
 })
+
+const customNomorDraft = ref(
+    form.nomor_mode === 'manual'
+        ? form.nomor_surat
+        : (props.current_nomor || props.next_nomor || '')
+)
+
+const setNomorMode = (mode) => {
+    form.nomor_mode = mode
+    if (mode === 'otomatis') {
+        form.nomor_surat = props.next_nomor || ''
+    } else {
+        form.nomor_surat = customNomorDraft.value || props.next_nomor || ''
+    }
+}
+
+const onCustomNomorInput = (val) => {
+    customNomorDraft.value = val
+}
 
 const searchPegawai = ref('')
 
@@ -120,6 +143,96 @@ const submit = () => {
                         </div>
                     </div>
 
+                    <!-- Pilihan Penomoran Surat (Otomatis vs Custom Manual) -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800">Penomoran Surat Keluar</label>
+                                <p class="text-xs text-slate-500 mt-0.5">Pilih penomoran otomatis sesuai urutan sistem sekolah atau gunakan nomor custom (manual).</p>
+                            </div>
+                            <div class="inline-flex rounded-lg bg-slate-100 p-1 border border-slate-200 shrink-0">
+                                <button
+                                    type="button"
+                                    @click="setNomorMode('otomatis')"
+                                    :class="form.nomor_mode === 'otomatis' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'"
+                                    class="px-3 py-1.5 rounded-md text-xs transition-all flex items-center gap-1.5"
+                                >
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    <span>Nomor Otomatis</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="setNomorMode('manual')"
+                                    :class="form.nomor_mode === 'manual' ? 'bg-white text-amber-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'"
+                                    class="px-3 py-1.5 rounded-md text-xs transition-all flex items-center gap-1.5"
+                                >
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    <span>Nomor Custom (Manual)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Mode Otomatis View -->
+                        <div v-if="form.nomor_mode === 'otomatis'" class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Nomor Surat Otomatis</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        Otomatis Sistem
+                                    </span>
+                                </div>
+                                <div class="text-base sm:text-lg font-mono font-bold text-emerald-950">
+                                    {{ form.nomor_surat }}
+                                </div>
+                                <p class="text-xs text-emerald-700">
+                                    Nomor dihitung otomatis berdasarkan nomor urut arsip surat keluar tahun {{ new Date().getFullYear() }}.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="setNomorMode('manual')"
+                                class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 bg-white hover:bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs shrink-0"
+                            >
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <span>Ganti ke Nomor Custom</span>
+                            </button>
+                        </div>
+
+                        <!-- Mode Manual View -->
+                        <div v-else class="space-y-2 p-4 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-amber-900 uppercase">Input Nomor Surat Custom (Manual)</label>
+                                <button
+                                    type="button"
+                                    @click="setNomorMode('otomatis')"
+                                    class="text-xs text-amber-700 hover:text-amber-900 font-semibold underline underline-offset-2"
+                                >
+                                    Kembali ke Nomor Otomatis
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    v-model="form.nomor_surat"
+                                    @input="onCustomNomorInput($event.target.value)"
+                                    placeholder="Contoh: 05/Pan.Milad/SDM/X/2026 atau 421.2/100/SDM/2026"
+                                    class="w-full p-2.5 text-sm font-mono border-amber-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 bg-white"
+                                    required
+                                />
+                            </div>
+                            <p v-if="form.errors.nomor_surat" class="text-xs text-rose-500 font-semibold">{{ form.errors.nomor_surat }}</p>
+                            <p class="text-xs text-amber-800">
+                                Format nomor bebas sesuai kebutuhan agenda, kepanitiaan, atau kode klasifikasi khusus. Pastikan nomor belum pernah dipakai sebelumnya.
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Informasi Meta Surat (Hanya untuk Surat Umum) -->
                     <div v-if="form.jenis_surat === 'Umum'" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div>
@@ -140,7 +253,6 @@ const submit = () => {
                         </div>
                         
                         <!-- Hidden Inputs -->
-                        <input type="hidden" v-model="form.nomor_surat">
                         <input type="hidden" v-model="form.tanggal_hijriah">
                         <input type="hidden" v-model="form.tanggal_masehi">
                     </div>
@@ -166,7 +278,6 @@ const submit = () => {
                             <input type="text" v-model="form.pokok_tugas" class="w-full p-2 text-sm border-slate-300 rounded-lg" placeholder="Contoh: Mengikuti Pelatihan Kurikulum Merdeka" required />
                         </div>
                         <!-- Hidden Inputs -->
-                        <input type="hidden" v-model="form.nomor_surat">
                         <input type="hidden" v-model="form.tanggal_hijriah">
                         <input type="hidden" v-model="form.tanggal_masehi">
                     </div>
@@ -175,7 +286,6 @@ const submit = () => {
                         <p class="text-xs text-slate-500">
                             <i>Format Surat Keterangan tidak menggunakan field Hal, Lampiran, dan Kepada Yth. Format ini akan menggunakan judul tengah otomatis.</i>
                         </p>
-                        <input type="hidden" v-model="form.nomor_surat">
                         <input type="hidden" v-model="form.tanggal_hijriah">
                         <input type="hidden" v-model="form.tanggal_masehi">
                     </div>

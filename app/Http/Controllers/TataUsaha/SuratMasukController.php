@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Mews\Purifier\Facades\Purifier;
 
 class SuratMasukController extends Controller
 {
@@ -52,7 +53,7 @@ class SuratMasukController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nomor_surat' => 'required|string|unique:surat_masuk,nomor_surat',
+            'nomor_surat' => ['required','string','unique:surat_masuk,nomor_surat','regex:/^\\d+\\/\\s*III\\.4\\.AU\\/F\\/\\d{4}$/'],
             'tanggal_surat' => 'required|date',
             'tanggal_diterima' => 'required|date',
             'pengirim' => 'required|string',
@@ -66,6 +67,9 @@ class SuratMasukController extends Controller
         if ($request->hasFile('file')) {
             $filePath = $request->file('file')->store('surat_masuk', 'public');
         }
+        // Sanitize free text fields to prevent XSS
+        $validated['pengirim'] = Purifier::clean($validated['pengirim']);
+        $validated['perihal'] = Purifier::clean($validated['perihal']);
 
         SuratMasuk::create([
             'nomor_surat' => $validated['nomor_surat'],
@@ -96,7 +100,7 @@ class SuratMasukController extends Controller
     public function update(Request $request, SuratMasuk $suratMasuk)
     {
         $validated = $request->validate([
-            'nomor_surat' => 'required|string|unique:surat_masuk,nomor_surat,' . $suratMasuk->id,
+            'nomor_surat' => ['required','string','unique:surat_masuk,nomor_surat,' . $suratMasuk->id,'regex:/^\\d+\\/\\s*III\\.4\\.AU\\/F\\/\\d{4}$/'],
             'tanggal_surat' => 'required|date',
             'tanggal_diterima' => 'required|date',
             'pengirim' => 'required|string',
@@ -112,6 +116,9 @@ class SuratMasukController extends Controller
             }
             $validated['file_path'] = $request->file('file')->store('surat_masuk', 'public');
         }
+        // Sanitize free text fields
+        $validated['pengirim'] = Purifier::clean($validated['pengirim']);
+        $validated['perihal'] = Purifier::clean($validated['perihal']);
 
         $suratMasuk->update([
             'nomor_surat' => $validated['nomor_surat'],

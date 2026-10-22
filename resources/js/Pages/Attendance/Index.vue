@@ -646,7 +646,7 @@ onUnmounted(() => {
 
                 <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-5">
                     <div>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2.5 tracking-wide">
+                        <span v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2.5 tracking-wide">
                             <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
                             Presensi GPS &amp; Waktu
                         </span>
@@ -798,8 +798,8 @@ onUnmounted(() => {
 
                         <!-- ── Kondisi B: Presensi Reguler (Masuk & Pulang) ── -->
                         <template v-else>
-                            <!-- Ringkasan Jam Masuk, Pulang, dan Tombol Presensi (3 Kolom) -->
-                            <div class="grid grid-cols-3 gap-1.5 sm:gap-3.5 my-3">
+                            <!-- Ringkasan Jam Masuk, Pulang, dan Tombol Presensi (3 Kolom) - hanya jika GPS aktif -->
+                            <div v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'" class="grid grid-cols-3 gap-1.5 sm:gap-3.5 my-3">
                                 <!-- Kartu Masuk (Kolom 1) -->
                                 <div class="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-card-subtle border border-theme/60 flex flex-col items-center justify-center text-center relative">
                                     <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-full sm:rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center mb-1.5 sm:mb-2">

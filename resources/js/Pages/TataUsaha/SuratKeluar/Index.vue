@@ -6,6 +6,7 @@ import Editor from '@tinymce/tinymce-vue'
 
 const props = defineProps({
     suratKeluar: Object,
+    next_nomor: String,
     filters: Object,
 })
 
@@ -17,6 +18,18 @@ const isKepalaSekolah = computed(() => {
 
 const isModalOpen = ref(false)
 const searchQuery = ref(props.filters?.search || '')
+const modalNomorMode = ref('manual')
+
+const setModalNomorMode = (mode) => {
+    modalNomorMode.value = mode
+    if (mode === 'otomatis') {
+        form.nomor_surat = props.next_nomor || ''
+    } else {
+        if (form.nomor_surat === props.next_nomor) {
+            form.nomor_surat = ''
+        }
+    }
+}
 
 let searchTimeout = null
 watch(searchQuery, (newVal) => {
@@ -37,6 +50,7 @@ const form = useForm({
 const openAddModal = () => {
     form.reset()
     form.clearErrors()
+    modalNomorMode.value = 'manual'
     isModalOpen.value = true
 }
 
@@ -264,8 +278,48 @@ const usePhoto = async () => {
                                 
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-xs font-bold text-slate-500 mb-1">Nomor Surat</label>
-                                        <input type="text" v-model="form.nomor_surat" class="w-full p-2 text-sm border-slate-300 rounded-lg" required />
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <label class="block text-xs font-bold text-slate-700">Nomor Surat</label>
+                                            <div class="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 text-xs">
+                                                <button
+                                                    type="button"
+                                                    @click="setModalNomorMode('otomatis')"
+                                                    :class="modalNomorMode === 'otomatis' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
+                                                    class="px-2.5 py-0.5 rounded-md transition-all flex items-center gap-1"
+                                                >
+                                                    <svg class="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    </svg>
+                                                    <span>Otomatis</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    @click="setModalNomorMode('manual')"
+                                                    :class="modalNomorMode === 'manual' ? 'bg-white text-amber-700 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
+                                                    class="px-2.5 py-0.5 rounded-md transition-all flex items-center gap-1"
+                                                >
+                                                    <svg class="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    <span>Manual (Custom)</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="modalNomorMode === 'otomatis'" class="flex items-center justify-between p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-lg">
+                                            <span class="text-sm font-mono font-bold text-emerald-950">{{ form.nomor_surat || props.next_nomor }}</span>
+                                            <span class="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                                                Auto Urutan
+                                            </span>
+                                        </div>
+                                        <input
+                                            v-else
+                                            type="text"
+                                            v-model="form.nomor_surat"
+                                            placeholder="Contoh: 05/ III.4.AU/F/2026 atau nomor custom..."
+                                            class="w-full p-2 text-sm font-mono border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                                            required
+                                        />
                                         <p v-if="form.errors.nomor_surat" class="text-xs text-rose-500 mt-1">{{ form.errors.nomor_surat }}</p>
                                     </div>
                                     <div>
