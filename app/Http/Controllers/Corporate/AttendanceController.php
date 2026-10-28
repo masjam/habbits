@@ -37,11 +37,12 @@ class AttendanceController extends Controller
             ->orderBy('date', 'desc')
             ->get();
 
-        // Statistik bulanan
+        // Statistik bulanan (hanya dihitung presensi jika absen datang dan pulang)
+        $validAttendances = $monthlyAttendances->filter(fn($a) => !empty($a->time_in) && !empty($a->time_out));
         $stats = [
-            'total_hadir' => $monthlyAttendances->where('status', 'hadir')->count(),
-            'total_terlambat' => $monthlyAttendances->where('status', 'terlambat')->count(),
-            'total_dinas_luar' => $monthlyAttendances->where('status', 'dinas_luar')->count(),
+            'total_hadir'      => $validAttendances->where('status', 'hadir')->count(),
+            'total_terlambat'  => $validAttendances->where('status', 'terlambat')->count(),
+            'total_dinas_luar' => $validAttendances->where('status', 'dinas_luar')->count(),
             'total_izin_sakit' => $monthlyAttendances->whereIn('status', ['izin', 'sakit'])->count(),
         ];
 
@@ -302,14 +303,24 @@ class AttendanceController extends Controller
         $user = Auth::user();
         $request->validate([
             'date'       => 'required|date',
-            'status'     => 'required|in:izin,sakit',
+            'status'     => 'required|in:izin,sakit,pulang_cepat,dinas_luar',
+            'time_out'   => 'nullable|string',
             'notes'      => 'required|string|max:1000',
             'attachment' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
         ]);
 
+        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $schedule = $user->getEffectiveWorkSchedule($request->date);
+        $workStart = !empty($schedule['work_start']) ? $schedule['work_start'] : ($settings['presensi_work_start'] ?? '07:00');
+        $workEnd = !empty($schedule['work_end']) ? $schedule['work_end'] : ($settings['presensi_work_end'] ?? '15:00');
+
         $existing = Attendance::where('user_id', $user->id)->where('date', $request->date)->first();
-        if ($existing && ($existing->time_in || $existing->time_out) && !in_array($existing->status, ['izin', 'sakit'])) {
-            return redirect()->back()->with('error', 'Anda sudah tercatat melakukan presensi kehadiran pada tanggal tersebut.');
+
+        // Validasi presensi yang sudah ada khusus untuk izin/sakit murni
+        if (in_array($request->status, ['izin', 'sakit'])) {
+            if ($existing && ($existing->time_in || $existing->time_out) && !in_array($existing->status, ['izin', 'sakit'])) {
+                return redirect()->back()->with('error', 'Anda sudah tercatat melakukan presensi kehadiran pada tanggal tersebut.');
+            }
         }
 
         $attachmentPath = null;
@@ -319,6 +330,105 @@ class AttendanceController extends Controller
             $attachmentPath = $existing->attachment;
         }
 
+        $formattedDate = Carbon::parse($request->date)->locale('id')->isoFormat('D MMMM Y');
+
+        // 1. PENGAJUAN DINAS LUAR (Catat dinas luar sebagai pulang 30 menit setelah jam kerja selesai)
+        if ($request->status === 'dinas_luar') {
+            $workEndCarbon = Carbon::parse($request->date . ' ' . $workEnd);
+            // Otomatis catat pulang 30 menit setelah jam kerja selesai
+            $timeOut = $workEndCarbon->copy()->addMinutes(30)->format('H:i:s');
+
+            // Pertahankan time_in jika sudah ada, atau catat sesuai jam mulai kerja agar lengkap datang & pulang
+            $timeIn = $existing?->time_in ?? (strlen($workStart) === 5 ? $workStart . ':00' : $workStart);
+
+            $dinasNotes = "Dinas Luar: " . $request->notes;
+            $combinedNotes = $existing?->notes ? ($existing->notes . ' | ' . $dinasNotes) : $dinasNotes;
+
+            Attendance::updateOrCreate(
+                ['user_id' => $user->id, 'date' => $request->date],
+                [
+                    'time_in'         => $timeIn,
+                    'time_out'        => $timeOut,
+                    'status'          => 'dinas_luar',
+                    'approval_status' => 'pending',
+                    'approval_type'   => 'dinas_luar',
+                    'notes'           => $combinedNotes,
+                    'attachment'      => $attachmentPath,
+                    'rejection_note'  => null,
+                ]
+            );
+
+            $outFormatted = substr($timeOut, 0, 5);
+            return redirect()->back()->with('success', "Permohonan Dinas Luar tanggal {$formattedDate} berhasil dicatat. Jam pulang otomatis dicatat pukul {$outFormatted} (30 menit setelah jam kerja selesai).");
+        }
+
+        // 2. PENGAJUAN IZIN PULANG CEPAT (Hanya bisa diajukan sebelum jam kerja selesai)
+        if ($request->status === 'pulang_cepat') {
+            $todayStr = Carbon::today()->format('Y-m-d');
+            $workEndCarbon = Carbon::parse($request->date . ' ' . $workEnd);
+            $workEndFormatted = substr($workEnd, 0, 5);
+            $now = Carbon::now();
+
+            // Kunci 1: Tidak bisa diajukan untuk tanggal lampau
+            if ($request->date < $todayStr) {
+                return redirect()->back()->with('error', "Izin pulang cepat tidak dapat diajukan untuk tanggal yang sudah lewat.");
+            }
+
+            // Kunci 2: Untuk hari ini, hanya bisa diajukan sebelum jam kerja selesai
+            if ($request->date === $todayStr) {
+                if ($now->greaterThanOrEqualTo($workEndCarbon)) {
+                    return redirect()->back()->with('error', "Izin pulang cepat hanya dapat diajukan sebelum jam kerja selesai (sebelum pukul {$workEndFormatted}). Jam kerja hari ini telah selesai, silakan lakukan presensi pulang biasa.");
+                }
+            }
+
+            // Kunci 3: Jika sudah pernah absen pulang biasa, tidak bisa mengajukan pulang cepat
+            if ($existing && $existing->time_out && !$existing->is_early_departure) {
+                return redirect()->back()->with('error', "Anda sudah tercatat melakukan presensi kepulangan pada tanggal ini.");
+            }
+
+            $requestedOut = $request->input('time_out');
+            if (!empty($requestedOut)) {
+                $timeOut = strlen($requestedOut) === 5 ? $requestedOut . ':00' : Carbon::parse($requestedOut)->format('H:i:s');
+            } else {
+                $timeOut = ($request->date === $todayStr)
+                    ? $now->format('H:i:s')
+                    : Carbon::parse($request->date . ' ' . $workEnd)->subMinutes(60)->format('H:i:s');
+            }
+
+            // Kunci 4: Jam rencana pulang yang diajukan harus sebelum jam kerja selesai
+            $timeOutCarbon = Carbon::parse($request->date . ' ' . $timeOut);
+            if ($timeOutCarbon->greaterThanOrEqualTo($workEndCarbon)) {
+                $outDisplay = substr($timeOut, 0, 5);
+                return redirect()->back()->with('error', "Jam rencana pulang cepat ({$outDisplay}) harus sebelum jam kerja selesai (pukul {$workEndFormatted}).");
+            }
+
+            $timeIn = $existing?->time_in ?? (strlen($workStart) === 5 ? $workStart . ':00' : $workStart);
+            $currentStatus = ($existing?->status && in_array($existing->status, ['hadir', 'terlambat', 'dinas_luar'])) ? $existing->status : 'hadir';
+
+            $earlyNotes = "Izin Pulang Cepat: " . $request->notes;
+            $combinedNotes = $existing?->notes ? ($existing->notes . ' | ' . $earlyNotes) : $earlyNotes;
+
+            Attendance::updateOrCreate(
+                ['user_id' => $user->id, 'date' => $request->date],
+                [
+                    'time_in'                => $timeIn,
+                    'time_out'               => $timeOut,
+                    'status'                 => $currentStatus,
+                    'is_early_departure'     => true,
+                    'early_departure_reason' => $request->notes,
+                    'approval_status'        => 'pending',
+                    'approval_type'          => 'pulang_mendahului',
+                    'notes'                  => $combinedNotes,
+                    'attachment'             => $attachmentPath,
+                    'rejection_note'         => null,
+                ]
+            );
+
+            $outFormatted = substr($timeOut, 0, 5);
+            return redirect()->back()->with('success', "Permohonan Izin Pulang Cepat (pukul {$outFormatted}) untuk tanggal {$formattedDate} berhasil diajukan dan menunggu persetujuan Admin.");
+        }
+
+        // 3. PENGAJUAN IZIN / SAKIT BIASA
         Attendance::updateOrCreate(
             ['user_id' => $user->id, 'date' => $request->date],
             [
@@ -331,9 +441,7 @@ class AttendanceController extends Controller
             ]
         );
 
-        $formattedDate = Carbon::parse($request->date)->locale('id')->isoFormat('D MMMM Y');
         $label = $request->status === 'izin' ? 'Izin' : 'Sakit';
-
         return redirect()->back()->with('success', "Permohonan {$label} untuk tanggal {$formattedDate} berhasil diajukan dan menunggu persetujuan Admin.");
     }
 

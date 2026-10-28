@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Corporate;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\TeacherAdministration;
+use App\Services\AcademicYearService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -13,25 +14,9 @@ use Inertia\Inertia;
 
 class TeacherAdministrationController extends Controller
 {
-    /**
-     * Hitung tahun ajaran & semester saat ini berdasarkan tanggal kalender.
-     */
-    private function getCurrentAcademicPeriod(): array
-    {
-        $now = now();
-        $year = $now->year;
-        $month = $now->month;
-
-        if ($month >= 7) {
-            $academicYear = $year . '/' . ($year + 1);
-            $semester = 'ganjil';
-        } else {
-            $academicYear = ($year - 1) . '/' . $year;
-            $semester = 'genap';
-        }
-
-        return [$academicYear, $semester];
-    }
+    public function __construct(
+        protected AcademicYearService $academicYearService
+    ) {}
 
     /**
      * Tampilkan halaman daftar berkas administrasi guru (sisi Guru).
@@ -44,12 +29,17 @@ class TeacherAdministrationController extends Controller
         }
 
         $user = Auth::user();
-        [$currentAcademicYear, $currentSemester] = $this->getCurrentAcademicPeriod();
+        $currentAcademicYear = $this->academicYearService->getActiveYear();
+        $currentSemester = $this->academicYearService->getActiveSemester();
 
         $selectedYear = $request->input('academic_year', $currentAcademicYear);
         $selectedSemester = $request->input('semester', $currentSemester);
         $selectedCategory = $request->input('category');
         $selectedStatus = $request->input('status');
+
+        $yearsList = $this->academicYearService->getAcademicYears();
+        $archivedYears = $this->academicYearService->getArchivedYears();
+        $isYearArchived = $this->academicYearService->isArchived($selectedYear);
 
         $query = TeacherAdministration::query()
             ->where('user_id', $user->id)
@@ -104,17 +94,6 @@ class TeacherAdministrationController extends Controller
             'completed_count' => count(array_intersect($mandatoryCategories, $uploadedCategories)),
         ];
 
-        // Opsi pilihan tahun ajaran
-        $yearsList = [
-            '2024/2025',
-            '2025/2026',
-            '2026/2027',
-            '2027/2028',
-        ];
-        if (!in_array($currentAcademicYear, $yearsList)) {
-            $yearsList[] = $currentAcademicYear;
-        }
-
         return Inertia::render('TeacherAdministration/Index', [
             'documents'           => $documents,
             'filters'             => [
@@ -125,6 +104,8 @@ class TeacherAdministrationController extends Controller
             ],
             'categories'          => TeacherAdministration::CATEGORIES,
             'yearsList'           => $yearsList,
+            'archivedYears'       => $archivedYears,
+            'isYearArchived'      => $isYearArchived,
             'currentAcademicYear' => $currentAcademicYear,
             'currentSemester'     => $currentSemester,
             'stats'               => $stats,
@@ -140,6 +121,12 @@ class TeacherAdministrationController extends Controller
         $featureEnabled = Setting::where('key', 'feature_administrasi_guru')->value('value') ?? '1';
         if ($featureEnabled === '0' || $featureEnabled === 'false') {
             abort(403, 'Fitur Administrasi Guru dinonaktifkan.');
+        }
+
+        if ($this->academicYearService->isArchived($request->academic_year)) {
+            return redirect()->back()->withErrors([
+                'academic_year' => "Tahun ajaran {$request->academic_year} telah diarsipkan dan berstatus hanya-baca (read-only). Dokumen baru tidak dapat ditambahkan."
+            ]);
         }
 
         $validated = $request->validate([
@@ -208,6 +195,12 @@ class TeacherAdministrationController extends Controller
             abort(403, 'Anda tidak memiliki hak untuk mengubah berkas ini.');
         }
 
+        if ($this->academicYearService->isArchived($teacherAdministration->academic_year)) {
+            return redirect()->back()->withErrors([
+                'error' => "Berkas pada tahun ajaran {$teacherAdministration->academic_year} telah diarsipkan dan berstatus hanya-baca (read-only)."
+            ]);
+        }
+
         $validated = $request->validate([
             'grade_level'   => 'nullable|string|max:50',
             'subject'       => 'nullable|string|max:100',
@@ -270,6 +263,12 @@ class TeacherAdministrationController extends Controller
         $user = Auth::user();
         if ($teacherAdministration->user_id !== $user->id && !$user->hasAnyRole(['superadmin', 'admin'])) {
             abort(403, 'Anda tidak memiliki hak untuk menghapus berkas ini.');
+        }
+
+        if ($this->academicYearService->isArchived($teacherAdministration->academic_year)) {
+            return redirect()->back()->withErrors([
+                'error' => "Berkas pada tahun ajaran {$teacherAdministration->academic_year} telah diarsipkan dan tidak dapat dihapus."
+            ]);
         }
 
         if (Storage::disk('administrasi_guru')->exists($teacherAdministration->file_path)) {

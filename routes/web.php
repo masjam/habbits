@@ -179,6 +179,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings/hr', [\App\Http\Controllers\Admin\SettingController::class, 'hrIndex'])->name('admin.settings.hr');
         Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
         Route::post('/settings/kiosk-token', [\App\Http\Controllers\Admin\SettingController::class, 'updateKioskToken'])->name('admin.settings.kiosk-token');
+
+        // Pengaturan Tahun Ajaran & Pengarsipan Administrasi Guru
+        Route::post('/academic-years', [\App\Http\Controllers\Admin\AcademicYearController::class, 'store'])->name('admin.academic-years.store');
+        Route::post('/academic-years/set-active', [\App\Http\Controllers\Admin\AcademicYearController::class, 'setActive'])->name('admin.academic-years.set-active');
+        Route::post('/academic-years/toggle-archive', [\App\Http\Controllers\Admin\AcademicYearController::class, 'toggleArchive'])->name('admin.academic-years.toggle-archive');
+        Route::delete('/academic-years/{year}', [\App\Http\Controllers\Admin\AcademicYearController::class, 'destroy'])->name('admin.academic-years.destroy');
+        Route::get('/academic-years/{year}/export-archive', [\App\Http\Controllers\Admin\AcademicYearController::class, 'exportArchive'])->name('admin.academic-years.export-archive');
     });
 
     // ─── Rekap & Verifikasi Administrasi Guru (Admin, Superadmin, Kepala Sekolah, Kurikulum) ───
@@ -186,6 +193,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/teacher-administrations', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'index'])->name('admin.teacher-administrations.index');
         Route::post('/teacher-administrations/{teacherAdministration}/verify', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'verify'])->name('admin.teacher-administrations.verify');
         Route::delete('/teacher-administrations/{teacherAdministration}', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'destroy'])->name('admin.teacher-administrations.destroy');
+        Route::get('/teacher-administrations/archive/{year}/download', [\App\Http\Controllers\Admin\AcademicYearController::class, 'exportArchive'])->name('admin.teacher-administrations.export-archive');
     });
 
     // ─── Superadmin Only Routes ─────────────────────────────────────────────

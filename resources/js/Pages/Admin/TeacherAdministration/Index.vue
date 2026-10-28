@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Head, router, useForm } from '@inertiajs/vue3'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
@@ -47,6 +47,18 @@ const props = defineProps({
     yearsList: {
         type: Array,
         default: () => []
+    },
+    archivedYears: {
+        type: Array,
+        default: () => []
+    },
+    isYearArchived: {
+        type: Boolean,
+        default: false
+    },
+    academicYearSummary: {
+        type: Object,
+        default: () => ({})
     },
     currentAcademicYear: {
         type: String,
@@ -106,6 +118,15 @@ const resetFilters = () => {
     filterStatus.value = 'all'
     searchQuery.value = ''
     applyFilters()
+}
+
+const handleDownloadZip = (year) => {
+    const targetYear = year || filterYear.value
+    if (!targetYear || targetYear === 'all') {
+        alert('Silakan pilih tahun ajaran terlebih dahulu untuk mengunduh arsip ZIP.')
+        return
+    }
+    window.location.href = route('admin.teacher-administrations.export-archive', { year: encodeURIComponent(targetYear) })
 }
 
 // Review / Telaah Modal
@@ -241,31 +262,97 @@ const getFileIconColor = (ext) => {
                         </p>
                     </div>
 
-                    <!-- Navigation Tabs -->
-                    <div class="inline-flex p-1.5 rounded-2xl bg-black/25 backdrop-blur-md border border-white/10 self-start md:self-center shrink-0">
+                    <!-- Navigation Tabs & Quick Actions -->
+                    <div class="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+                        <div class="inline-flex p-1.5 rounded-2xl bg-black/25 backdrop-blur-md border border-white/10">
+                            <button
+                                @click="activeTab = 'list'"
+                                :class="[
+                                    'px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                                    activeTab === 'list'
+                                        ? 'bg-white text-emerald-900 shadow-sm'
+                                        : 'text-white/80 hover:text-white'
+                                ]"
+                            >
+                                Daftar Pengajuan
+                            </button>
+                            <button
+                                @click="activeTab = 'matrix'"
+                                :class="[
+                                    'px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                                    activeTab === 'matrix'
+                                        ? 'bg-white text-emerald-900 shadow-sm'
+                                        : 'text-white/80 hover:text-white'
+                                ]"
+                            >
+                                Matriks Kelengkapan
+                            </button>
+                        </div>
+
+                        <!-- Quick Archive ZIP Download -->
                         <button
-                            @click="activeTab = 'list'"
-                            :class="[
-                                'px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
-                                activeTab === 'list'
-                                    ? 'bg-white text-emerald-900 shadow-sm'
-                                    : 'text-white/80 hover:text-white'
-                            ]"
+                            v-if="filterYear !== 'all'"
+                            type="button"
+                            @click="handleDownloadZip(filterYear)"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                            :title="`Unduh seluruh berkas administrasi guru tahun ${filterYear} dalam format ZIP`"
                         >
-                            Daftar Pengajuan
+                            <svg class="w-4 h-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Unduh ZIP ({{ filterYear }})</span>
                         </button>
-                        <button
-                            @click="activeTab = 'matrix'"
-                            :class="[
-                                'px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
-                                activeTab === 'matrix'
-                                    ? 'bg-white text-emerald-900 shadow-sm'
-                                    : 'text-white/80 hover:text-white'
-                            ]"
+
+                        <!-- Setting Tahun Ajaran Link -->
+                        <Link
+                            :href="route('admin.settings')"
+                            class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/10 text-white font-bold text-xs transition-all cursor-pointer"
+                            title="Buka Pengaturan Tahun Ajaran & Pengarsipan"
                         >
-                            Matriks Kelengkapan
-                        </button>
+                            <svg class="w-4 h-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>Pengaturan</span>
+                        </Link>
                     </div>
+                </div>
+            </div>
+
+            <!-- ── Banner Status Arsip untuk Tahun Terpilih ─────── -->
+            <div
+                v-if="filterYear !== 'all' && (isYearArchived || archivedYears.includes(filterYear))"
+                class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 md:p-5 rounded-3xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 shadow-xs"
+            >
+                <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-600 dark:text-amber-300 shrink-0 text-xl">
+                        📦
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">Tahun Ajaran {{ filterYear }} Sedang Diarsipkan</h3>
+                        <p class="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                            Seluruh berkas guru pada periode ini berstatus hanya-baca (read-only). Guru tidak dapat menambah atau merevisi berkas baru.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
+                    <button
+                        type="button"
+                        @click="handleDownloadZip(filterYear)"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Unduh Arsip ZIP</span>
+                    </button>
+                    <Link
+                        :href="route('admin.settings')"
+                        class="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200 font-bold text-xs hover:bg-amber-100/50 transition-colors"
+                    >
+                        Kelola
+                    </Link>
                 </div>
             </div>
 
@@ -318,7 +405,9 @@ const getFileIconColor = (ext) => {
                             class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
                         >
                             <option value="all">Semua Tahun</option>
-                            <option v-for="yr in yearsList" :key="yr" :value="yr">{{ yr }}</option>
+                            <option v-for="yr in yearsList" :key="yr" :value="yr">
+                                {{ yr }} {{ archivedYears.includes(yr) ? '(📦 Diarsipkan)' : '' }} {{ yr === currentAcademicYear ? '(⭐ Aktif)' : '' }}
+                            </option>
                         </select>
                     </div>
 

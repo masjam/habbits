@@ -422,22 +422,76 @@ const checkOutForm = useForm({
     dinas_luar_notes: '',
 })
 
-// ─── Pengajuan Izin / Sakit Pegawai ─────────────────────────────────────────
+// ─── Pengajuan Izin / Sakit / Pulang Cepat / Dinas Luar ──────────────────
 const isPermitModalOpen = ref(false)
 const selectedPermitDetail = ref(null)
 
 const permitForm = useForm({
-    status: 'izin', // 'izin' | 'sakit'
+    status: 'izin', // 'izin' | 'sakit' | 'pulang_cepat' | 'dinas_luar'
     date: new Date().toISOString().split('T')[0],
+    time_out: '',
     notes: '',
     attachment: null,
 })
 
-const openPermitModal = (type = 'izin') => {
+const isEarlyDepartureLocked = computed(() => {
+    const todayStr = props.serverDate || new Date().toISOString().split('T')[0]
+    // Tanggal lampau selalu terkunci untuk pulang cepat
+    if (permitForm.date < todayStr) {
+        return true
+    }
+    // Jika hari ini, periksa apakah jam sekarang sudah melewati jam kerja pulang
+    if (permitForm.date === todayStr) {
+        return !isBeforeWorkEnd.value
+    }
+    // Tanggal mendatang diperbolehkan
+    return false
+})
+
+// Jika izin pulang cepat terkunci dan sedang dipilih, alihkan otomatis ke izin biasa
+watch(isEarlyDepartureLocked, (locked) => {
+    if (locked && permitForm.status === 'pulang_cepat') {
+        permitForm.status = 'izin'
+    }
+})
+
+watch(() => permitForm.date, () => {
+    if (isEarlyDepartureLocked.value && permitForm.status === 'pulang_cepat') {
+        permitForm.status = 'izin'
+    }
+})
+
+const getDinasLuarTimeOutPreview = () => {
+    const workEnd = props.schedule?.work_end || '15:00'
+    const parts = workEnd.split(':').map(Number)
+    const hours = parts[0] || 15
+    const minutes = parts[1] || 0
+    let totalMinutes = hours * 60 + minutes + 30
+    let outHours = Math.floor(totalMinutes / 60) % 24
+    let outMinutes = totalMinutes % 60
+    return `${String(outHours).padStart(2, '0')}:${String(outMinutes).padStart(2, '0')} WIB`
+}
+
+const openPermitModal = (type = null) => {
+    const todayStr = props.serverDate || new Date().toISOString().split('T')[0]
+    permitForm.date = todayStr
+
+    if (!type) {
+        if (props.todayAttendance?.time_in && !props.todayAttendance?.time_out && isBeforeWorkEnd.value) {
+            type = 'pulang_cepat'
+        } else {
+            type = 'izin'
+        }
+    }
+
+    if (type === 'pulang_cepat' && isEarlyDepartureLocked.value) {
+        type = 'izin'
+    }
     permitForm.status = type
-    permitForm.date = new Date().toISOString().split('T')[0]
+    permitForm.time_out = currentTime.value ? currentTime.value.substring(0, 5) : '12:00'
     permitForm.notes = ''
     permitForm.attachment = null
+    permitForm.clearErrors()
     isPermitModalOpen.value = true
 }
 
@@ -447,8 +501,23 @@ const handlePermitFileChange = (e) => {
 
 const submitPermitForm = () => {
     if (!permitForm.notes.trim()) {
-        alert('Silakan tuliskan alasan/keterangan izin atau sakit.')
+        alert('Silakan tuliskan alasan/keterangan pengajuan.')
         return
+    }
+    if (permitForm.status === 'pulang_cepat') {
+        if (isEarlyDepartureLocked.value) {
+            alert(`Izin pulang cepat hanya bisa diajukan sebelum jam kerja selesai (sebelum pukul ${props.schedule?.work_end || '15:00'}). Jam kerja hari ini telah selesai, silakan lakukan presensi pulang biasa.`)
+            return
+        }
+        if (!permitForm.time_out) {
+            alert('Silakan tentukan jam rencana pulang mendahului.')
+            return
+        }
+        const workEnd = (props.schedule?.work_end || '15:00').substring(0, 5)
+        if (permitForm.time_out >= workEnd) {
+            alert(`Jam rencana pulang cepat (${permitForm.time_out}) harus sebelum jam kerja selesai (${workEnd}).`)
+            return
+        }
     }
     permitForm.post(route('attendance.store-permit'), {
         preserveScroll: true,
@@ -676,53 +745,85 @@ onUnmounted(() => {
 
                 <!-- ── KOLOM KIRI (7 Kolom): Status Presensi Hari Ini + Rekap 4 Statistik Terpadu ── -->
                 <div :class="($page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true') ? 'lg:col-span-7' : 'lg:col-span-12'" class="space-y-4 sm:space-y-6">
-                    <div class="bg-sidebar rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-theme shadow-xs flex flex-col justify-between">
+                    <div class="bg-sidebar rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-theme shadow-xs space-y-4">
                         
-                        <!-- Header Status Hari Ini -->
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-2 sm:pb-3.5 border-b border-subtle gap-2">
-                            <div>
-                                <h2 class="text-sm sm:text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                    <span>Status Presensi Hari Ini</span>
-                                </h2>
-                                <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5">
-                                    Jadwal: {{ schedule?.work_start }} - {{ schedule?.work_end }}
-                                    <span v-if="schedule?.is_piket" class="text-amber-600 dark:text-amber-400 font-bold ml-1">({{ schedule?.piket_name || 'Petugas Piket' }})</span>
-                                </p>
-                            </div>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <!-- Tombol Buka Modal Ajukan Izin / Sakit -->
-                                <button 
-                                    type="button" 
-                                    @click="openPermitModal('izin')" 
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-all cursor-pointer shadow-2xs active:scale-95"
-                                >
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <span>Ajukan Izin / Sakit</span>
-                                </button>
+                        <!-- ── Baris Terpadu: Status Presensi Hari Ini & Rekap Bulan Ini dalam 1 Baris ── -->
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <!-- Sisi Kiri: Status Presensi Hari Ini + Tombol Ajukan Izin + Badge Status -->
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 justify-between lg:justify-start flex-shrink-0">
+                                <div>
+                                    <h2 class="text-sm sm:text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                        <span>Status Presensi Hari Ini</span>
+                                    </h2>
+                                    <p class="text-[10px] sm:text-xs text-slate-400 mt-0.5">
+                                        Jadwal: {{ schedule?.work_start }} - {{ schedule?.work_end }}
+                                        <span v-if="schedule?.is_piket" class="text-amber-600 dark:text-amber-400 font-bold ml-1">({{ schedule?.piket_name || 'Petugas Piket' }})</span>
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <!-- Satu-Satunya Tombol Pengajuan Izin / Dinas / Sakit / Pulang Cepat -->
+                                    <button 
+                                        type="button" 
+                                        @click="openPermitModal()" 
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-all cursor-pointer shadow-2xs active:scale-95"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span>Ajukan Izin / Dinas</span>
+                                    </button>
 
-                                <!-- Status Badge Hari Ini -->
-                                <span 
-                                    v-if="todayAttendance" 
-                                    :class="[
-                                        'text-xs font-black uppercase px-3 py-1 rounded-full',
-                                        todayAttendance.status === 'hadir' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' :
-                                        todayAttendance.status === 'terlambat' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
-                                        todayAttendance.status === 'dinas_luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
-                                        'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
-                                    ]"
-                                >
-                                    {{ todayAttendance.status }}
-                                </span>
-                                <span v-else class="text-xs font-bold uppercase px-3 py-1 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                    Belum Presensi
-                                </span>
+                                    <!-- Status Badge Hari Ini -->
+                                    <span 
+                                        v-if="todayAttendance" 
+                                        :class="[
+                                            'text-xs font-black uppercase px-3 py-1 rounded-full',
+                                            todayAttendance.status === 'hadir' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                                            todayAttendance.status === 'terlambat' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
+                                            todayAttendance.status === 'dinas_luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
+                                            'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
+                                        ]"
+                                    >
+                                        {{ todayAttendance.status }}
+                                    </span>
+                                    <span v-else class="text-xs font-bold uppercase px-3 py-1 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                        Belum Presensi
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Divider Vertikal di Layar Desktop -->
+                            <div class="hidden lg:block h-9 w-px bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+                            <!-- Sisi Kanan: Rekap Bulan Ini (4 Statistik Sejajar) -->
+                            <div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-wrap">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:flex items-center gap-1 flex-shrink-0">
+                                    <span>Rekap:</span>
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{{ selectedMonth }}</span>
+                                </div>
+                                <div class="grid grid-cols-4 gap-1.5 sm:gap-2 flex-1 sm:flex-initial">
+                                    <div class="px-2.5 py-1.5 sm:px-3 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center min-w-[65px] sm:min-w-[72px]">
+                                        <p class="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Tepat</p>
+                                        <p class="text-xs sm:text-sm font-black text-emerald-600 leading-none">{{ stats?.total_hadir || 0 }}</p>
+                                    </div>
+                                    <div class="px-2.5 py-1.5 sm:px-3 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center min-w-[65px] sm:min-w-[72px]">
+                                        <p class="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Telat</p>
+                                        <p class="text-xs sm:text-sm font-black text-amber-600 leading-none">{{ stats?.total_terlambat || 0 }}</p>
+                                    </div>
+                                    <div class="px-2.5 py-1.5 sm:px-3 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center min-w-[65px] sm:min-w-[72px]">
+                                        <p class="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Dinas</p>
+                                        <p class="text-xs sm:text-sm font-black text-blue-600 leading-none">{{ stats?.total_dinas_luar || 0 }}</p>
+                                    </div>
+                                    <div class="px-2.5 py-1.5 sm:px-3 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center min-w-[65px] sm:min-w-[72px]">
+                                        <p class="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Izin/Skt</p>
+                                        <p class="text-xs sm:text-sm font-black text-purple-600 leading-none">{{ stats?.total_izin_sakit || 0 }}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- ── Kondisi A: Hari Ini Mengajukan Izin / Sakit ── -->
-                        <div v-if="todayAttendance && ['izin', 'sakit'].includes(todayAttendance.status)" class="my-4 p-4.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/50 space-y-3">
+                        <!-- ── Kondisi A: Hari Ini Mengajukan Izin / Sakit (Jika Ada) ── -->
+                        <div v-if="todayAttendance && ['izin', 'sakit'].includes(todayAttendance.status)" class="p-4.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-900/50 space-y-3">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <span class="text-xl">{{ todayAttendance.status === 'sakit' ? '🏥' : '📋' }}</span>
@@ -798,8 +899,8 @@ onUnmounted(() => {
 
                         <!-- ── Kondisi B: Presensi Reguler (Masuk & Pulang) ── -->
                         <template v-else>
-                            <!-- Ringkasan Jam Masuk, Pulang, dan Tombol Presensi (3 Kolom) - hanya jika GPS aktif -->
-                            <div v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'" class="grid grid-cols-3 gap-1.5 sm:gap-3.5 my-3">
+                            <!-- Ringkasan Jam Masuk, Pulang, dan Tombol Presensi (Hanya Ditampilkan Saat Mode Presensi GPS Aktif) -->
+                            <div v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'" class="grid grid-cols-3 gap-1.5 sm:gap-3.5 pt-3 border-t border-subtle">
                                 <!-- Kartu Masuk (Kolom 1) -->
                                 <div class="p-2 sm:p-4 rounded-xl sm:rounded-2xl bg-card-subtle border border-theme/60 flex flex-col items-center justify-center text-center relative">
                                     <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-full sm:rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center mb-1.5 sm:mb-2">
@@ -813,6 +914,9 @@ onUnmounted(() => {
                                     </p>
                                     <div v-if="todayAttendance?.distance_in !== null && todayAttendance?.distance_in !== undefined" class="text-[9px] sm:text-xs font-bold text-emerald-600">
                                         {{ todayAttendance.distance_in }}m
+                                    </div>
+                                    <div v-else-if="todayAttendance?.time_in" class="text-[9px] sm:text-[10px] text-slate-400">
+                                        Tercatat
                                     </div>
                                 </div>
 
@@ -830,6 +934,9 @@ onUnmounted(() => {
                                     <div v-if="todayAttendance?.distance_out !== null && todayAttendance?.distance_out !== undefined" class="text-[9px] sm:text-xs font-bold text-rose-600">
                                         {{ todayAttendance.distance_out }}m
                                     </div>
+                                    <div v-else-if="todayAttendance?.time_out" class="text-[9px] sm:text-[10px] text-slate-400">
+                                        Tercatat
+                                    </div>
                                     <div v-if="todayAttendance?.is_early_departure" class="px-1.5 py-0.5 mt-0.5 rounded text-[8px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200">
                                         Awal
                                     </div>
@@ -838,14 +945,14 @@ onUnmounted(() => {
                                     </div>
                                 </div>
 
-                                <!-- Kolom 3: Tombol Presensi -->
-                                <div class="flex flex-col h-full" v-if="$page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true'">
+                                <!-- Kolom 3: Tombol Presensi GPS -->
+                                <div class="flex flex-col h-full">
                                     <template v-if="!todayAttendance || !todayAttendance.time_in">
                                         <button
                                             type="button"
                                             @click="openCameraModal('checkin')"
                                             :disabled="isGpsLoading"
-                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center"
+                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center cursor-pointer"
                                         >
                                             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -859,7 +966,7 @@ onUnmounted(() => {
                                             type="button"
                                             @click="openCameraModal('checkout')"
                                             :disabled="isGpsLoading"
-                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center"
+                                            class="h-full w-full rounded-xl sm:rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] sm:text-sm shadow-md flex flex-col items-center justify-center p-2 gap-1.5 sm:gap-2 transition-all active:scale-[0.98] disabled:opacity-50 leading-tight text-center cursor-pointer"
                                         >
                                             <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -871,23 +978,6 @@ onUnmounted(() => {
                                         </button>
                                     </template>
                                 </div>
-                                <div v-else class="flex flex-col h-full justify-center items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-                                    <svg class="w-6 h-6 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
-                                    <span class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase">Hanya Info</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Tombol Izin (Hanya Jika Belum Presensi Sama Sekali) -->
-                            <div v-if="!todayAttendance || !todayAttendance.time_in" class="mb-3">
-                                <button
-                                    type="button"
-                                    @click="openPermitModal('izin')"
-                                    class="w-full py-2.5 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-bold text-[10px] sm:text-xs hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                    <span>📋 Berhalangan hadir? Klik untuk ajukan Izin/Sakit</span>
-                                </button>
                             </div>
 
                             <!-- Alert Pulang Mendahului Status (Jika ada) -->
@@ -909,32 +999,6 @@ onUnmounted(() => {
                                 </div>
                             </div>
                         </template>
-
-                        <!-- ── Rekap Akumulasi Bulanan (Disatukan di Card Ini) ── -->
-                        <div class="pt-3 border-t border-subtle">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rekap Bulan Ini</span>
-                                <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">{{ selectedMonth }}</span>
-                            </div>
-                            <div class="grid grid-cols-4 gap-1.5 sm:gap-2.5">
-                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
-                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Tepat<br class="sm:hidden" /> Waktu</p>
-                                    <p class="text-sm sm:text-lg font-black text-emerald-600 leading-none">{{ stats?.total_hadir || 0 }}</p>
-                                </div>
-                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
-                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5"><span class="sm:hidden">Telat</span><span class="hidden sm:inline">Terlambat</span></p>
-                                    <p class="text-sm sm:text-lg font-black text-amber-600 leading-none">{{ stats?.total_terlambat || 0 }}</p>
-                                </div>
-                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
-                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Dinas<br class="sm:hidden" /> Luar</p>
-                                    <p class="text-sm sm:text-lg font-black text-blue-600 leading-none">{{ stats?.total_dinas_luar || 0 }}</p>
-                                </div>
-                                <div class="p-1.5 sm:p-2.5 bg-card-subtle rounded-xl border border-theme/60 text-center flex flex-col justify-center">
-                                    <p class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tight leading-tight mb-0.5">Izin /<br class="sm:hidden" /> Sakit</p>
-                                    <p class="text-sm sm:text-lg font-black text-purple-600 leading-none">{{ stats?.total_izin_sakit || 0 }}</p>
-                                </div>
-                            </div>
-                        </div>
 
                     </div>
                 </div>
@@ -1639,9 +1703,9 @@ onUnmounted(() => {
                         </div>
                         <div>
                             <h3 class="text-base font-black text-slate-800 dark:text-slate-100">
-                                Formulir Pengajuan Izin &amp; Sakit
+                                Formulir Pengajuan Izin, Cuti &amp; Tugas
                             </h3>
-                            <p class="text-xs text-slate-400">Kirim permohonan ketidakhadiran kerja</p>
+                            <p class="text-xs text-slate-400">Kirim permohonan izin, sakit, dinas luar, atau pulang cepat</p>
                         </div>
                     </div>
                     <button
@@ -1658,17 +1722,18 @@ onUnmounted(() => {
                 <form @submit.prevent="submitPermitForm">
                     <!-- Modal Body -->
                     <div class="p-5 space-y-4">
-                        <!-- Pilihan Jenis: Izin / Sakit -->
+                        <!-- Pilihan Jenis: Izin / Sakit / Pulang Cepat / Dinas Luar -->
                         <div class="space-y-1.5">
                             <label class="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                                 Jenis Permohonan <span class="text-rose-500">*</span>
                             </label>
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <!-- 1. Izin -->
                                 <label
                                     :class="[
-                                        'p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center gap-3',
+                                        'p-3 rounded-2xl border cursor-pointer transition-all flex items-center gap-2.5',
                                         permitForm.status === 'izin'
-                                            ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 shadow-xs'
+                                            ? 'border-purple-500 bg-purple-50/70 dark:bg-purple-950/50 text-purple-950 dark:text-purple-100 shadow-xs ring-1 ring-purple-500/50'
                                             : 'border-theme bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                     ]"
                                 >
@@ -1680,15 +1745,16 @@ onUnmounted(() => {
                                     />
                                     <div>
                                         <span class="text-xs font-black block">📋 Izin</span>
-                                        <span class="text-[10px] opacity-75">Keperluan pribadi / dinas</span>
+                                        <span class="text-[10px] opacity-75">Keperluan pribadi</span>
                                     </div>
                                 </label>
 
+                                <!-- 2. Sakit -->
                                 <label
                                     :class="[
-                                        'p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center gap-3',
+                                        'p-3 rounded-2xl border cursor-pointer transition-all flex items-center gap-2.5',
                                         permitForm.status === 'sakit'
-                                            ? 'border-rose-500 bg-rose-50/60 dark:bg-rose-950/40 text-rose-950 dark:text-rose-100 shadow-xs'
+                                            ? 'border-rose-500 bg-rose-50/70 dark:bg-rose-950/50 text-rose-950 dark:text-rose-100 shadow-xs ring-1 ring-rose-500/50'
                                             : 'border-theme bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                                     ]"
                                 >
@@ -1703,20 +1769,114 @@ onUnmounted(() => {
                                         <span class="text-[10px] opacity-75">Kurang sehat / rawat</span>
                                     </div>
                                 </label>
+
+                                <!-- 3. Izin Pulang Cepat -->
+                                <label
+                                    :class="[
+                                        'p-3 rounded-2xl border transition-all flex items-center gap-2.5 relative',
+                                        isEarlyDepartureLocked
+                                            ? 'border-dashed border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-60'
+                                            : permitForm.status === 'pulang_cepat'
+                                                ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/50 text-amber-950 dark:text-amber-100 shadow-xs ring-1 ring-amber-500/50 cursor-pointer'
+                                                : 'border-theme bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
+                                    ]"
+                                    :title="isEarlyDepartureLocked ? 'Izin pulang cepat hanya dapat diajukan sebelum jam kerja selesai' : ''"
+                                >
+                                    <input
+                                        type="radio"
+                                        value="pulang_cepat"
+                                        v-model="permitForm.status"
+                                        :disabled="isEarlyDepartureLocked"
+                                        class="text-amber-600 focus:ring-amber-500 w-4 h-4 disabled:opacity-40"
+                                    />
+                                    <div>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-xs font-black block">🏃 Pulang Cepat</span>
+                                            <span v-if="isEarlyDepartureLocked" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
+                                                🔒 Terkunci
+                                            </span>
+                                        </div>
+                                        <span class="text-[10px] opacity-75">
+                                            {{ isEarlyDepartureLocked ? 'Jam kerja telah selesai' : 'Mendahului jadwal pulang' }}
+                                        </span>
+                                    </div>
+                                </label>
+                                <!-- 4. Dinas Luar -->
+                                <label
+                                    :class="[
+                                        'p-3 rounded-2xl border cursor-pointer transition-all flex items-center gap-2.5',
+                                        permitForm.status === 'dinas_luar'
+                                            ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/50 text-blue-950 dark:text-blue-100 shadow-xs ring-1 ring-blue-500/50'
+                                            : 'border-theme bg-card-subtle text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                    ]"
+                                >
+                                    <input
+                                        type="radio"
+                                        value="dinas_luar"
+                                        v-model="permitForm.status"
+                                        class="text-blue-600 focus:ring-blue-500 w-4 h-4"
+                                    />
+                                    <div>
+                                        <span class="text-xs font-black block">🚗 Dinas Luar</span>
+                                        <span class="text-[10px] opacity-75">Tugas / dinas luar kantor</span>
+                                    </div>
+                                </label>
                             </div>
                         </div>
 
-                        <!-- Pilihan Tanggal -->
-                        <div class="space-y-1.5">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                                Tanggal Izin / Sakit <span class="text-rose-500">*</span>
-                            </label>
-                            <input
-                                type="date"
-                                v-model="permitForm.date"
-                                class="w-full text-xs font-bold rounded-xl border border-theme bg-card-subtle p-2.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 cursor-pointer"
-                                required
-                            />
+                        <!-- Info Otomatisasi Pulang Dinas Luar (Khusus Dinas Luar) -->
+                        <div v-if="permitForm.status === 'dinas_luar'" class="p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex items-start gap-3">
+                            <span class="text-lg">🚗</span>
+                            <div class="text-xs text-blue-900 dark:text-blue-200">
+                                <p class="font-bold">Otomatisasi Presensi Pulang Dinas Luar</p>
+                                <p class="text-[11px] opacity-85 mt-0.5 leading-relaxed">
+                                    Presensi kepulangan dinas luar akan <strong>otomatis dicatat 30 menit setelah jam kerja selesai</strong> (pukul <strong>{{ getDinasLuarTimeOutPreview() }}</strong>).
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Info Peringatan Terkunci Pulang Cepat -->
+                        <div v-if="isEarlyDepartureLocked && permitForm.date === (serverDate || new Date().toISOString().split('T')[0])" class="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 flex items-center gap-2 text-[11px] text-amber-800 dark:text-amber-300">
+                            <span>ℹ️</span>
+                            <span>Izin pulang cepat untuk hari ini terkunci karena jam kerja resmi telah selesai (pukul <strong>{{ schedule?.work_end || '15:00' }}</strong>). Silakan lakukan presensi kepulangan normal.</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Pilihan Tanggal -->
+                            <div class="space-y-1.5" :class="{ 'sm:col-span-2': permitForm.status !== 'pulang_cepat' }">
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                                    <span v-if="permitForm.status === 'pulang_cepat'">Tanggal Pulang Cepat</span>
+                                    <span v-else-if="permitForm.status === 'dinas_luar'">Tanggal Dinas Luar</span>
+                                    <span v-else-if="permitForm.status === 'sakit'">Tanggal Sakit</span>
+                                    <span v-else>Tanggal Izin</span>
+                                    <span class="text-rose-500"> *</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    v-model="permitForm.date"
+                                    class="w-full text-xs font-bold rounded-xl border border-theme bg-card-subtle p-2.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                    required
+                                />
+                            </div>
+
+                            <!-- Pilihan Jam Pulang (Khusus Pulang Cepat) -->
+                            <div v-if="permitForm.status === 'pulang_cepat'" class="space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                                        Jam Pulang Mendahului <span class="text-rose-500">*</span>
+                                    </label>
+                                    <span class="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                                        Maks. sebelum {{ schedule?.work_end || '15:00' }}
+                                    </span>
+                                </div>
+                                <input
+                                    type="time"
+                                    v-model="permitForm.time_out"
+                                    :max="schedule?.work_end ? schedule.work_end.substring(0, 5) : '15:00'"
+                                    class="w-full text-xs font-bold rounded-xl border border-theme bg-card-subtle p-2.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-amber-500 cursor-pointer font-mono"
+                                    required
+                                />
+                            </div>
                         </div>
 
                         <!-- Keterangan Alasan -->
@@ -1727,17 +1887,25 @@ onUnmounted(() => {
                             <textarea
                                 v-model="permitForm.notes"
                                 rows="3"
-                                placeholder="Jelaskan alasan izin atau kondisi kesehatan Anda secara jelas..."
+                                :placeholder="
+                                    permitForm.status === 'pulang_cepat' 
+                                        ? 'Tuliskan alasan mendesak mengapa harus pulang lebih cepat...' 
+                                        : (permitForm.status === 'dinas_luar' 
+                                            ? 'Tuliskan rincian tugas dinas luar, instansi/tempat tujuan, dan kegiatan...' 
+                                            : 'Jelaskan alasan izin atau kondisi kesehatan Anda secara jelas...')
+                                "
                                 class="w-full text-xs rounded-xl border border-theme bg-card-subtle p-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                                 required
                             ></textarea>
                             <p v-if="permitForm.errors.notes" class="text-[10px] text-rose-500">{{ permitForm.errors.notes }}</p>
                         </div>
 
-                        <!-- Upload File Lampiran / Surat Dokter -->
+                        <!-- Upload File Lampiran / Surat Dokter / Surat Tugas -->
                         <div class="space-y-1.5">
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                                Unggah Dokumen / Surat Dokter (Opsional)
+                                <span v-if="permitForm.status === 'dinas_luar'">Unggah Surat Tugas / Bukti Kegiatan (Opsional)</span>
+                                <span v-else-if="permitForm.status === 'sakit'">Unggah Surat Dokter / Bukti Sakit (Opsional)</span>
+                                <span v-else>Unggah Dokumen / Bukti Pendukung (Opsional)</span>
                             </label>
                             <input
                                 type="file"
@@ -1745,7 +1913,7 @@ onUnmounted(() => {
                                 accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
                                 class="w-full text-xs rounded-xl border border-theme bg-card-subtle p-2 text-slate-800 dark:text-slate-100 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-100 file:text-purple-700 dark:file:bg-purple-950 dark:file:text-purple-300 hover:file:bg-purple-200 cursor-pointer"
                             />
-                            <p class="text-[10px] text-slate-400">Format: JPG, PNG, PDF (Maksimal 5MB). Lampirkan surat dokter jika sakit.</p>
+                            <p class="text-[10px] text-slate-400">Format: JPG, PNG, PDF, DOC (Maksimal 5MB).</p>
                             <p v-if="permitForm.errors.attachment" class="text-[10px] text-rose-500">{{ permitForm.errors.attachment }}</p>
                         </div>
                     </div>
@@ -1762,9 +1930,19 @@ onUnmounted(() => {
                         <button
                             type="submit"
                             :disabled="permitForm.processing || !permitForm.notes.trim()"
-                            class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                            :class="[
+                                'px-5 py-2.5 rounded-xl text-white font-black text-xs sm:text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer',
+                                permitForm.status === 'dinas_luar' ? 'bg-blue-600 hover:bg-blue-700' :
+                                permitForm.status === 'pulang_cepat' ? 'bg-amber-600 hover:bg-amber-700' :
+                                permitForm.status === 'sakit' ? 'bg-rose-600 hover:bg-rose-700' :
+                                'bg-purple-600 hover:bg-purple-700'
+                            ]"
                         >
-                            {{ permitForm.processing ? 'Mengirim...' : 'Kirim Permohonan' }}
+                            {{ permitForm.processing ? 'Mengirim...' : (
+                                permitForm.status === 'dinas_luar' ? '🚗 Ajukan Dinas Luar' :
+                                permitForm.status === 'pulang_cepat' ? '🏃 Ajukan Pulang Cepat' :
+                                'Kirim Permohonan'
+                            ) }}
                         </button>
                     </div>
                 </form>

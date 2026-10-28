@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\TeacherAdministration;
 use App\Models\User;
+use App\Services\AcademicYearService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -13,29 +14,17 @@ use Inertia\Inertia;
 
 class TeacherAdministrationReviewController extends Controller
 {
-    private function getCurrentAcademicPeriod(): array
-    {
-        $now = now();
-        $year = $now->year;
-        $month = $now->month;
-
-        if ($month >= 7) {
-            $academicYear = $year . '/' . ($year + 1);
-            $semester = 'ganjil';
-        } else {
-            $academicYear = ($year - 1) . '/' . $year;
-            $semester = 'genap';
-        }
-
-        return [$academicYear, $semester];
-    }
+    public function __construct(
+        protected AcademicYearService $academicYearService
+    ) {}
 
     /**
      * Tampilkan rekap administrasi guru & matriks kelengkapan berkas untuk Admin & Kepala Sekolah.
      */
     public function index(Request $request)
     {
-        [$currentAcademicYear, $currentSemester] = $this->getCurrentAcademicPeriod();
+        $currentAcademicYear = $this->academicYearService->getActiveYear();
+        $currentSemester = $this->academicYearService->getActiveSemester();
 
         $selectedYear = $request->input('academic_year', $currentAcademicYear);
         $selectedSemester = $request->input('semester', $currentSemester);
@@ -260,15 +249,10 @@ class TeacherAdministrationReviewController extends Controller
             'total_menunggu'     => $allPeriodDocs->where('status', 'menunggu_verifikasi')->count(),
         ];
 
-        $yearsList = [
-            '2024/2025',
-            '2025/2026',
-            '2026/2027',
-            '2027/2028',
-        ];
-        if (!in_array($currentAcademicYear, $yearsList)) {
-            $yearsList[] = $currentAcademicYear;
-        }
+        $yearsList = $this->academicYearService->getAcademicYears();
+        $archivedYears = $this->academicYearService->getArchivedYears();
+        $isYearArchived = $this->academicYearService->isArchived($selectedYear);
+        $academicYearSummary = $this->academicYearService->getAdminSummary();
 
         return Inertia::render('Admin/TeacherAdministration/Index', [
             'documents'           => $documents,
@@ -282,6 +266,9 @@ class TeacherAdministrationReviewController extends Controller
             'totalAllPending'     => $totalAllPending,
             'stats'               => $stats,
             'yearsList'           => $yearsList,
+            'archivedYears'       => $archivedYears,
+            'isYearArchived'      => $isYearArchived,
+            'academicYearSummary' => $academicYearSummary,
             'currentAcademicYear' => $currentAcademicYear,
             'currentSemester'     => $currentSemester,
             'filters'             => [

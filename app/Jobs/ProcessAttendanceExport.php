@@ -184,9 +184,14 @@ class ProcessAttendanceExport implements ShouldQueue
                 $att = $userAtts->get($dateKey);
 
                 if ($att) {
-                    if ($att->status === 'hadir') $hadirCount++;
-                    elseif ($att->status === 'terlambat') $terlambatCount++;
-                    elseif ($att->status === 'dinas_luar') $dinasLuarCount++;
+                    $hasBothTimes = !empty($att->time_in) && !empty($att->time_out);
+
+                    // Pegawai HANYA dihitung presensi jika absen datang (time_in) DAN pulang (time_out)
+                    if ($hasBothTimes) {
+                        if ($att->status === 'hadir') $hadirCount++;
+                        elseif ($att->status === 'terlambat') $terlambatCount++;
+                        elseif ($att->status === 'dinas_luar') $dinasLuarCount++;
+                    }
 
                     $daySchedule = $u->getEffectiveWorkSchedule($dateKey);
                     $isPulangCepat = false;
@@ -200,7 +205,7 @@ class ProcessAttendanceExport implements ShouldQueue
                     }
                     
                     $isPureOntime = false;
-                    if (in_array($att->status, ['hadir', 'dinas_luar']) && $att->time_in && !empty($daySchedule['work_start'])) {
+                    if ($hasBothTimes && in_array($att->status, ['hadir', 'dinas_luar']) && $att->time_in && !empty($daySchedule['work_start'])) {
                         $inTime = substr($att->time_in, 0, 5);
                         $startTime = substr($daySchedule['work_start'], 0, 5);
                         if ($inTime <= $startTime) {
@@ -213,6 +218,7 @@ class ProcessAttendanceExport implements ShouldQueue
                         'time_in'         => $att->time_in ? substr($att->time_in, 0, 5) : null,
                         'time_out'        => $att->time_out ? substr($att->time_out, 0, 5) : null,
                         'status'          => $att->status,
+                        'is_complete'     => $hasBothTimes,
                         'is_pulang_cepat' => $isPulangCepat,
                         'is_pure_ontime'  => $isPureOntime,
                     ];

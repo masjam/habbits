@@ -35,19 +35,74 @@ class EmployeeDocumentController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $query = EmployeeDocument::with('user')->latest();
-        
-        // Filter opsional: status verifikasi
-        if ($request->has('status') && $request->status !== 'all') {
-            $isVerified = $request->status === 'verified';
+        $status = $request->input('status', 'all');
+        $search = $request->input('search');
+
+        $query = EmployeeDocument::with('user:id,name,nip,divisi')->latest();
+
+        // Filter status verifikasi
+        if ($status && $status !== 'all') {
+            $isVerified = ($status === 'verified');
             $query->where('is_verified', $isVerified);
         }
 
-        $documents = $query->paginate(15)->withQueryString();
+        // Filter pencarian teks
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('document_type', 'like', "%{$search}%")
+                  ->orWhere('document_number', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($uq) use ($search) {
+                      $uq->where('name', 'like', "%{$search}%")
+                         ->orWhere('nip', 'like', "%{$search}%")
+                         ->orWhere('divisi', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $allDocs = (clone $query)->get();
+
+        // Grouping dokumen berdasarkan pegawai
+        $groupedByUser = $allDocs->groupBy('user_id');
+        $groupedEmployees = [];
+
+        foreach ($groupedByUser as $userId => $docs) {
+            $empUser = $docs->first()->user;
+            if (!$empUser) continue;
+
+            $groupedEmployees[] = [
+                'user_id'          => $empUser->id,
+                'name'             => $empUser->name,
+                'nip'              => $empUser->nip,
+                'divisi'           => $empUser->divisi,
+                'total_docs'       => $docs->count(),
+                'verified_count'   => $docs->where('is_verified', true)->count(),
+                'unverified_count' => $docs->where('is_verified', false)->count(),
+                'documents'        => $docs->values(),
+            ];
+        }
+
+        // Urutkan nama pegawai secara alfabetis
+        usort($groupedEmployees, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        // Statistik dokumen sistem
+        $stats = [
+            'total_all'      => EmployeeDocument::count(),
+            'total_verified' => EmployeeDocument::where('is_verified', true)->count(),
+            'total_pending'  => EmployeeDocument::where('is_verified', false)->count(),
+            'total_employees'=> EmployeeDocument::distinct()->pluck('user_id')->count(),
+        ];
+
+        $documents = $query->paginate(20)->withQueryString();
 
         return Inertia::render('Admin/Documents/Index', [
-            'documents' => $documents,
-            'filters' => $request->only(['status'])
+            'documents'        => $documents,
+            'groupedEmployees' => $groupedEmployees,
+            'stats'            => $stats,
+            'filters'          => [
+                'status' => $status,
+                'search' => $search,
+            ]
         ]);
     }
     /**

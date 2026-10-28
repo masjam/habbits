@@ -90,8 +90,13 @@ class AttendanceReportController extends Controller
                 $workdaysCount++;
             }
 
-            // Hitung total hadir di tanggal tersebut
-            $dayAtts = $monthlyAttendances->filter(fn($a) => $formatDate($a->date) === $targetDateStr);
+            // Hitung total hadir di tanggal tersebut (hanya jika absen datang DAN pulang)
+            $dayAtts = $monthlyAttendances->filter(function($a) use ($formatDate, $targetDateStr) {
+                return $formatDate($a->date) === $targetDateStr
+                    && in_array($a->status, ['hadir', 'terlambat', 'dinas_luar'])
+                    && !empty($a->time_in)
+                    && !empty($a->time_out);
+            });
             $daysList[] = [
                 'day'         => $d,
                 'date'        => $targetDateStr,
@@ -122,9 +127,14 @@ class AttendanceReportController extends Controller
                 $att = $userAtts->get($dateKey);
 
                 if ($att) {
-                    if ($att->status === 'hadir') $hadirCount++;
-                    elseif ($att->status === 'terlambat') $terlambatCount++;
-                    elseif ($att->status === 'dinas_luar') $dinasLuarCount++;
+                    // Pegawai HANYA dihitung presensi jika absen datang (time_in) DAN pulang (time_out)
+                    $hasBothTimes = !empty($att->time_in) && !empty($att->time_out);
+
+                    if ($hasBothTimes) {
+                        if ($att->status === 'hadir') $hadirCount++;
+                        elseif ($att->status === 'terlambat') $terlambatCount++;
+                        elseif ($att->status === 'dinas_luar') $dinasLuarCount++;
+                    }
 
                     // Cek pulang mendahului / pulang cepat jika ada time_out dan jadwal work_end
                     $daySchedule = $u->getEffectiveWorkSchedule($dateKey);
@@ -139,7 +149,7 @@ class AttendanceReportController extends Controller
                     }
                     
                     $isPureOntime = false;
-                    if (in_array($att->status, ['hadir', 'dinas_luar']) && $att->time_in && !empty($daySchedule['work_start'])) {
+                    if ($hasBothTimes && in_array($att->status, ['hadir', 'dinas_luar']) && $att->time_in && !empty($daySchedule['work_start'])) {
                         $inTime = substr($att->time_in, 0, 5);
                         $startTime = substr($daySchedule['work_start'], 0, 5);
                         if ($inTime <= $startTime) {
@@ -154,6 +164,7 @@ class AttendanceReportController extends Controller
                         'time_in'                => $att->time_in ? substr($att->time_in, 0, 5) : null,
                         'time_out'               => $att->time_out ? substr($att->time_out, 0, 5) : null,
                         'status'                 => $att->status,
+                        'is_complete'            => $hasBothTimes,
                         'is_pulang_cepat'        => $isPulangCepat,
                         'is_pure_ontime'         => $isPureOntime,
                         'is_early_departure'     => (bool) ($att->is_early_departure || $isPulangCepat),
@@ -215,6 +226,9 @@ class AttendanceReportController extends Controller
             $att = $dailyAttendances->get($u->id);
             $schedule = $u->getEffectiveWorkSchedule($selectedDate);
 
+            // Cek kelengkapan presensi datang dan pulang
+            $hasBothTimes = !empty($att?->time_in) && !empty($att?->time_out);
+
             $isPulangCepat = false;
             if ($att?->time_out && !empty($schedule['work_end'])) {
                 $outTime = substr($att->time_out, 0, 5);
@@ -225,7 +239,7 @@ class AttendanceReportController extends Controller
             }
             
             $isPureOntime = false;
-            if (in_array($att?->status, ['hadir', 'dinas_luar']) && $att?->time_in && !empty($schedule['work_start'])) {
+            if ($hasBothTimes && in_array($att?->status, ['hadir', 'dinas_luar']) && $att?->time_in && !empty($schedule['work_start'])) {
                 $inTime = substr($att->time_in, 0, 5);
                 $startTime = substr($schedule['work_start'], 0, 5);
                 if ($inTime <= $startTime) {
@@ -254,6 +268,7 @@ class AttendanceReportController extends Controller
                 'lat_out'                => $att?->lat_out,
                 'lng_out'                => $att?->lng_out,
                 'status'                 => $att ? $att->status : 'belum_hadir',
+                'is_complete'            => $hasBothTimes,
                 'is_pulang_cepat'        => $isPulangCepat,
                 'is_pure_ontime'         => $isPureOntime,
                 'is_early_departure'     => (bool) ($att?->is_early_departure || $isPulangCepat),
@@ -277,36 +292,45 @@ class AttendanceReportController extends Controller
         if ($statusFilter) {
             if ($statusFilter === 'pending') {
                 $dailyReportData = $dailyReportData->where('approval_status', 'pending')->values();
+            } elseif ($statusFilter === 'belum_lengkap') {
+                $dailyReportData = $dailyReportData->where('is_complete', false)->whereIn('status', ['hadir', 'terlambat', 'dinas_luar'])->values();
             } else {
                 $dailyReportData = $dailyReportData->where('status', $statusFilter)->values();
             }
         }
 
-        // Statistik Bulanan
+        // Statistik Bulanan (Hanya hitung hadir/terlambat/dinas_luar yang lengkap datang dan pulang)
         $totalUsers = $allUsers->count();
         $avgAttendanceRate = $totalUsers > 0 ? round($monthlyReportData->avg('attendance_rate')) : 0;
+        $validMonthlyAttendances = $monthlyAttendances->filter(fn($a) => !empty($a->time_in) && !empty($a->time_out));
+
         $monthlyStats = [
             'total_pegawai'              => $totalUsers,
             'avg_attendance_rate'        => $avgAttendanceRate,
-            'total_hadir_sebulan'        => $monthlyAttendances->where('status', 'hadir')->count(),
-            'total_terlambat_sebulan'    => $monthlyAttendances->where('status', 'terlambat')->count(),
-            'total_dinas_luar_sebulan'   => $monthlyAttendances->where('status', 'dinas_luar')->count(),
+            'total_hadir_sebulan'        => $validMonthlyAttendances->where('status', 'hadir')->count(),
+            'total_terlambat_sebulan'    => $validMonthlyAttendances->where('status', 'terlambat')->count(),
+            'total_dinas_luar_sebulan'   => $validMonthlyAttendances->where('status', 'dinas_luar')->count(),
             'total_izin_sakit_sebulan'   => $monthlyAttendances->whereIn('status', ['izin', 'sakit'])->count(),
             'total_pulang_cepat_sebulan' => $monthlyReportData->sum('total_pulang_cepat'),
             'total_pending_approval'     => $monthlyAttendances->where('approval_status', 'pending')->count(),
+            'total_belum_lengkap'        => $monthlyAttendances->filter(fn($a) => in_array($a->status, ['hadir', 'terlambat', 'dinas_luar']) && (empty($a->time_in) || empty($a->time_out)))->count(),
             'effective_workdays'         => $effectiveWorkdays,
         ];
 
-        // Statistik Harian pada Tanggal Terpilih
+        // Statistik Harian pada Tanggal Terpilih (Dihitung hadir jika absen datang dan pulang)
+        $validDailyAttendances = $dailyAttendances->filter(fn($a) => !empty($a->time_in) && !empty($a->time_out));
+        $belumLengkapCount = $dailyAttendances->filter(fn($a) => in_array($a->status, ['hadir', 'terlambat', 'dinas_luar']) && (empty($a->time_in) || empty($a->time_out)))->count();
+
         $dailyStats = [
             'total_pegawai'    => $totalUsers,
-            'hadir'            => $dailyAttendances->where('status', 'hadir')->count(),
-            'terlambat'        => $dailyAttendances->where('status', 'terlambat')->count(),
-            'dinas_luar'       => $dailyAttendances->where('status', 'dinas_luar')->count(),
+            'hadir'            => $validDailyAttendances->where('status', 'hadir')->count(),
+            'terlambat'        => $validDailyAttendances->where('status', 'terlambat')->count(),
+            'dinas_luar'       => $validDailyAttendances->where('status', 'dinas_luar')->count(),
             'izin_sakit'       => $dailyAttendances->whereIn('status', ['izin', 'sakit'])->count(),
-            'pulang_cepat'     => $dailyReportData->where('is_pulang_cepat', true)->count(),
+            'pulang_cepat'     => $dailyReportData->where('is_pulang_cepat', true)->where('is_complete', true)->count(),
             'pending_approval' => $dailyAttendances->where('approval_status', 'pending')->count(),
-            'belum_hadir'      => max(0, $totalUsers - $dailyAttendances->count()),
+            'belum_lengkap'    => $belumLengkapCount,
+            'belum_hadir'      => max(0, $totalUsers - ($validDailyAttendances->count() + $dailyAttendances->whereIn('status', ['izin', 'sakit'])->count() + $belumLengkapCount)),
         ];
 
         $divisions = Division::orderBy('name')->get();

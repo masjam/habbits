@@ -7,12 +7,13 @@ use App\Models\Setting;
 use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use App\Services\AcademicYearService;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class SettingController extends Controller
 {
-    public function index()
+    public function index(AcademicYearService $academicYearService)
     {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
         $divisions = \App\Models\Division::orderBy('name')->pluck('name');
@@ -20,11 +21,13 @@ class SettingController extends Controller
             ->select('id', 'name', 'divisi')
             ->orderBy('name')
             ->get();
+        $academicYearSummary = $academicYearService->getAdminSummary();
 
         return Inertia::render('Admin/Settings/Index', [
-            'settings'  => $settings,
-            'divisions' => $divisions,
-            'employees' => $employees,
+            'settings'            => $settings,
+            'divisions'           => $divisions,
+            'employees'           => $employees,
+            'academicYearSummary' => $academicYearSummary,
         ]);
     }
 

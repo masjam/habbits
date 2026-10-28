@@ -186,8 +186,9 @@ const hasPermitOrEarlyDeparture = (record) => {
 const getPermitTypeLabel = (record) => {
     if (!record) return 'Izin'
     if (record.status === 'sakit' || record.approval_type === 'sakit') return 'Sakit'
+    if (record.approval_type === 'dinas_luar' || record.status === 'dinas_luar') return 'Dinas Luar'
+    if (record.is_early_departure || record.approval_type === 'pulang_cepat' || record.approval_type === 'pulang_mendahului') return 'Pulang Mendahului'
     if (record.status === 'izin' || record.approval_type === 'izin') return 'Izin Tidak Masuk'
-    if (record.is_early_departure || record.approval_type === 'pulang_cepat') return 'Pulang Mendahului'
     return 'Pengajuan Izin'
 }
 
@@ -327,6 +328,11 @@ const getCellClass = (record, isWeekend, isFuture) => {
         if (isWeekend) return 'bg-slate-100/50 dark:bg-slate-900/30 text-slate-300 dark:text-slate-600'
         if (isFuture) return 'bg-card-subtle/30 text-slate-300 dark:text-slate-600'
         return 'bg-card-subtle/40 text-slate-400 hover:bg-slate-100/60'
+    }
+
+    // Jika pegawai belum absen pulang (hanya absen datang, tidak dihitung presensi)
+    if (!record.is_complete && !['izin', 'sakit'].includes(record.status)) {
+        return 'bg-rose-50/80 text-rose-900 border border-dashed border-rose-300 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/80 hover:scale-105 shadow-2xs'
     }
 
     if (record.is_pulang_cepat) {
@@ -532,6 +538,10 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             <p class="text-[10px] font-bold text-purple-600 leading-none whitespace-nowrap">Pulang Cepat</p>
                             <p class="text-sm font-black text-purple-600 leading-none mt-1">{{ monthlyStats?.total_pulang_cepat_sebulan || 0 }}</p>
                         </div>
+                        <div v-if="monthlyStats?.total_belum_lengkap > 0" class="px-2.5 py-1.5 bg-rose-50/70 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 shadow-2xs text-center min-w-[64px]" title="Sudah absen datang tapi belum absen pulang (tidak dihitung presensi)">
+                            <p class="text-[10px] font-bold text-rose-600 dark:text-rose-400 leading-none whitespace-nowrap">Belum Pulang</p>
+                            <p class="text-sm font-black text-rose-600 dark:text-rose-400 leading-none mt-1">{{ monthlyStats?.total_belum_lengkap || 0 }}</p>
+                        </div>
                         <div 
                             @click="selectedStatus = (selectedStatus === 'pending' ? '' : 'pending'); applyFilters()"
                             class="px-2.5 py-1.5 rounded-xl border shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95 text-center min-w-[64px]"
@@ -576,6 +586,20 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             <p class="text-sm font-black text-indigo-600 leading-none mt-1">{{ dailyStats?.izin_sakit || 0 }}</p>
                         </div>
                         <div 
+                            v-if="dailyStats?.belum_lengkap > 0"
+                            @click="selectedStatus = (selectedStatus === 'belum_lengkap' ? '' : 'belum_lengkap'); applyFilters()"
+                            class="px-2.5 py-1.5 rounded-xl border shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95 text-center min-w-[64px]"
+                            :class="[
+                                selectedStatus === 'belum_lengkap'
+                                    ? 'border-rose-500 bg-rose-50/70 dark:bg-rose-950/50'
+                                    : 'border-rose-300 dark:border-rose-800 bg-rose-50/30'
+                            ]"
+                            title="Pegawai sudah absen datang tapi belum absen pulang (tidak dihitung presensi)"
+                        >
+                            <p class="text-[10px] font-bold text-rose-600 dark:text-rose-400 leading-none whitespace-nowrap">Belum Pulang</p>
+                            <p class="text-sm font-black text-rose-600 dark:text-rose-400 leading-none mt-1">{{ dailyStats?.belum_lengkap || 0 }}</p>
+                        </div>
+                        <div 
                             @click="selectedStatus = (selectedStatus === 'pending' ? '' : 'pending'); applyFilters()"
                             class="px-2.5 py-1.5 rounded-xl border shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95 text-center min-w-[64px]"
                             :class="[
@@ -614,6 +638,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             >
                                 <option value="">Semua Status</option>
                                 <option value="pending">⏳ Menunggu Review ({{ activeTab === 'daily' ? (dailyStats?.pending_approval || 0) : (monthlyStats?.total_pending_approval || 0) }})</option>
+                                <option value="belum_lengkap">⚠️ Belum Lengkap (Belum Pulang)</option>
                                 <option value="hadir">Hadir (Tepat Waktu)</option>
                                 <option value="terlambat">Terlambat</option>
                                 <option value="dinas_luar">Tugas Luar</option>
@@ -748,7 +773,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                         d.is_today ? 'bg-emerald-50/20' : '',
                                         canEditAttendance && !user.daily_records?.[d.day] && !d.is_future ? 'hover:bg-emerald-100/50 dark:hover:bg-emerald-950/40' : ''
                                     ]"
-                                    :title="canEditAttendance ? (user.daily_records?.[d.day] ? `Klik untuk lihat/koreksi presensi (${user.name} - tgl ${d.day})` : `Klik untuk input presensi (${user.name} - tgl ${d.day})`) : (user.daily_records?.[d.day] ? 'Klik untuk melihat detail presensi' : '')"
+                                    :title="canEditAttendance ? (user.daily_records?.[d.day] ? (!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status) ? `⚠️ Belum Absen Pulang (Tidak dihitung presensi) - Klik untuk lihat/koreksi (${user.name} - tgl ${d.day})` : `Klik untuk lihat/koreksi presensi (${user.name} - tgl ${d.day})`) : `Klik untuk input presensi (${user.name} - tgl ${d.day})`) : (user.daily_records?.[d.day] ? (!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status) ? '⚠️ Belum Absen Pulang (Tidak dihitung presensi)' : 'Klik untuk melihat detail presensi') : '')"
                                 >
                                     <div 
                                         :class="[
@@ -772,8 +797,10 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                                 >⭐</span>
                                             </div>
                                             <!-- Jam Pulang (Bawah) -->
-                                            <div class="text-[7px] sm:text-[9px] font-mono leading-none tracking-tight mt-0.5 sm:mt-1 opacity-80 flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
-                                                <span>{{ user.daily_records[d.day].time_out || '--:--' }}</span>
+                                            <div class="text-[7px] sm:text-[9px] font-mono leading-none tracking-tight mt-0.5 sm:mt-1 flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
+                                                <span :class="(!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status)) ? 'text-rose-600 dark:text-rose-400 font-black' : 'opacity-80'">
+                                                    {{ user.daily_records[d.day].time_out || '--:--' }}
+                                                </span>
                                                 <span v-if="user.daily_records[d.day].is_overtime" class="text-[6px] sm:text-[8px] text-amber-500 font-black mt-0.5 sm:mt-0" :title="`Lembur: ${user.daily_records[d.day].overtime_minutes}m`">⚡</span>
                                             </div>
                                         </template>
@@ -1015,6 +1042,14 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     <div class="flex flex-col gap-1 items-start">
                                         <div class="flex flex-wrap items-center gap-1">
                                             <span 
+                                                v-if="!item.is_complete && ['hadir', 'terlambat', 'dinas_luar'].includes(item.status)"
+                                                class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                                                title="Pegawai sudah absen datang tapi belum absen pulang (tidak dihitung presensi)"
+                                            >
+                                                Belum Pulang
+                                            </span>
+                                            <span 
+                                                v-else
                                                 :class="[
                                                     'px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider',
                                                     item.status === 'hadir' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
@@ -1022,7 +1057,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                                     item.status === 'dinas_luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
                                                     item.status === 'izin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
                                                     item.status === 'sakit' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
-                                                    'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                                                    'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                                                 ]"
                                             >
                                                 {{ item.status === 'belum_hadir' ? 'Belum Hadir' : item.status.replace('_', ' ') }}

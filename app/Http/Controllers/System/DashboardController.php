@@ -359,11 +359,13 @@ class DashboardController extends Controller
             ->whereYear('date', $currentYear)
             ->whereMonth('date', '>=', $startMonth)
             ->whereMonth('date', '<=', $endMonth)
-            ->get(['status']);
+            ->get(['time_in', 'time_out', 'status']);
+
+        $validSemesterAttendances = $semesterAttendances->filter(fn($a) => !empty($a->time_in) && !empty($a->time_out));
 
         $semesterPresensiSummary = [
-            'tepat_waktu' => $semesterAttendances->where('status', 'hadir')->count(),
-            'terlambat'   => $semesterAttendances->where('status', 'terlambat')->count(),
+            'tepat_waktu' => $validSemesterAttendances->where('status', 'hadir')->count(),
+            'terlambat'   => $validSemesterAttendances->where('status', 'terlambat')->count(),
             'izin'        => $semesterAttendances->whereIn('status', ['izin', 'sakit', 'dinas_luar'])->count(),
         ];
 

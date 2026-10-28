@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
+import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Editor from '@tinymce/tinymce-vue'
 import { usePWA } from '@/Composables/usePWA'
@@ -19,6 +19,16 @@ const props = defineProps({
     employees: {
         type: Array,
         default: () => []
+    },
+    academicYearSummary: {
+        type: Object,
+        default: () => ({
+            years: [],
+            years_list: [],
+            active_year: '',
+            active_semester: 'ganjil',
+            archived_years: [],
+        })
     }
 })
 
@@ -187,6 +197,60 @@ const handleSendBroadcast = async () => {
     }
 }
 
+// ─── PENGATURAN TAHUN AJARAN & PENGARSIPAN ADMINISTRASI GURU ────────────────
+const addYearForm = useForm({
+    year: '',
+})
+
+const activePeriodForm = useForm({
+    year: props.academicYearSummary?.active_year || '',
+    semester: props.academicYearSummary?.active_semester || 'ganjil',
+})
+
+const handleAddYear = () => {
+    addYearForm.post(route('admin.academic-years.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            addYearForm.reset()
+        }
+    })
+}
+
+const handleSetActivePeriod = () => {
+    activePeriodForm.post(route('admin.academic-years.set-active'), {
+        preserveScroll: true,
+    })
+}
+
+const handleToggleArchive = (item) => {
+    const isCurrentlyArchived = item.is_archived
+    const actionLabel = isCurrentlyArchived ? 'membuka kunci arsip' : 'mengarsipkan'
+    const warningText = isCurrentlyArchived 
+        ? `Buka kunci tahun ajaran ${item.year}? Guru akan kembali dapat mengunggah dan mengubah berkas pada tahun ajaran ini.`
+        : `Arsipkan administrasi guru untuk tahun ajaran ${item.year}? Seluruh berkas administrasi guru pada tahun ajaran ini akan dikunci menjadi status hanya-baca (read-only).`
+    
+    if (!confirm(warningText)) return
+
+    router.post(route('admin.academic-years.toggle-archive'), {
+        year: item.year,
+        is_archived: !isCurrentlyArchived,
+    }, {
+        preserveScroll: true,
+    })
+}
+
+const handleDeleteYear = (year) => {
+    if (!confirm(`Hapus tahun ajaran ${year} dari daftar sistem?`)) return
+
+    router.delete(route('admin.academic-years.destroy', { year: encodeURIComponent(year) }), {
+        preserveScroll: true,
+    })
+}
+
+const handleDownloadZip = (year) => {
+    window.location.href = route('admin.academic-years.export-archive', { year: encodeURIComponent(year) })
+}
+
 onMounted(() => {
     loadPushStatus()
 })
@@ -208,11 +272,265 @@ onMounted(() => {
         <div class="max-w-full mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
             
             <!-- Alert Flash Message -->
-            <div v-if="$page.props.flash?.success" class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 flex items-center gap-3 shadow-xs">
+            <div v-if="$page.props.flash?.success" class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 flex items-center gap-3 shadow-xs max-w-6xl mx-auto">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span class="font-bold text-sm">{{ $page.props.flash.success }}</span>
+            </div>
+
+            <!-- Alert Error Message -->
+            <div v-if="$page.props.errors?.error || $page.props.errors?.year" class="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 flex items-center gap-3 shadow-xs max-w-6xl mx-auto">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="font-bold text-sm">{{ $page.props.errors?.error || $page.props.errors?.year }}</span>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════════════
+                 KARTU PENGATURAN TAHUN AJARAN & PENGARSIPAN ADMINISTRASI GURU
+            ══════════════════════════════════════════════════════════════════ -->
+            <div class="max-w-6xl mx-auto bg-white dark:bg-slate-800 overflow-hidden shadow-xs rounded-3xl border border-slate-100 dark:border-slate-700 p-6 space-y-6">
+                <!-- Header Kartu -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-700">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-linear-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-black text-slate-800 dark:text-slate-100">Tahun Ajaran &amp; Pengarsipan Administrasi Guru</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Atur tahun ajaran aktif, semester berjalan, dan arsipkan berkas guru agar berstatus hanya-baca (read-only).</p>
+                        </div>
+                    </div>
+
+                    <Link
+                        :href="route('admin.teacher-administrations.index')"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors shrink-0"
+                    >
+                        <span>Lihat Rekap Administrasi Guru</span>
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                    </Link>
+                </div>
+
+                <!-- Form Baris Atas: 1) Periode Aktif Sistem & 2) Tambah Tahun Ajaran Baru -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Form 1: Tetapkan Tahun & Semester Aktif -->
+                    <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-850/60 border border-slate-200/70 dark:border-slate-700/60 space-y-3.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Periode Aktif Saat Ini</h3>
+                        </div>
+
+                        <form @submit.prevent="handleSetActivePeriod" class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Tahun Ajaran Aktif</label>
+                                    <select
+                                        v-model="activePeriodForm.year"
+                                        class="w-full text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option v-for="y in props.academicYearSummary?.years_list || []" :key="y" :value="y">{{ y }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Semester Aktif</label>
+                                    <select
+                                        v-model="activePeriodForm.semester"
+                                        class="w-full text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        <option value="ganjil">Semester Ganjil</option>
+                                        <option value="genap">Semester Genap</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                :disabled="activePeriodForm.processing"
+                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                            >
+                                <svg v-if="activePeriodForm.processing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Terapkan Periode Aktif</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Form 2: Tambah Tahun Ajaran Baru -->
+                    <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-850/60 border border-slate-200/70 dark:border-slate-700/60 space-y-3.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Tambah Tahun Ajaran Baru</h3>
+                        </div>
+
+                        <form @submit.prevent="handleAddYear" class="space-y-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                                    Input Tahun Ajaran (Format: YYYY/YYYY)
+                                </label>
+                                <div class="flex gap-2">
+                                    <input
+                                        type="text"
+                                        v-model="addYearForm.year"
+                                        placeholder="Contoh: 2027/2028"
+                                        maxlength="9"
+                                        class="flex-1 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                        type="submit"
+                                        :disabled="addYearForm.processing || !addYearForm.year"
+                                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                                    >
+                                        <svg v-if="addYearForm.processing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span>Tambah</span>
+                                    </button>
+                                </div>
+                                <div v-if="addYearForm.errors.year" class="text-rose-500 text-[11px] mt-1 font-semibold">
+                                    {{ addYearForm.errors.year }}
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                Tahun yang ditambahkan akan otomatis muncul di seluruh dropdown filter dan form administrasi guru.
+                            </p>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tabel Kelola Status Tahun Ajaran & Pengarsipan -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Daftar Tahun Ajaran &amp; Status Pengarsipan Dokumen
+                        </h3>
+                        <span class="text-[11px] text-slate-400">
+                            Total: {{ (props.academicYearSummary?.years || []).length }} Tahun Ajaran
+                        </span>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-700/80">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 dark:bg-slate-850/80 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200/80 dark:border-slate-700/80">
+                                <tr>
+                                    <th class="py-3 px-4">Tahun Ajaran</th>
+                                    <th class="py-3 px-4">Status Periode</th>
+                                    <th class="py-3 px-4">Status Pengarsipan Guru</th>
+                                    <th class="py-3 px-4">Dokumen Tersimpan</th>
+                                    <th class="py-3 px-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-750">
+                                <tr
+                                    v-for="item in (props.academicYearSummary?.years || [])"
+                                    :key="item.year"
+                                    class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                                >
+                                    <!-- Tahun Ajaran -->
+                                    <td class="py-3.5 px-4 font-black text-slate-800 dark:text-slate-100 text-sm">
+                                        {{ item.year }}
+                                    </td>
+
+                                    <!-- Status Periode Aktif -->
+                                    <td class="py-3.5 px-4">
+                                        <span
+                                            v-if="item.is_active"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                                        >
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            ⭐ Aktif (Semester {{ props.academicYearSummary?.active_semester === 'genap' ? 'Genap' : 'Ganjil' }})
+                                        </span>
+                                        <span v-else class="text-slate-400 dark:text-slate-500 text-xs">
+                                            Tidak Aktif
+                                        </span>
+                                    </td>
+
+                                    <!-- Status Pengarsipan -->
+                                    <td class="py-3.5 px-4">
+                                        <span
+                                            v-if="item.is_archived"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
+                                            title="Guru hanya dapat melihat dan mengunduh berkas pada tahun ajaran ini."
+                                        >
+                                            📦 Diarsipkan (Hanya-Baca)
+                                        </span>
+                                        <span
+                                            v-else
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50"
+                                        >
+                                            🟢 Aktif Terbuka
+                                        </span>
+                                    </td>
+
+                                    <!-- Jumlah Dokumen -->
+                                    <td class="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-semibold">
+                                        <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-xs">
+                                            {{ item.doc_count }} Berkas
+                                        </span>
+                                    </td>
+
+                                    <!-- Aksi Pengarsipan & Unduh -->
+                                    <td class="py-3.5 px-4 text-right">
+                                        <div class="inline-flex items-center gap-1.5">
+                                            <!-- Tombol Saklar Arsipkan / Buka Arsip -->
+                                            <button
+                                                v-if="!item.is_active"
+                                                type="button"
+                                                @click="handleToggleArchive(item)"
+                                                :class="[
+                                                    'inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all cursor-pointer shadow-2xs',
+                                                    item.is_archived
+                                                        ? 'bg-slate-100 dark:bg-slate-700 hover:bg-emerald-50 text-slate-700 dark:text-slate-200 hover:text-emerald-700 border border-slate-200 dark:border-slate-600'
+                                                        : 'bg-amber-500 hover:bg-amber-600 text-white'
+                                                ]"
+                                                :title="item.is_archived ? 'Buka kunci arsip' : 'Kunci dan arsipkan berkas tahun ajaran ini'"
+                                            >
+                                                <span>{{ item.is_archived ? '🔓 Buka Kunci' : '📦 Arsipkan' }}</span>
+                                            </button>
+
+                                            <!-- Tombol Download ZIP Arsip -->
+                                            <button
+                                                v-if="item.doc_count > 0"
+                                                type="button"
+                                                @click="handleDownloadZip(item.year)"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] border border-indigo-200/60 dark:border-indigo-800/60 transition-colors cursor-pointer"
+                                                title="Unduh seluruh dokumen guru pada tahun ini dalam 1 berkas ZIP"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                                <span>ZIP</span>
+                                            </button>
+
+                                            <!-- Tombol Hapus (Hanya jika bukan aktif dan 0 berkas) -->
+                                            <button
+                                                v-if="!item.is_active && item.doc_count === 0"
+                                                type="button"
+                                                @click="handleDeleteYear(item.year)"
+                                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                                title="Hapus tahun ajaran"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- Form Pengaturan (2 Kolom: Teks/Pengumuman & Media Landing) -->

@@ -20,6 +20,14 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    archivedYears: {
+        type: Array,
+        default: () => []
+    },
+    isYearArchived: {
+        type: Boolean,
+        default: false
+    },
     currentAcademicYear: {
         type: String,
         default: ''
@@ -49,6 +57,10 @@ const filterYear = ref(props.filters.academic_year || props.currentAcademicYear)
 const filterSemester = ref(props.filters.semester || props.currentSemester)
 const filterCategory = ref(props.filters.category || 'all')
 const filterStatus = ref(props.filters.status || 'all')
+
+const isSelectedYearArchived = computed(() => {
+    return props.isYearArchived || (props.archivedYears || []).includes(filterYear.value)
+})
 
 const applyFilters = () => {
     router.get(route('teacher-administrations.index'), {
@@ -268,7 +280,13 @@ const progressPercent = computed(() => {
                         </p>
                     </div>
 
+                    <div v-if="isSelectedYearArchived" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/25 border border-amber-300/40 text-amber-100 text-xs font-bold shrink-0">
+                        <span class="text-base">📦</span>
+                        <span>Tahun Ajaran Diarsipkan (Hanya-Baca)</span>
+                    </div>
+
                     <button
+                        v-else
                         @click="showUploadModal = true"
                         class="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl bg-white text-emerald-800 hover:bg-emerald-50 active:scale-95 font-bold text-sm shadow-md transition-all cursor-pointer shrink-0"
                     >
@@ -277,6 +295,22 @@ const progressPercent = computed(() => {
                         </svg>
                         <span>Unggah Berkas Baru</span>
                     </button>
+                </div>
+            </div>
+
+            <!-- ── Banner Status Arsip untuk Guru ───── -->
+            <div
+                v-if="filterYear !== 'all' && isSelectedYearArchived"
+                class="flex items-start gap-3.5 p-4 md:p-5 rounded-2xl bg-amber-50/95 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 shadow-xs"
+            >
+                <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-600 shrink-0 text-xl">
+                    📦
+                </div>
+                <div class="space-y-1">
+                    <h3 class="font-bold text-sm">Tahun Ajaran {{ filterYear }} Sedang Diarsipkan</h3>
+                    <p class="text-xs md:text-sm text-amber-800 dark:text-amber-300">
+                        Seluruh berkas administrasi pada tahun ajaran ini berstatus <strong>arsip digital (hanya-baca)</strong>. Anda tetap dapat melihat pratinjau dan mengunduh berkas fisik, namun penambahan, perbaikan, atau penghapusan berkas telah dikunci oleh administrator.
+                    </p>
                 </div>
             </div>
 
@@ -372,7 +406,9 @@ const progressPercent = computed(() => {
                             class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
                         >
                             <option value="all">Semua Tahun</option>
-                            <option v-for="yr in yearsList" :key="yr" :value="yr">{{ yr }}</option>
+                            <option v-for="yr in yearsList" :key="yr" :value="yr">
+                                {{ yr }} {{ archivedYears.includes(yr) ? '(📦 Diarsipkan)' : '' }} {{ yr === currentAcademicYear ? '(⭐ Aktif)' : '' }}
+                            </option>
                         </select>
                     </div>
 
@@ -573,27 +609,38 @@ const progressPercent = computed(() => {
                                             </svg>
                                         </a>
 
-                                        <!-- Edit / Revisi -->
-                                        <button
-                                            @click="openEditModal(doc)"
-                                            title="Edit / Ganti Berkas Revisi"
-                                            class="p-2 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                        <!-- Kunci Arsip jika berkas berada di tahun ajaran terarsip -->
+                                        <span
+                                            v-if="archivedYears.includes(doc.academic_year)"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 text-[10px] font-bold"
+                                            title="Tahun ajaran ini telah diarsipkan dan berstatus hanya-baca (read-only)."
                                         >
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                        </button>
+                                            <span>🔒 Terarsip</span>
+                                        </span>
 
-                                        <!-- Hapus -->
-                                        <button
-                                            @click="deleteDocument(doc)"
-                                            title="Hapus Dokumen"
-                                            class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                                        >
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                                        <template v-else>
+                                            <!-- Edit / Revisi -->
+                                            <button
+                                                @click="openEditModal(doc)"
+                                                title="Edit / Ganti Berkas Revisi"
+                                                class="p-2 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+
+                                            <!-- Hapus -->
+                                            <button
+                                                @click="deleteDocument(doc)"
+                                                title="Hapus Dokumen"
+                                                class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </template>
                                     </div>
                                 </td>
                             </tr>
@@ -663,7 +710,9 @@ const progressPercent = computed(() => {
                                 required
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
                             >
-                                <option v-for="yr in yearsList" :key="yr" :value="yr">{{ yr }}</option>
+                                <option v-for="yr in yearsList" :key="yr" :value="yr" :disabled="archivedYears.includes(yr)">
+                                    {{ yr }} {{ archivedYears.includes(yr) ? '(Diarsipkan / Terkunci)' : '' }}
+                                </option>
                             </select>
                         </div>
 
