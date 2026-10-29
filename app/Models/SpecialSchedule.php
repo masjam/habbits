@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 
 class SpecialSchedule extends Model
 {
+    use HasUuid;
     protected $fillable = [
         'name',
         'start_date',

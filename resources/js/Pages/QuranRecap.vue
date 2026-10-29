@@ -143,17 +143,54 @@ const formatTanggal = (dateStr) => {
                                         <span v-if="item.tilawah && item.tilawah.durasi">{{ item.tilawah.durasi }}m</span>
                                         <span v-else class="text-slate-300 dark:text-slate-600">-</span>
                                     </td>
-                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 max-w-[90px] truncate sm:max-w-none sm:truncate-none">
-                                        <template v-if="item.tilawah && item.tilawah.surat_awal">
+                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 max-w-[120px] sm:max-w-none">
+                                        <!-- Multi-Sesi Tilawah -->
+                                        <template v-if="item.tilawah && item.tilawah.sesi && item.tilawah.sesi.length > 1">
+                                            <div class="space-y-1.5">
+                                                <div v-for="(sesi, sIdx) in item.tilawah.sesi" :key="sesi.id || sIdx" class="text-xs">
+                                                    <div class="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200">
+                                                        <span class="text-[9px] px-1 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 font-semibold">S{{ sIdx + 1 }}</span>
+                                                        <span class="truncate">{{ sesi.surat_awal || '-' }}</span>
+                                                    </div>
+                                                    <div class="text-[9px] sm:text-[11px] text-slate-400 pl-5">
+                                                        Ayat {{ sesi.ayat_awal || '-' }} <span v-if="sesi.jam_mulai" class="text-slate-400/80 font-normal">({{ sesi.jam_mulai }})</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <!-- Single Sesi atau Legacy -->
+                                        <template v-else-if="item.tilawah && item.tilawah.surat_awal">
                                             <div class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.tilawah.surat_awal }}</div> 
-                                            <div class="text-[9px] sm:text-[11px] text-slate-400">Ayat {{ item.tilawah.ayat_awal || '-' }}</div>
+                                            <div class="text-[9px] sm:text-[11px] text-slate-400">
+                                                Ayat {{ item.tilawah.ayat_awal || '-' }}
+                                                <span v-if="item.tilawah.sesi?.[0]?.jam_mulai" class="text-slate-400/80">({{ item.tilawah.sesi[0].jam_mulai }})</span>
+                                            </div>
                                         </template>
                                         <span v-else class="text-slate-300 dark:text-slate-600">-</span>
                                     </td>
-                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 text-slate-600 dark:text-slate-400 max-w-[90px] truncate sm:max-w-none sm:truncate-none">
-                                        <template v-if="item.tilawah && item.tilawah.surat_akhir">
+                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 text-slate-600 dark:text-slate-400 max-w-[120px] sm:max-w-none">
+                                        <!-- Multi-Sesi Tilawah Akhir -->
+                                        <template v-if="item.tilawah && item.tilawah.sesi && item.tilawah.sesi.length > 1">
+                                            <div class="space-y-1.5">
+                                                <div v-for="(sesi, sIdx) in item.tilawah.sesi" :key="sesi.id || sIdx" class="text-xs">
+                                                    <div class="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200">
+                                                        <span class="text-[9px] px-1 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200 font-semibold">S{{ sIdx + 1 }}</span>
+                                                        <span class="truncate">{{ sesi.surat_akhir || 'Sedang dibaca...' }}</span>
+                                                    </div>
+                                                    <div class="text-[9px] sm:text-[11px] text-slate-400 pl-5">
+                                                        Ayat {{ sesi.ayat_akhir || '-' }}
+                                                        <span v-if="sesi.jam_selesai" class="text-slate-400/80 font-normal">({{ sesi.jam_selesai }}<span v-if="sesi.durasi" class="text-emerald-600 font-semibold"> · {{ sesi.durasi }}m</span>)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <!-- Single Sesi atau Legacy -->
+                                        <template v-else-if="item.tilawah && item.tilawah.surat_akhir">
                                             <div class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.tilawah.surat_akhir }}</div> 
-                                            <div class="text-[9px] sm:text-[11px] text-slate-400">Ayat {{ item.tilawah.ayat_akhir || '-' }}</div>
+                                            <div class="text-[9px] sm:text-[11px] text-slate-400">
+                                                Ayat {{ item.tilawah.ayat_akhir || '-' }}
+                                                <span v-if="item.tilawah.sesi?.[0]?.jam_selesai" class="text-slate-400/80">({{ item.tilawah.sesi[0].jam_selesai }}<span v-if="item.tilawah.sesi?.[0]?.durasi" class="text-emerald-600 font-semibold"> · {{ item.tilawah.sesi[0].durasi }}m</span>)</span>
+                                            </div>
                                         </template>
                                         <span v-else class="text-slate-300 dark:text-slate-600">-</span>
                                     </td>
@@ -164,17 +201,52 @@ const formatTanggal = (dateStr) => {
                                         <span v-if="item.murojaah && item.murojaah.durasi">{{ item.murojaah.durasi }}m</span>
                                         <span v-else class="text-slate-300 dark:text-slate-600">-</span>
                                     </td>
-                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 max-w-[90px] truncate sm:max-w-none sm:truncate-none">
-                                        <template v-if="item.murojaah && item.murojaah.surat_awal">
+                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 border-r border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-400 max-w-[120px] sm:max-w-none">
+                                        <!-- Multi-Sesi Murojaah Awal -->
+                                        <template v-if="item.murojaah && item.murojaah.sesi && item.murojaah.sesi.length > 1">
+                                            <div class="space-y-1.5">
+                                                <div v-for="(sesi, sIdx) in item.murojaah.sesi" :key="sesi.id || sIdx" class="text-xs">
+                                                    <div class="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200">
+                                                        <span class="text-[9px] px-1 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 font-semibold">S{{ sIdx + 1 }}</span>
+                                                        <span class="truncate">{{ sesi.surat_awal || '-' }}</span>
+                                                    </div>
+                                                    <div class="text-[9px] sm:text-[11px] text-slate-400 pl-5">
+                                                        Ayat {{ sesi.ayat_awal || '-' }} <span v-if="sesi.jam_mulai" class="text-slate-400/80 font-normal">({{ sesi.jam_mulai }})</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <template v-else-if="item.murojaah && item.murojaah.surat_awal">
                                             <div class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.murojaah.surat_awal }}</div> 
-                                            <div class="text-[9px] sm:text-[11px] text-slate-400">Ayat {{ item.murojaah.ayat_awal || '-' }}</div>
+                                            <div class="text-[9px] sm:text-[11px] text-slate-400">
+                                                Ayat {{ item.murojaah.ayat_awal || '-' }}
+                                                <span v-if="item.murojaah.sesi?.[0]?.jam_mulai" class="text-slate-400/80">({{ item.murojaah.sesi[0].jam_mulai }})</span>
+                                            </div>
                                         </template>
                                         <span v-else class="text-slate-300 dark:text-slate-600">-</span>
                                     </td>
-                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 text-slate-600 dark:text-slate-400 max-w-[90px] truncate sm:max-w-none sm:truncate-none">
-                                        <template v-if="item.murojaah && item.murojaah.surat_akhir">
+                                    <td class="px-1.5 sm:px-3 py-1.5 sm:py-2 text-slate-600 dark:text-slate-400 max-w-[120px] sm:max-w-none">
+                                        <!-- Multi-Sesi Murojaah Akhir -->
+                                        <template v-if="item.murojaah && item.murojaah.sesi && item.murojaah.sesi.length > 1">
+                                            <div class="space-y-1.5">
+                                                <div v-for="(sesi, sIdx) in item.murojaah.sesi" :key="sesi.id || sIdx" class="text-xs">
+                                                    <div class="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200">
+                                                        <span class="text-[9px] px-1 py-0.5 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200 font-semibold">S{{ sIdx + 1 }}</span>
+                                                        <span class="truncate">{{ sesi.surat_akhir || 'Sedang dibaca...' }}</span>
+                                                    </div>
+                                                    <div class="text-[9px] sm:text-[11px] text-slate-400 pl-5">
+                                                        Ayat {{ sesi.ayat_akhir || '-' }}
+                                                        <span v-if="sesi.jam_selesai" class="text-slate-400/80 font-normal">({{ sesi.jam_selesai }}<span v-if="sesi.durasi" class="text-blue-600 font-semibold"> · {{ sesi.durasi }}m</span>)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <template v-else-if="item.murojaah && item.murojaah.surat_akhir">
                                             <div class="font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.murojaah.surat_akhir }}</div> 
-                                            <div class="text-[9px] sm:text-[11px] text-slate-400">Ayat {{ item.murojaah.ayat_akhir || '-' }}</div>
+                                            <div class="text-[9px] sm:text-[11px] text-slate-400">
+                                                Ayat {{ item.murojaah.ayat_akhir || '-' }}
+                                                <span v-if="item.murojaah.sesi?.[0]?.jam_selesai" class="text-slate-400/80">({{ item.murojaah.sesi[0].jam_selesai }}<span v-if="item.murojaah.sesi?.[0]?.durasi" class="text-blue-600 font-semibold"> · {{ item.murojaah.sesi[0].durasi }}m</span>)</span>
+                                            </div>
                                         </template>
                                         <span v-else class="text-slate-300 dark:text-slate-600">-</span>
                                     </td>

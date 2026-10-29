@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 
 class Notulen extends Model
 {
+    use HasUuid;
     protected $guarded = [];
 
     protected $casts = [
@@ -13,16 +15,6 @@ class Notulen extends Model
         'dokumentasi' => 'array',
         'is_approved' => 'boolean',
     ];
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) \Illuminate\Support\Str::uuid();
-            }
-        });
-    }
 
     public function creator()
     {

@@ -46,6 +46,9 @@ Route::middleware('auth')->group(function () {
     
     Route::get('/kajian', [\App\Http\Controllers\Personal\KajianController::class, 'index'])->name('kajian.index');
     Route::get('/quran-hadis', [\App\Http\Controllers\Personal\QuranHadisController::class, 'index'])->name('quran.hadis');
+    Route::get('/quran/sesi-hari-ini', [\App\Http\Controllers\Personal\QuranHadisController::class, 'getTodaySessions'])->name('quran.sessions.today');
+    Route::post('/quran/tandai-baca', [\App\Http\Controllers\Personal\QuranHadisController::class, 'tandaiBaca'])->name('quran.tandai.baca');
+    Route::delete('/quran/hapus-sesi/{sesiId}', [\App\Http\Controllers\Personal\QuranHadisController::class, 'hapusSesi'])->name('quran.hapus.sesi');
     Route::get('/dzikir', [\App\Http\Controllers\Personal\DzikirController::class, 'index'])->name('dzikir.index');
     Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qibla.index');
 

@@ -1,8 +1,20 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Head } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
+import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import ShareImageModal from './Partials/ShareImageModal.vue'
+
+const props = defineProps({
+    initialTodaySessions: {
+        type: Array,
+        default: () => []
+    },
+    todayDate: {
+        type: String,
+        default: ''
+    }
+})
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 const activeTab = ref('quran') // 'quran' | 'hadis'
@@ -20,6 +32,128 @@ const surahSearch  = ref('')
 const loadingSurah = ref(false)
 const loadingDetail = ref(false)
 const quranError   = ref(null)
+
+// ─── Sesi Tilawah Al-Qur'an Hari Ini (Multi-sesi Mulai & Selesai) ─────────────
+const todaySessions = ref(props.initialTodaySessions ? [...props.initialTodaySessions] : [])
+const isBookmarkModalOpen = ref(false)
+const selectedAyatForBookmark = ref(null)
+const isSavingBookmark = ref(false)
+const bookmarkToast = ref({ show: false, message: '', type: 'success' })
+
+const showToast = (message, type = 'success') => {
+    bookmarkToast.value = { show: true, message, type }
+    setTimeout(() => {
+        bookmarkToast.value.show = false
+    }, 4000)
+}
+
+const activeSession = computed(() => {
+    return todaySessions.value.find(s => !s.surat_akhir)
+})
+
+const getAyatSesiInfo = (surahNamaLatin, ayatNomor) => {
+    if (!todaySessions.value || !todaySessions.value.length) return null
+    
+    for (let i = 0; i < todaySessions.value.length; i++) {
+        const s = todaySessions.value[i]
+        const isStart = s.surat_awal === surahNamaLatin && Number(s.ayat_awal) === Number(ayatNomor)
+        const isEnd = s.surat_akhir === surahNamaLatin && Number(s.ayat_akhir) === Number(ayatNomor)
+        if (isStart && isEnd) {
+            return { type: 'both', sessionIndex: i + 1, session: s }
+        }
+        if (isStart) {
+            return { type: 'start', sessionIndex: i + 1, session: s }
+        }
+        if (isEnd) {
+            return { type: 'end', sessionIndex: i + 1, session: s }
+        }
+    }
+    return null
+}
+
+const inputDurasiMenit = ref('')
+
+const openTandaiModal = (surah, ayat) => {
+    selectedAyatForBookmark.value = {
+        surahNomor: surah.nomor,
+        surahNamaLatin: surah.namaLatin,
+        surahNamaArab: surah.nama,
+        ayatNomor: ayat.nomorAyat,
+    }
+    // Hitung perkiraan durasi menit dari jam mulai sesi aktif
+    if (activeSession.value && activeSession.value.jam_mulai) {
+        try {
+            const [h, m] = activeSession.value.jam_mulai.split(':').map(Number)
+            const now = new Date()
+            const diff = Math.max(1, (now.getHours() * 60 + now.getMinutes()) - (h * 60 + m))
+            inputDurasiMenit.value = diff
+        } catch (e) {
+            inputDurasiMenit.value = ''
+        }
+    } else {
+        inputDurasiMenit.value = ''
+    }
+    isBookmarkModalOpen.value = true
+}
+
+const submitTandai = async (action, forceNew = false) => {
+    if (!selectedAyatForBookmark.value || isSavingBookmark.value) return
+    isSavingBookmark.value = true
+    try {
+        const payload = {
+            action,
+            surah_nomor: selectedAyatForBookmark.value.surahNomor,
+            surah_nama: selectedAyatForBookmark.value.surahNamaLatin,
+            ayat_nomor: selectedAyatForBookmark.value.ayatNomor,
+            mode_baru: forceNew,
+        }
+        if (action === 'selesai' && inputDurasiMenit.value) {
+            payload.durasi = parseInt(inputDurasiMenit.value) || undefined
+        }
+        const res = await axios.post(route('quran.tandai.baca'), payload)
+        if (res.data && res.data.success) {
+            todaySessions.value = res.data.sessions || []
+            // Sinkronisasi dengan penanda lokal
+            const data = {
+                surahNomor: selectedAyatForBookmark.value.surahNomor,
+                surahNamaLatin: selectedAyatForBookmark.value.surahNamaLatin,
+                surahNamaArab: selectedAyatForBookmark.value.surahNamaArab,
+                ayatNomor: selectedAyatForBookmark.value.ayatNomor,
+                timestamp: new Date().toISOString()
+            }
+            lastReadBookmark.value = data
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('quran_last_read', JSON.stringify(data))
+            }
+
+            showToast(res.data.message || 'Tanda baca berhasil disimpan ke Rekap Al-Qur\'an!', 'success')
+            isBookmarkModalOpen.value = false
+        }
+    } catch (err) {
+        console.error(err)
+        showToast(err.response?.data?.message || 'Gagal menyimpan tanda baca ke rekap.', 'error')
+    } finally {
+        isSavingBookmark.value = false
+    }
+}
+
+const hapusSesiById = async (sesiId) => {
+    if (!confirm('Hapus sesi tilawah ini dari rekap Al-Qur\'an?')) return
+    isSavingBookmark.value = true
+    try {
+        const res = await axios.delete(route('quran.hapus.sesi', { sesiId }))
+        if (res.data && res.data.success) {
+            todaySessions.value = res.data.sessions || []
+            showToast('Sesi berhasil dihapus dari rekap Al-Qur\'an.', 'success')
+            isBookmarkModalOpen.value = false
+        }
+    } catch (e) {
+        console.error(e)
+        showToast('Gagal menghapus sesi.', 'error')
+    } finally {
+        isSavingBookmark.value = false
+    }
+}
 
 // ─── Bookmark / Terakhir Dibaca ──────────────────────────────────────────────
 const lastReadBookmark = ref(null)
@@ -370,30 +504,183 @@ const loadingHadis   = ref(false)
 const hadisError     = ref(null)
 const inputNomor     = ref('')
 
-// ─── Format Hadis (Remove Sanad) ──────────────────────────────────────────────
-const formatHadisText = (text) => {
-    if (!text) return ''
-    const matches = [...text.matchAll(/\[(.*?)\]/g)]
-    if (matches && matches.length > 0) {
-        const lastMatch = matches[matches.length - 1]
-        const rawiName = lastMatch[1]
-        let textAfter = text.substring(lastMatch.index + lastMatch[0].length)
-        return `Dari ${rawiName}${textAfter}`
+// ─── Parse Hadis: Ekstrak Sanad & Matan ──────────────────────────────────────
+// Fungsi ini memisahkan bagian sanad dan matan dari hadis Indonesia & Arab,
+// serta mengekstrak silsilah rantai perawi untuk visualisasi.
+const parseSanadMatan = (text) => {
+    if (!text) return { sanad: '', matan: '', rawis: [] }
+
+    // Ekstrak nama rawi dalam kurung siku [...]
+    const rawis = [...text.matchAll(/\[(.*?)\]/g)].map(m => m[1].trim()).filter(Boolean)
+
+    // Cek apakah ada kutipan matan dengan tanda petik "..." atau “...”
+    const quoteMatch = text.match(/["“]([^"”]{12,})["”]/)
+    if (quoteMatch) {
+        const matan = quoteMatch[1].trim()
+        const beforeQuote = text.substring(0, quoteMatch.index).trim()
+        const afterQuote = text.substring(quoteMatch.index + quoteMatch[0].length).trim()
+        const sanad = (beforeQuote + (afterQuote ? ' ' + afterQuote : '')).trim()
+        return { sanad, matan, rawis }
     }
-    return text
+
+    // Jika tidak ada tanda petik, cari pemisah kalimat sabda
+    const delimiters = [
+        /bahwa(?:sanya)?\s+(?:Rasulullah|Nabi)\s*(?:shallallahu\s*'alaihi\s*wasallam|ﷺ)?\s*(?:bersabda|berkata|mengatakan)\s*[:,-]?\s*/i,
+        /(?:Rasulullah|Nabi)\s*(?:shallallahu\s*'alaihi\s*wasallam|ﷺ)?\s*(?:bersabda|berkata|mengatakan)\s*[:,-]?\s*/i,
+        /bersabda\s*[:,-]?\s*/i,
+        /bahwa(?:sanya)?\s+(?:Nabi|Rasulullah)\s*(?:shallallahu\s*'alaihi\s*wasallam|ﷺ)?\s*/i,
+    ]
+
+    for (const delim of delimiters) {
+        const match = text.match(delim)
+        if (match && match.index !== undefined) {
+            const splitPos = match.index + match[0].length
+            const sanad = text.substring(0, splitPos).trim()
+            const matan = text.substring(splitPos).trim()
+            if (matan.length > 5) {
+                return { sanad, matan, rawis }
+            }
+        }
+    }
+
+    // Fallback: gunakan bracket terakhir sebagai pembatas sanad
+    const bracketMatches = [...text.matchAll(/\[(.*?)\]/g)]
+    if (bracketMatches.length > 0) {
+        const lastBracket = bracketMatches[bracketMatches.length - 1]
+        const lastIdx = lastBracket.index + lastBracket[0].length
+        return {
+            sanad: text.substring(0, lastIdx).trim(),
+            matan: text.substring(lastIdx).trim().replace(/^[:\s\-;,]+/, ''),
+            rawis
+        }
+    }
+
+    return { sanad: '', matan: text, rawis }
+}
+
+// Pisahkan teks Arab hadis menjadi bagian sanad (awal) dan matan (isi sabda)
+const parseArabSanadMatan = (arabText) => {
+    if (!arabText) return { sanadArab: '', matanArab: '' }
+
+    const markers = [
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ يَقُولُ',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ يَقُولُ',
+        'صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ يَقُولُ',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ قَالَ',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ قَالَ',
+        'صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ قَالَ',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ :',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ :',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ:',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ:',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ',
+        'صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ',
+        'صَلَّى اللهُ عَلَيْهِ وَسَلَّمَ',
+        'قَالَ رَسُولُ اللَّهِ',
+        'قَالَ رَسُولُ اللَّهِ',
+        'قَالَ رَسُولُ اللهِ',
+        'قَالَ النَّبِيُّ',
+        'قَالَ النَّبِيُّ',
+        'أَنَّ رَسُولَ اللَّهِ',
+        'أَنَّ رَسُولَ اللَّهِ',
+        'أَنَّ النَّبِيَّ',
+        'أَنَّ النَّبِيَّ'
+    ]
+
+    for (const marker of markers) {
+        const idx = arabText.indexOf(marker)
+        if (idx > 15) { // Sanad minimal 15 karakter di awal
+            const splitPos = idx + marker.length
+            return {
+                sanadArab: arabText.substring(0, splitPos).trim(),
+                matanArab: arabText.substring(splitPos).trim().replace(/^[:\s\-\.]+|[؛]+$/g, '')
+            }
+        }
+    }
+
+    return { sanadArab: '', matanArab: arabText }
+}
+
+// State untuk Hadis View
+const hadisTab = ref('lengkap') // 'lengkap' | 'matan' | 'sanad' | 'syarah'
+const showRawText = ref(false)
+const showSanadDetail = ref(true)
+
+// State untuk syarah dari hadis
+const hadisDetailSyarah = ref(null)
+const loadingSyarah = ref(false)
+const syarahError = ref(null)
+
+const fetchHadisSyarah = async () => {
+    if (!hadisData.value) return
+    loadingSyarah.value = true
+    syarahError.value = null
+    hadisDetailSyarah.value = null
+
+    try {
+        const matan = hadisData.value.matan || hadisData.value.id || ''
+        const clean = matan.replace(/[\.,\/#!$%\^&\*;:{}=\-_`~()""'']/g, ' ')
+        const ignored = ['bahwa', 'bahwasanya', 'adalah', 'mereka', 'kepada', 'dengan', 'untuk', 'dalam', 'beliau', 'maka', 'apabila', 'tidak', 'sesungguhnya', 'tentang', 'orang', 'dari', 'yang', 'akan', 'telah']
+        const words = clean.split(/\s+/).filter(w => w.length >= 3 && !ignored.includes(w.toLowerCase()))
+        const keyword = words.slice(0, 3).join(' ') || (currentPerawi.value?.nama || 'hadis')
+
+        const res = await fetch(`https://api.myquran.com/v3/hadis/enc/cari/${encodeURIComponent(keyword)}?page=1`)
+        const json = await res.json()
+
+        if (json.status && json.data && json.data.hadis && json.data.hadis.length > 0) {
+            const first = json.data.hadis[0]
+            const detailRes = await fetch(`https://hadeethenc.com/api/v1/hadeeths/one/?language=id&id=${first.id}`)
+            const detail = await detailRes.json()
+            if (detail && detail.id) {
+                hadisDetailSyarah.value = {
+                    ...detail,
+                    searchKeyword: keyword
+                }
+            } else {
+                syarahError.value = `Syarah spesifik belum tersedia untuk hadis ini.`
+            }
+        } else {
+            syarahError.value = `Tidak ditemukan referensi syarah dengan kata kunci "${keyword}".`
+        }
+    } catch (e) {
+        syarahError.value = 'Gagal memuat syarah. Periksa koneksi internet.'
+    } finally {
+        loadingSyarah.value = false
+    }
 }
 
 const fetchHadis = async (nomor) => {
     loadingHadis.value = true
     hadisError.value = null
     hadisData.value = null
+    hadisDetailSyarah.value = null
+    syarahError.value = null
     try {
         const res = await fetch(`${HADIS_API}/${selectedPerawi.value}/${nomor}`)
         const json = await res.json()
         if (json.status && json.data) {
+            const rawArab = json.data.arab || ''
+            const rawId = json.data.id || json.data.contents?.id || ''
+
+            // Parse sanad & matan dari teks Indonesia
+            const { sanad, matan, rawis } = parseSanadMatan(rawId)
+            // Parse sanad & matan dari teks Arab
+            const { sanadArab, matanArab } = parseArabSanadMatan(rawArab)
+
             hadisData.value = {
                 ...json.data,
-                id: formatHadisText(json.data.id)
+                arab: rawArab,
+                arabRaw: rawArab,
+                id: rawId,
+                idRaw: rawId,
+                // Hasil parsing
+                sanad,
+                matan: matan || rawId,
+                rawis: rawis || [],
+                sanadArab,
+                matanArab: matanArab || rawArab,
+                // Indikator apakah sanad tersedia
+                hasSanad: !!(sanad || sanadArab || (rawis && rawis.length > 0)),
             }
             hadisNomor.value = nomor
         } else {
@@ -466,7 +753,7 @@ const searchHadis = async (page = 1) => {
         if (json.status && json.data && json.data.hadis) {
             hadisSearchResults.value = json.data.hadis.map(h => ({
                 ...h,
-                text: formatHadisText(h.text)
+                text: h.text // Keep original text (sanad included)
             }))
             hadisSearchPaging.value = json.data.paging
         } else {
@@ -629,13 +916,21 @@ const openShareQuran = (surah, ayat) => {
 
 const openShareHadisPerawi = (perawiName, nomor, data) => {
     const title = `Hadis Riwayat ${perawiName} No. ${nomor}`
-    const arab = data.arab || ''
-    const latin = ''
-    const translation = data.id || ''
+    const matanArab = data.matanArab || data.arab || ''
+    const matanId = data.matan || data.id || ''
+    const sanadText = data.sanad ? `\n\n🔗 *Sanad:* ${data.sanad}` : ''
     const source = `HR. ${perawiName} (No. ${nomor})`
-    const fullText = `📜 *${title}*\n\n${arab ? arab + '\n\n' : ''}"${translation}"\n\n📌 _Sumber: ${source}_\n_Dibagikan melalui Habit Tracker SDAM_`
+    const fullText = `📜 *${title}*\n\n${matanArab ? matanArab + '\n\n' : ''}"${matanId}"${sanadText}\n\n📌 _Sumber: ${source}_\n_Dibagikan melalui Habit Tracker SDAM_`
 
-    shareData.value = { type: 'hadis', title, arab, latin, translation, source, fullText }
+    shareData.value = {
+        type: 'hadis',
+        title,
+        arab: matanArab,
+        latin: '',
+        translation: matanId,
+        source,
+        fullText
+    }
     shareModalOpen.value = true
 }
 
@@ -799,6 +1094,60 @@ onUnmounted(() => {
                                 <svg v-else class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                                 <span>{{ isAudioPlaying && playingAyat === `surah_${surahDetail.nomor}` ? 'Jeda Murottal Surat' : 'Putar Murottal Surat' }}</span>
                             </button>
+                        </div>
+
+                        <!-- Widget Banner Sesi Tilawah Hari Ini (Multi-Sesi) -->
+                        <div v-if="todaySessions && todaySessions.length > 0" class="mb-5 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-2xs flex-shrink-0">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                        Tilawah Hari Ini
+                                    </span>
+                                    <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                        {{ todaySessions.length }} Sesi Tercatat
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <Link
+                                        :href="route('quran.recap')"
+                                        class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 underline transition-colors"
+                                    >
+                                        Buka Rekap Al-Qur'an ↗
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <!-- Daftar Chip Sesi -->
+                            <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                                <div
+                                    v-for="(sesi, sIdx) in todaySessions"
+                                    :key="sesi.id || sIdx"
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all"
+                                    :class="sesi.surat_akhir 
+                                        ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-emerald-200 dark:border-emerald-800 shadow-2xs' 
+                                        : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 animate-pulse'"
+                                >
+                                    <span class="font-bold text-emerald-700 dark:text-emerald-400">S{{ sIdx + 1 }}:</span>
+                                    <span>{{ sesi.surat_awal }}:{{ sesi.ayat_awal }}</span>
+                                    <span class="text-slate-400">➔</span>
+                                    <span v-if="sesi.surat_akhir" class="font-semibold text-emerald-800 dark:text-emerald-300">
+                                        {{ sesi.surat_akhir }}:{{ sesi.ayat_akhir }} ✓
+                                    </span>
+                                    <span v-else class="text-amber-600 dark:text-amber-400 font-semibold italic">
+                                        sedang dibaca...
+                                    </span>
+                                    <button
+                                        type="button"
+                                        @click="hapusSesiById(sesi.id)"
+                                        class="ml-1 text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors"
+                                        title="Hapus sesi ini dari rekap"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Bar Pengaturan Opsi Tampilan Ayat (Toggleable - Desktop/Tablet only, di Mobile via Floating Button) -->
@@ -996,23 +1345,43 @@ onUnmounted(() => {
                                         </div>
 
                                         <div class="flex items-center gap-1.5">
-                                            <!-- Tombol Bookmark -->
+                                            <!-- Tombol Tandai Baca (Mulai / Selesai) -->
                                             <button
                                                 type="button"
-                                                @click="toggleBookmark(surahDetail, ayat)"
-                                                :title="isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'Hapus penanda terakhir dibaca' : 'Tandai sebagai terakhir dibaca'"
+                                                @click="openTandaiModal(surahDetail, ayat)"
+                                                :title="getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat) ? 'Kelola tanda baca sesi ini' : 'Tandai mulai atau selesai baca'"
                                                 :class="[
                                                     'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold transition-all shadow-xs cursor-pointer',
-                                                    isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat)
-                                                        ? 'bg-emerald-600 text-white ring-1 ring-emerald-600'
-                                                        : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 bg-white border border-slate-200'
+                                                    getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat)?.type === 'start'
+                                                        ? 'bg-emerald-600 text-white ring-1 ring-emerald-600 shadow-xs'
+                                                        : getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat)?.type === 'end'
+                                                            ? 'bg-teal-600 text-white ring-1 ring-teal-600 shadow-xs'
+                                                            : getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat)?.type === 'both'
+                                                                ? 'bg-emerald-700 text-white ring-1 ring-emerald-700 shadow-xs'
+                                                                : isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat)
+                                                                    ? 'bg-emerald-500 text-white ring-1 ring-emerald-500'
+                                                                    : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 bg-white border border-slate-200'
                                                 ]"
                                             >
-                                                <svg class="w-3 h-3" :fill="isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <svg class="w-3 h-3" :fill="getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat) || isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                                                 </svg>
                                                 <span>
-                                                    {{ isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat) ? 'Terakhir Baca' : 'Tandai' }}
+                                                    <template v-if="getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat)?.type === 'start'">
+                                                        Mulai S{{ getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat).sessionIndex }}
+                                                    </template>
+                                                    <template v-else-if="getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat)?.type === 'end'">
+                                                        Selesai S{{ getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat).sessionIndex }}
+                                                    </template>
+                                                    <template v-else-if="getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat)?.type === 'both'">
+                                                        S{{ getAyatSesiInfo(surahDetail.namaLatin, ayat.nomorAyat).sessionIndex }} Mulai &amp; Selesai
+                                                    </template>
+                                                    <template v-else-if="isAyatBookmarked(surahDetail.nomor, ayat.nomorAyat)">
+                                                        Terakhir
+                                                    </template>
+                                                    <template v-else>
+                                                        Tandai
+                                                    </template>
                                                 </span>
                                             </button>
 
@@ -1406,30 +1775,291 @@ onUnmounted(() => {
 
                         <!-- Kartu Hadis -->
                         <div v-else-if="hadisData" class="space-y-4">
-                            <!-- Info & Tombol Bagikan Hadis Perawi -->
-                            <div class="flex items-center justify-between text-xs text-slate-400">
+                            <!-- Info & Kontrol Tampilan Hadis -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
                                 <div class="flex items-center gap-2">
-                                    <span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full font-bold border border-amber-100">
+                                    <span class="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-full font-bold border border-amber-200 shadow-xs">
                                         {{ currentPerawi?.nama }} · No. {{ hadisNomor }}
                                     </span>
-                                    <span class="hidden sm:inline text-slate-400">dari {{ currentPerawi?.total?.toLocaleString('id-ID') }} hadis</span>
+                                    <span class="text-slate-400">dari {{ currentPerawi?.total?.toLocaleString('id-ID') }} hadis</span>
                                 </div>
-                                <button
-                                    type="button"
-                                    @click="openShareHadisPerawi(currentPerawi?.nama, hadisNomor, hadisData)"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 hover:border-amber-300 hover:bg-amber-50 text-slate-700 hover:text-amber-800 rounded-xl text-xs font-bold transition-all shadow-xs"
-                                    title="Bagikan hadis ini ke media sosial"
-                                >
-                                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                    </svg>
-                                    <span>Bagikan</span>
-                                </button>
+
+                                <div class="flex items-center gap-1.5">
+                                    <!-- Toggle Mode Tampilan (Terstruktur vs Teks Asli) -->
+                                    <button
+                                        type="button"
+                                        @click="showRawText = !showRawText"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all"
+                                        :class="showRawText ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                                        title="Beralih antara tampilan terstruktur (Matan, Sanad, Syarah) dan teks utuh orisinil"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                                        </svg>
+                                        <span>{{ showRawText ? 'Mode: Teks Utuh' : 'Mode: Terstruktur' }}</span>
+                                    </button>
+
+                                    <!-- Tombol Salin Teks -->
+                                    <button
+                                        type="button"
+                                        @click="copyHadisText((hadisData.matanArab || hadisData.arab) + '\n\n' + (hadisData.matan || hadisData.id))"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl text-xs font-semibold transition-all shadow-xs"
+                                        title="Salin hadis ke papan klip"
+                                    >
+                                        <svg v-if="!copyToast" class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10a2 2 0 01-2-2v-4a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <svg v-else class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>{{ copyToast ? 'Tersalin' : 'Salin' }}</span>
+                                    </button>
+
+                                    <!-- Tombol Bagikan -->
+                                    <button
+                                        type="button"
+                                        @click="openShareHadisPerawi(currentPerawi?.nama, hadisNomor, hadisData)"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                                        title="Bagikan hadis ini ke media sosial"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                        </svg>
+                                        <span>Bagikan</span>
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Kartu Isi Hadis -->
-                            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 sm:p-5 space-y-4">
-                                <!-- Teks Arab -->
+                            <!-- ───────────────────────────────────────────── -->
+                            <!-- TAMPILAN 1: MODE TERSTRUKTUR (MATAN, SANAD, SYARAH) -->
+                            <!-- ───────────────────────────────────────────── -->
+                            <div v-if="!showRawText" class="space-y-4">
+                                <!-- 1. SEKSI MATAN HADIS (Isi Sabda / Pokok Riwayat) -->
+                                <div class="bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-white border-2 border-amber-200/80 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+                                    <!-- Header Matan -->
+                                    <div class="flex items-center justify-between pb-3 border-b border-amber-200/60">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-600 text-white text-xs font-bold rounded-lg shadow-xs uppercase tracking-wider">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                </svg>
+                                                Matan Hadis
+                                            </span>
+                                            <span class="text-xs text-amber-800 font-medium hidden sm:inline">Inti Sabda & Riwayat</span>
+                                        </div>
+                                        <span class="text-[11px] font-semibold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-md">
+                                            Isi Pokok
+                                        </span>
+                                    </div>
+
+                                    <!-- Teks Arab Matan -->
+                                    <div class="text-right" dir="rtl">
+                                        <p class="text-xl sm:text-2xl font-arabic leading-loose text-slate-900 tracking-wide">
+                                            {{ hadisData.matanArab || hadisData.arab }}
+                                        </p>
+                                    </div>
+
+                                    <!-- Divider Halus -->
+                                    <div class="relative py-1">
+                                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-amber-200/70"></div></div>
+                                        <div class="relative flex justify-center">
+                                            <span class="bg-gradient-to-r from-amber-50 to-orange-50 px-3 text-[11px] text-amber-700 font-bold uppercase tracking-wider">
+                                                Terjemahan Matan
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Terjemahan Bahasa Indonesia Matan -->
+                                    <div class="bg-white/80 rounded-xl p-3.5 sm:p-4 border border-amber-100 shadow-xs">
+                                        <p class="text-sm sm:text-base text-slate-800 font-normal leading-relaxed">
+                                            "{{ hadisData.matan || hadisData.id }}"
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- 2. SEKSI SANAD LENGKAP (Jalur Periwayatan & Rantai Rawi) -->
+                                <div class="bg-slate-50/90 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+                                    <!-- Header Sanad -->
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-700 text-white text-xs font-bold rounded-lg shadow-xs uppercase tracking-wider">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                </svg>
+                                                Sanad Lengkap
+                                            </span>
+                                            <span v-if="hadisData.rawis?.length" class="text-xs text-slate-500 font-medium">
+                                                {{ hadisData.rawis.length }} Jalur Rawi
+                                            </span>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            @click="showSanadDetail = !showSanadDetail"
+                                            class="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 transition-colors"
+                                        >
+                                            <span>{{ showSanadDetail ? 'Sembunyikan' : 'Buka Detail' }}</span>
+                                            <svg class="w-3.5 h-3.5 transform transition-transform" :class="showSanadDetail ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <div v-show="showSanadDetail" class="space-y-3 pt-1">
+                                        <!-- Visual Silsilah Rantai Rawi -->
+                                        <div v-if="hadisData.rawis && hadisData.rawis.length > 0" class="bg-white rounded-xl p-3 border border-slate-200/80 space-y-2">
+                                            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                                <svg class="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                                                </svg>
+                                                Silsilah Rantai Perawi (Jalur Transmisi):
+                                            </div>
+                                            <div class="flex flex-wrap items-center gap-1.5">
+                                                <template v-for="(rawi, rIdx) in hadisData.rawis" :key="rIdx">
+                                                    <div class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50/80 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-xs font-medium transition-colors">
+                                                        <span class="w-4 h-4 rounded-full bg-blue-200/80 text-[10px] text-blue-800 font-bold flex items-center justify-center shrink-0">
+                                                            {{ rIdx + 1 }}
+                                                        </span>
+                                                        <span>{{ rawi }}</span>
+                                                    </div>
+                                                    <span class="text-slate-400 font-bold text-xs">→</span>
+                                                </template>
+                                                <div class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold shadow-2xs">
+                                                    <span>Rasulullah ﷺ</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Sanad Teks Arab (Jika terdeteksi) -->
+                                        <div v-if="hadisData.sanadArab" class="bg-white/60 rounded-xl p-3 border border-slate-200/70 text-right space-y-1" dir="rtl">
+                                            <div class="text-[10px] font-bold text-slate-400 tracking-wider text-left uppercase" dir="ltr">Sanad Arab:</div>
+                                            <p class="text-base sm:text-lg font-arabic leading-relaxed text-slate-700">
+                                                {{ hadisData.sanadArab }}
+                                            </p>
+                                        </div>
+
+                                        <!-- Sanad Teks Terjemahan Indonesia -->
+                                        <div v-if="hadisData.sanad" class="bg-white/60 rounded-xl p-3 border border-slate-200/70 space-y-1">
+                                            <div class="text-[10px] font-bold text-slate-400 tracking-wider uppercase">Terjemahan Sanad:</div>
+                                            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed italic">
+                                                {{ hadisData.sanad }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. SEKSI SYARAH & PENJELASAN HADIS (Fitur Unggulan) -->
+                                <div class="bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-amber-50/30 border border-indigo-100 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-xs uppercase tracking-wider">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                                </svg>
+                                                Syarah & Penjelasan
+                                            </span>
+                                            <span class="text-xs text-indigo-900/70 font-medium hidden sm:inline">Makna & Faedah Hadis</span>
+                                        </div>
+
+                                        <button
+                                            v-if="!hadisDetailSyarah && !loadingSyarah"
+                                            type="button"
+                                            @click="fetchHadisSyarah"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            <span>Buka Syarah</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Loading Syarah -->
+                                    <div v-if="loadingSyarah" class="flex items-center justify-center py-6 gap-2 text-indigo-700 text-xs font-semibold">
+                                        <svg class="w-4 h-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                        </svg>
+                                        <span>Menelusuri syarah dan faedah hadis dari ensiklopedia...</span>
+                                    </div>
+
+                                    <!-- Konten Syarah Bila Berhasil Dimuat -->
+                                    <div v-else-if="hadisDetailSyarah" class="space-y-3 pt-1">
+                                        <!-- Sumber & Derajat -->
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span v-if="hadisDetailSyarah.attribution" class="px-2.5 py-1 bg-white border border-indigo-200 text-indigo-900 rounded-lg text-xs font-semibold shadow-2xs">
+                                                Sumber: {{ hadisDetailSyarah.attribution }}
+                                            </span>
+                                            <span v-if="hadisDetailSyarah.grade" class="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold">
+                                                Derajat: {{ hadisDetailSyarah.grade }}
+                                            </span>
+                                        </div>
+
+                                        <!-- Penjelasan Makna Hadis -->
+                                        <div v-if="hadisDetailSyarah.explanation" class="bg-white rounded-xl p-3.5 sm:p-4 border border-indigo-100/80 space-y-1.5 shadow-2xs">
+                                            <div class="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                                                <svg class="w-4 h-4 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span>Penjelasan / Makna Hadis:</span>
+                                            </div>
+                                            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                                                {{ hadisDetailSyarah.explanation }}
+                                            </p>
+                                        </div>
+
+                                        <!-- Faedah / Pelajaran dari Hadis (Jika ada hints) -->
+                                        <div v-if="hadisDetailSyarah.hints && hadisDetailSyarah.hints.length > 0" class="bg-amber-50/50 rounded-xl p-3.5 sm:p-4 border border-amber-200/60 space-y-2">
+                                            <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" />
+                                                </svg>
+                                                <span>Faedah & Pelajaran Hadis:</span>
+                                            </div>
+                                            <ul class="text-xs sm:text-sm text-slate-700 space-y-1.5 list-disc list-inside">
+                                                <li v-for="(hint, hIdx) in hadisDetailSyarah.hints" :key="hIdx" class="leading-relaxed">
+                                                    {{ hint }}
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pesan Bila Belum Dibuka / Error -->
+                                    <div v-else-if="syarahError" class="bg-white/80 rounded-xl p-3 border border-indigo-100 flex items-center justify-between gap-2">
+                                        <span class="text-xs text-slate-500">{{ syarahError }}</span>
+                                        <button
+                                            type="button"
+                                            @click="hadisSearchKeyword = hadisData.matan ? hadisData.matan.split(' ').slice(0, 3).join(' ') : 'niat'; searchHadis(1)"
+                                            class="text-xs font-bold text-amber-700 hover:text-amber-800 underline shrink-0"
+                                        >
+                                            Cari di Ensiklopedia →
+                                        </button>
+                                    </div>
+
+                                    <!-- Prompt Awal Jika Belum Dimuat -->
+                                    <div v-else class="text-xs text-slate-500 flex items-center justify-between pt-1">
+                                        <span>Dapatkan penjelasan makna hadis, kandungan fiqih, serta faedah mutiara hadis.</span>
+                                        <button
+                                            type="button"
+                                            @click="fetchHadisSyarah"
+                                            class="font-bold text-indigo-700 hover:text-indigo-800 underline shrink-0 ml-2"
+                                        >
+                                            Muat Penjelasan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ───────────────────────────────────────────── -->
+                            <!-- TAMPILAN 2: MODE TEKS UTUH (ORISINIL DARI KITAB) -->
+                            <!-- ───────────────────────────────────────────── -->
+                            <div v-else class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 sm:p-6 space-y-4 shadow-sm">
+                                <div class="flex items-center justify-between pb-2 border-b border-amber-200/60">
+                                    <span class="text-xs font-bold text-amber-900 uppercase tracking-wider">Teks Asli Lengkap (Sanad + Matan)</span>
+                                    <span class="text-[11px] text-slate-500">Kitab {{ currentPerawi?.nama }}</span>
+                                </div>
+
+                                <!-- Teks Arab Utuh -->
                                 <div class="text-right" dir="rtl">
                                     <p class="text-xl sm:text-2xl font-arabic leading-loose text-slate-800">
                                         {{ hadisData.arab }}
@@ -1439,8 +2069,8 @@ onUnmounted(() => {
                                 <!-- Divider -->
                                 <div class="border-t border-amber-200"></div>
 
-                                <!-- Terjemahan -->
-                                <div class="text-sm text-slate-700 leading-relaxed">
+                                <!-- Terjemahan Utuh -->
+                                <div class="text-sm sm:text-base text-slate-700 leading-relaxed">
                                     {{ hadisData.id }}
                                 </div>
                             </div>
@@ -1576,9 +2206,24 @@ onUnmounted(() => {
                                         <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         <span>Penjelasan / Makna Hadis:</span>
                                     </div>
-                                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
                                         {{ hadisDetailExtra[selectedSearchHadis.id].explanation }}
                                     </p>
+                                </div>
+
+                                <!-- Faedah & Pelajaran Hadis (Jika Ada) -->
+                                <div v-if="hadisDetailExtra[selectedSearchHadis.id]?.hints?.length" class="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100 space-y-2">
+                                    <div class="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" />
+                                        </svg>
+                                        <span>Faedah & Hikmah Hadis:</span>
+                                    </div>
+                                    <ul class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 space-y-1 list-disc list-inside">
+                                        <li v-for="(hint, hIdx) in hadisDetailExtra[selectedSearchHadis.id].hints" :key="hIdx" class="leading-relaxed">
+                                            {{ hint }}
+                                        </li>
+                                    </ul>
                                 </div>
                             </div>
 
@@ -1904,6 +2549,187 @@ onUnmounted(() => {
                             </button>
                         </div>
                     </div>
+                </div>
+            </Transition>
+
+            <!-- Modal Tandai Baca Al-Qur'an (Mulai / Selesai) -->
+            <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
+            >
+                <div
+                    v-if="isBookmarkModalOpen && selectedAyatForBookmark"
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+                    @click.self="isBookmarkModalOpen = false"
+                >
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 w-full max-w-md overflow-hidden">
+                        <!-- Header Modal -->
+                        <div class="px-5 py-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center font-bold text-sm">
+                                    🔖
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-bold">Tandai Bacaan Al-Qur'an</h3>
+                                    <p class="text-[11px] text-emerald-100">
+                                        {{ selectedAyatForBookmark.surahNamaLatin }} : Ayat {{ selectedAyatForBookmark.ayatNomor }}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                @click="isBookmarkModalOpen = false"
+                                class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                            >
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Body Modal -->
+                        <div class="p-5 space-y-4">
+                            <!-- Info Status Sesi Hari Ini -->
+                            <div v-if="todaySessions.length > 0" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+                                <div class="font-bold text-slate-700 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                                    <span>📅 Tilawah Hari Ini ({{ todaySessions.length }} Sesi)</span>
+                                </div>
+                                <div class="space-y-1 max-h-28 overflow-y-auto pr-1">
+                                    <div v-for="(s, idx) in todaySessions" :key="s.id || idx" class="flex items-center justify-between text-[11px] py-1 border-b border-slate-100 dark:border-slate-700/60 last:border-none">
+                                        <span><b>Sesi {{ idx + 1 }}:</b> {{ s.surat_awal }}:{{ s.ayat_awal }} ➔ {{ s.surat_akhir ? `${s.surat_akhir}:${s.ayat_akhir}` : '(Sedang Berjalan)' }}</span>
+                                        <button
+                                            type="button"
+                                            @click="hapusSesiById(s.id)"
+                                            class="text-rose-500 hover:text-rose-700 text-[10px] ml-2 px-1 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                            title="Hapus sesi ini dari rekap"
+                                        >
+                                            Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tombol Aksi 1: Tandai Mulai -->
+                            <div class="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/50 dark:bg-emerald-950/30">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="flex items-center gap-1.5 font-bold text-xs text-emerald-800 dark:text-emerald-300 mb-0.5">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                            Tandai Mulai Baca (Surat Awal)
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                            Jadikan <b class="text-slate-700 dark:text-slate-200">{{ selectedAyatForBookmark.surahNamaLatin }} ayat {{ selectedAyatForBookmark.ayatNomor }}</b> sebagai titik awal tilawah.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        :disabled="isSavingBookmark"
+                                        @click="submitTandai('mulai', false)"
+                                        class="flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                                    >
+                                        <span>🟢 Tandai Mulai</span>
+                                    </button>
+                                    <button
+                                        v-if="todaySessions.length > 0"
+                                        type="button"
+                                        :disabled="isSavingBookmark"
+                                        @click="submitTandai('mulai', true)"
+                                        class="py-2 px-2.5 rounded-lg bg-white dark:bg-slate-700 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 text-emerald-700 dark:text-emerald-300 font-semibold text-[11px] shadow-xs transition-all active:scale-98 disabled:opacity-50 cursor-pointer"
+                                        title="Buka sesi tilawah baru (misal membaca lagi di waktu berikutnya)"
+                                    >
+                                        + Sesi Baru
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Tombol Aksi 2: Tandai Selesai -->
+                            <div class="p-3.5 rounded-xl border border-teal-200 dark:border-teal-800/80 bg-teal-50/50 dark:bg-teal-950/30">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="flex items-center gap-1.5 font-bold text-xs text-teal-800 dark:text-teal-300 mb-0.5">
+                                            <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                                            Tandai Selesai Baca (Surat Akhir)
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                            Simpan <b class="text-slate-700 dark:text-slate-200">{{ selectedAyatForBookmark.surahNamaLatin }} ayat {{ selectedAyatForBookmark.ayatNomor }}</b> sebagai titik akhir tilawah &amp; masukkan ke Rekap Al-Qur'an.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Input Durasi Bacaan -->
+                                <div class="mt-2.5 p-2 rounded-lg bg-teal-100/60 dark:bg-teal-900/40 border border-teal-200/80 dark:border-teal-800 flex items-center justify-between gap-2">
+                                    <div class="text-[11px] font-medium text-teal-900 dark:text-teal-200">
+                                        ⏱️ Durasi Membaca:
+                                        <span v-if="activeSession?.jam_mulai" class="text-[10px] text-teal-700 dark:text-teal-400 block font-normal">
+                                            Mulai jam {{ activeSession.jam_mulai }} (terhitung otomatis)
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            v-model="inputDurasiMenit" 
+                                            placeholder="Auto" 
+                                            class="w-16 py-1 px-2 text-center text-xs font-bold rounded-md border border-teal-300 dark:border-teal-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-teal-500"
+                                        />
+                                        <span class="text-[11px] font-semibold text-teal-800 dark:text-teal-300">menit</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <button
+                                        type="button"
+                                        :disabled="isSavingBookmark"
+                                        @click="submitTandai('selesai', false)"
+                                        class="w-full py-2 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs transition-all active:scale-98 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                                    >
+                                        <span>🏁 Tandai Selesai</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Modal -->
+                        <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                            <Link
+                                :href="route('quran.recap')"
+                                class="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 underline"
+                            >
+                                Buka Rekap Al-Qur'an ↗
+                            </Link>
+                            <button
+                                type="button"
+                                @click="isBookmarkModalOpen = false"
+                                class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- Toast Notifikasi Penanda Al-Qur'an -->
+            <Transition
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 translate-y-3 scale-95"
+                enter-to-class="opacity-100 translate-y-0 scale-100"
+                leave-active-class="transition duration-200 ease-in"
+                leave-from-class="opacity-100 translate-y-0 scale-100"
+                leave-to-class="opacity-0 translate-y-3 scale-95"
+            >
+                <div
+                    v-if="bookmarkToast.show"
+                    class="fixed bottom-6 right-6 z-50 max-w-sm p-4 rounded-xl shadow-xl flex items-center gap-3 border text-xs font-medium"
+                    :class="bookmarkToast.type === 'error' ? 'bg-rose-600 text-white border-rose-700' : 'bg-emerald-600 text-white border-emerald-700'"
+                >
+                    <span class="text-base flex-shrink-0">{{ bookmarkToast.type === 'error' ? '⚠️' : '✅' }}</span>
+                    <div class="flex-1 leading-relaxed">{{ bookmarkToast.message }}</div>
+                    <button type="button" @click="bookmarkToast.show = false" class="text-white/80 hover:text-white font-bold ml-1">✕</button>
                 </div>
             </Transition>
 
