@@ -9,9 +9,18 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class SuratKeluarController extends Controller
 {
+    private function sanitizeHtml(?string $html): string
+    {
+        if (!$html) return '';
+        if (class_exists(\Mews\Purifier\Facades\Purifier::class)) {
+            return \Mews\Purifier\Facades\Purifier::clean($html);
+        }
+        return strip_tags($html, '<p><br><b><strong><i><em><u><span><div><ul><ol><li><table><thead><tbody><tr><td><th><h1><h2><h3><h4><h5><h6><hr><blockquote>');
+    }
     private function generateNextNomor(): string
     {
         $allSurat = SuratKeluar::all('nomor_surat');
@@ -81,12 +90,12 @@ class SuratKeluarController extends Controller
 
         // Sanitize HTML fields to prevent XSS
         if (isset($validated['isi_surat'])) {
-            $validated['isi_surat'] = Purifier::clean($validated['isi_surat']);
+            $validated['isi_surat'] = $this->sanitizeHtml($validated['isi_surat']);
         }
 
         $filePath = null;
         if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('surat_keluar', 'public');
+            $filePath = $request->file('file')->store('surat_keluar', 'local');
         }
 
         SuratKeluar::create([
@@ -209,7 +218,7 @@ if ($validated['nomor_mode'] === 'manual') {
 }
 
         // Sanitize HTML content
-        $validated['isi_surat'] = Purifier::clean($validated['isi_surat']);
+        $validated['isi_surat'] = $this->sanitizeHtml($validated['isi_surat']);
 
         if ($validated['jenis_surat'] === 'Tugas') {
             $validated['perihal'] = 'Surat Tugas';
@@ -294,48 +303,10 @@ if ($validated['nomor_mode'] === 'manual') {
             $pdf->setPaper('A4', 'portrait');
             $filename = 'surat_keluar_' . time() . '.pdf';
             $path = 'surat_keluar/' . $filename;
-            Storage::disk('public')->put($path, $pdf->output());
+            Storage::disk('local')->put($path, $pdf->output());
             // Update record with the PDF path
             $record->update(['file_path' => $path]);
         }
-
-        return redirect()->route('tata-usaha.surat-keluar.index')
-            ->with('success', 'Surat keluar otomatis berhasil dibuat dan disimpan.');
-
-        ini_set('memory_limit', '512M');
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true], true)->loadView('pdf.surat-keluar', $validated);
-        
-        // Atur ukuran kertas
-        $pdf->setPaper('A4', 'portrait');
-        
-        $filename = 'surat_keluar_' . time() . '.pdf';
-        $path = 'surat_keluar/' . $filename;
-        
-        Storage::disk('public')->put($path, $pdf->output());
-
-        // Parse date from masehi to Y-m-d format for DB loosely
-        $date = date('Y-m-d'); 
-        
-        $db_tujuan = $validated['kepada'];
-        $db_perihal = $validated['perihal'];
-        
-        if ($validated['jenis_surat'] === 'Tugas') {
-            $db_tujuan = !empty($validated['pegawai_ditugaskan']) ? implode(', ', (array)$validated['pegawai_ditugaskan']) : 'Yang Bersangkutan';
-            $db_perihal = !empty($validated['pokok_tugas']) ? $validated['pokok_tugas'] : 'Surat Tugas';
-        }
-
-        SuratKeluar::create([
-            'uuid' => $uuid,
-            'document_hash' => $hash,
-            'nomor_surat' => $validated['nomor_surat'],
-            'tanggal_surat' => $date,
-            'tujuan' => $db_tujuan,
-            'perihal' => $db_perihal,
-            'builder_data' => $validated, // Save all builder fields
-            'file_path' => $path,
-            'status' => 'draft',
-            'user_id' => Auth::id(),
-        ]);
 
         return redirect()->route('tata-usaha.surat-keluar.index')
             ->with('success', 'Surat keluar otomatis berhasil dibuat dan disimpan.');
@@ -445,14 +416,18 @@ if ($validated['nomor_mode'] === 'manual') {
         
         // Remove old file
         if ($suratKeluar->file_path) {
-            Storage::disk('public')->delete($suratKeluar->file_path);
+            if (Storage::disk('local')->exists($suratKeluar->file_path)) {
+                Storage::disk('local')->delete($suratKeluar->file_path);
+            } elseif (Storage::disk('public')->exists($suratKeluar->file_path)) {
+                Storage::disk('public')->delete($suratKeluar->file_path);
+            }
         }
 
         // Use UUID filename for new version
         $filename = 'surat_keluar_' . (string) Str::uuid() . '.pdf';
         $path = 'surat_keluar/' . $filename;
         try {
-            Storage::disk('public')->put($path, $pdf->output());
+            Storage::disk('local')->put($path, $pdf->output());
         } catch (\Exception $e) {
             \Log::error('Failed to store updated PDF: ' . $e->getMessage());
             abort(500, 'Gagal menyimpan PDF yang diperbarui.');
@@ -500,9 +475,15 @@ if ($validated['nomor_mode'] === 'manual') {
             $pdf->setPaper('A4', 'portrait');
 
             // Hapus file lama dan buat nama file baru agar browser tidak meload cache PDF lama
-            Storage::disk('public')->delete($suratKeluar->file_path);
+            if ($suratKeluar->file_path) {
+                if (Storage::disk('local')->exists($suratKeluar->file_path)) {
+                    Storage::disk('local')->delete($suratKeluar->file_path);
+                } elseif (Storage::disk('public')->exists($suratKeluar->file_path)) {
+                    Storage::disk('public')->delete($suratKeluar->file_path);
+                }
+            }
             $newPath = 'surat_keluar/' . time() . '_approved.pdf';
-            Storage::disk('public')->put($newPath, $pdf->output());
+            Storage::disk('local')->put($newPath, $pdf->output());
 
             $suratKeluar->update(['file_path' => $newPath]);
         }
@@ -513,10 +494,39 @@ if ($validated['nomor_mode'] === 'manual') {
     public function destroy(SuratKeluar $suratKeluar)
     {
         if ($suratKeluar->file_path) {
-            Storage::disk('public')->delete($suratKeluar->file_path);
+            if (Storage::disk('local')->exists($suratKeluar->file_path)) {
+                Storage::disk('local')->delete($suratKeluar->file_path);
+            } elseif (Storage::disk('public')->exists($suratKeluar->file_path)) {
+                Storage::disk('public')->delete($suratKeluar->file_path);
+            }
         }
         $suratKeluar->delete();
         
         return redirect()->back()->with('success', 'Surat Keluar berhasil dihapus.');
+    }
+
+    /**
+     * Tampilkan atau unduh berkas surat keluar secara aman dengan verifikasi hak akses.
+     */
+    public function file(SuratKeluar $suratKeluar)
+    {
+        $user = Auth::user();
+        if (!$user->hasAnyRole(['tata_usaha', 'superadmin', 'kepala_sekolah']) && $suratKeluar->user_id !== $user->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat berkas surat ini.');
+        }
+
+        if (!$suratKeluar->file_path) {
+            abort(404, 'Berkas surat tidak ditemukan.');
+        }
+
+        if (Storage::disk('local')->exists($suratKeluar->file_path)) {
+            return Storage::disk('local')->response($suratKeluar->file_path);
+        }
+
+        if (Storage::disk('public')->exists($suratKeluar->file_path)) {
+            return Storage::disk('public')->response($suratKeluar->file_path);
+        }
+
+        abort(404, 'Berkas fisik tidak ditemukan di server.');
     }
 }

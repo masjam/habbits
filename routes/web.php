@@ -5,6 +5,7 @@ use Inertia\Inertia;
 
 Route::get('/', [\App\Http\Controllers\System\WelcomeController::class, 'index'])->name('welcome');
 Route::get('/verifikasi-surat/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifySuratKeluar'])->name('public.verifikasi-surat');
+Route::get('/verifikasi-surat/{uuid}/download', [\App\Http\Controllers\System\PublicVerificationController::class, 'downloadSuratKeluar'])->name('public.verifikasi-surat.download');
 Route::get('/verifikasi-notulen/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifyNotulen'])->name('public.verifikasi-notulen');
 
 // Authentication Routes
@@ -213,6 +214,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tata-usaha/disposisi/{disposisi}/print', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'print'])->name('tata-usaha.disposisi.print');
     Route::get('/tata-usaha/disposisi/{disposisi}/detail', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'show'])->name('tata-usaha.disposisi.detail');
     Route::put('/tata-usaha/disposisi/{disposisi}/status', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'updateStatus'])->name('tata-usaha.disposisi.update-status');
+    Route::get('/tata-usaha/surat-masuk/{suratMasuk}/file', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'file'])->name('tata-usaha.surat-masuk.file');
 
     // ─── Tata Usaha & Kepala Sekolah Routes ─────────────────────────────────────────────
     Route::middleware('role:tata_usaha|superadmin|kepala_sekolah')->prefix('tata-usaha')->name('tata-usaha.')->group(function () {
@@ -232,6 +234,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/surat-keluar/generate', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'generate'])->name('surat-keluar.generate');
         Route::get('/surat-keluar', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'index'])->name('surat-keluar.index');
         Route::post('/surat-keluar', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'store'])->name('surat-keluar.store');
+        Route::get('/surat-keluar/{suratKeluar}/file', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'file'])->name('surat-keluar.file');
         Route::delete('/surat-keluar/{suratKeluar}', [\App\Http\Controllers\TataUsaha\SuratKeluarController::class, 'destroy'])->name('surat-keluar.destroy');
 
         Route::get('/disposisi', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'index'])->name('disposisi.index');

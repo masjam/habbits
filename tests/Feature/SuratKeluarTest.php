@@ -274,5 +274,65 @@ class SuratKeluarTest extends TestCase
         $response->assertStatus(200);
         $this->assertEquals('application/pdf', $response->headers->get('content-type'));
     }
+
+    public function test_tu_can_access_secure_file()
+    {
+        Storage::fake('local');
+        $filePath = 'surat_keluar/test_surat.pdf';
+        Storage::disk('local')->put($filePath, 'fake pdf content');
+
+        $surat = SuratKeluar::create([
+            'nomor_surat' => '15/ III.4.AU/F/2026',
+            'tanggal_surat' => now()->format('Y-m-d'),
+            'tujuan' => 'Dinas Pendidikan',
+            'perihal' => 'Laporan',
+            'file_path' => $filePath,
+            'user_id' => $this->tuUser->id,
+        ]);
+
+        $response = $this->actingAs($this->tuUser)->get(route('tata-usaha.surat-keluar.file', $surat));
+        $response->assertStatus(200);
+    }
+
+    public function test_unauthorized_user_cannot_access_surat_keluar_file()
+    {
+        Storage::fake('local');
+        $filePath = 'surat_keluar/test_surat.pdf';
+        Storage::disk('local')->put($filePath, 'fake pdf content');
+
+        $surat = SuratKeluar::create([
+            'nomor_surat' => '16/ III.4.AU/F/2026',
+            'tanggal_surat' => now()->format('Y-m-d'),
+            'tujuan' => 'Dinas Pendidikan',
+            'perihal' => 'Laporan',
+            'file_path' => $filePath,
+            'user_id' => $this->tuUser->id,
+        ]);
+
+        $regularUser = User::factory()->create();
+        $response = $this->actingAs($regularUser)->get(route('tata-usaha.surat-keluar.file', $surat));
+        $response->assertRedirect(route('dashboard'));
+        $response->assertSessionHas('error');
+    }
+
+    public function test_public_can_download_verified_surat_keluar()
+    {
+        Storage::fake('local');
+        $filePath = 'surat_keluar/verified_surat.pdf';
+        Storage::disk('local')->put($filePath, 'verified pdf content');
+
+        $surat = SuratKeluar::create([
+            'uuid' => '11111111-2222-3333-4444-555555555555',
+            'nomor_surat' => '17/ III.4.AU/F/2026',
+            'tanggal_surat' => now()->format('Y-m-d'),
+            'tujuan' => 'Masyarakat Umum',
+            'perihal' => 'Pengumuman',
+            'file_path' => $filePath,
+            'user_id' => $this->tuUser->id,
+        ]);
+
+        $response = $this->get(route('public.verifikasi-surat.download', $surat->uuid));
+        $response->assertStatus(200);
+    }
 }
 

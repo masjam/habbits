@@ -8,6 +8,7 @@ use App\Models\SuratKeluar;
 use App\Models\Notulen;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 class PublicVerificationController extends Controller
 {
@@ -41,9 +42,29 @@ class PublicVerificationController extends Controller
                 'perihal' => $surat->perihal,
                 'hash' => $surat->document_hash,
                 'file_path' => $surat->file_path,
+                'download_url' => route('public.verifikasi-surat.download', $surat->uuid),
                 'dibuat_pada' => $surat->created_at->translatedFormat('l, d F Y H:i:s'),
             ]
         ]);
+    }
+
+    public function downloadSuratKeluar($uuid)
+    {
+        $surat = SuratKeluar::where('uuid', $uuid)->first();
+
+        if (!$surat || !$surat->file_path) {
+            abort(404, 'Dokumen surat tidak ditemukan.');
+        }
+
+        if (Storage::disk('local')->exists($surat->file_path)) {
+            return Storage::disk('local')->response($surat->file_path);
+        }
+
+        if (Storage::disk('public')->exists($surat->file_path)) {
+            return Storage::disk('public')->response($surat->file_path);
+        }
+
+        abort(404, 'Berkas fisik tidak ditemukan di server.');
     }
     public function verifyNotulen($uuid)
     {

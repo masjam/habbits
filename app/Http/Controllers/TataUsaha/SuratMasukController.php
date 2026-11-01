@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
-use Mews\Purifier\Facades\Purifier;
 
 class SuratMasukController extends Controller
 {
@@ -65,11 +64,11 @@ class SuratMasukController extends Controller
 
         $filePath = null;
         if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('surat_masuk', 'public');
+            $filePath = $request->file('file')->store('surat_masuk', 'local');
         }
         // Sanitize free text fields to prevent XSS
-        $validated['pengirim'] = Purifier::clean($validated['pengirim']);
-        $validated['perihal'] = Purifier::clean($validated['perihal']);
+        $validated['pengirim'] = strip_tags($validated['pengirim']);
+        $validated['perihal'] = strip_tags($validated['perihal']);
 
         SuratMasuk::create([
             'nomor_surat' => $validated['nomor_surat'],
@@ -90,7 +89,11 @@ class SuratMasukController extends Controller
     public function destroy(SuratMasuk $suratMasuk)
     {
         if ($suratMasuk->file_path) {
-            Storage::disk('public')->delete($suratMasuk->file_path);
+            if (Storage::disk('local')->exists($suratMasuk->file_path)) {
+                Storage::disk('local')->delete($suratMasuk->file_path);
+            } elseif (Storage::disk('public')->exists($suratMasuk->file_path)) {
+                Storage::disk('public')->delete($suratMasuk->file_path);
+            }
         }
         $suratMasuk->delete();
         
@@ -112,13 +115,17 @@ class SuratMasukController extends Controller
 
         if ($request->hasFile('file')) {
             if ($suratMasuk->file_path) {
-                Storage::disk('public')->delete($suratMasuk->file_path);
+                if (Storage::disk('local')->exists($suratMasuk->file_path)) {
+                    Storage::disk('local')->delete($suratMasuk->file_path);
+                } elseif (Storage::disk('public')->exists($suratMasuk->file_path)) {
+                    Storage::disk('public')->delete($suratMasuk->file_path);
+                }
             }
-            $validated['file_path'] = $request->file('file')->store('surat_masuk', 'public');
+            $validated['file_path'] = $request->file('file')->store('surat_masuk', 'local');
         }
         // Sanitize free text fields
-        $validated['pengirim'] = Purifier::clean($validated['pengirim']);
-        $validated['perihal'] = Purifier::clean($validated['perihal']);
+        $validated['pengirim'] = strip_tags($validated['pengirim']);
+        $validated['perihal'] = strip_tags($validated['perihal']);
 
         $suratMasuk->update([
             'nomor_surat' => $validated['nomor_surat'],
@@ -132,5 +139,34 @@ class SuratMasukController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Surat Masuk berhasil diperbarui.');
+    }
+
+    /**
+     * Tampilkan atau unduh berkas surat masuk secara aman dengan verifikasi hak akses.
+     */
+    public function file(SuratMasuk $suratMasuk)
+    {
+        $user = Auth::user();
+        $canAccess = $user->hasAnyRole(['tata_usaha', 'superadmin', 'kepala_sekolah'])
+            || $suratMasuk->user_id === $user->id
+            || $suratMasuk->disposisi()->where('penerima_id', $user->id)->exists();
+
+        if (!$canAccess) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat berkas surat ini.');
+        }
+
+        if (!$suratMasuk->file_path) {
+            abort(404, 'Berkas surat tidak ditemukan.');
+        }
+
+        if (Storage::disk('local')->exists($suratMasuk->file_path)) {
+            return Storage::disk('local')->response($suratMasuk->file_path);
+        }
+
+        if (Storage::disk('public')->exists($suratMasuk->file_path)) {
+            return Storage::disk('public')->response($suratMasuk->file_path);
+        }
+
+        abort(404, 'Berkas fisik tidak ditemukan di server.');
     }
 }
