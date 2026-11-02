@@ -34,7 +34,6 @@ class AttendanceRFIDController extends Controller
         $attendances = Attendance::with('user:id,name')
             ->where('date', $today)
             ->orderBy('updated_at', 'desc')
-            ->take(15)
             ->get()
             ->map(function ($att) {
                 return [
@@ -47,8 +46,20 @@ class AttendanceRFIDController extends Controller
                 ];
             });
 
+        $totalPegawai = User::whereDoesntHave('roles', function ($q) {
+            $q->whereIn('name', ['admin', 'superadmin']);
+        })->count();
+
+        $stats = [
+            'total_hadir' => $attendances->count(),
+            'tepat_waktu' => $attendances->where('status', 'hadir')->count(),
+            'terlambat' => $attendances->where('status', 'terlambat')->count(),
+            'total_pegawai' => $totalPegawai,
+        ];
+
         return Inertia::render('Attendance/RFIDKiosk', [
             'initialAttendances' => $attendances,
+            'initialStats' => $stats,
             'kioskToken' => $validToken
         ]);
     }
@@ -97,22 +108,32 @@ class AttendanceRFIDController extends Controller
             ->where('date', $date)
             ->first();
 
-        // Ambil jam kerja dari user atau global
-        $workStart = $user->work_start ?: ($settings['presensi_work_start'] ?? '07:00');
-        $workEnd = $user->work_end ?: ($settings['presensi_work_end'] ?? '15:00');
-        $lateTolerance = $user->late_tolerance !== null ? $user->late_tolerance : ($settings['presensi_late_tolerance'] ?? 15);
-        $toleranceEnd = Carbon::parse($workStart)->addMinutes((int)$lateTolerance)->toTimeString();
+        // Ambil jam kerja efektif pegawai (jadwal khusus/event, piket guru, harian, atau individual)
+        $schedule = $user->getEffectiveWorkSchedule($date);
+        $workStart = $schedule['work_start'] ?? ($settings['presensi_work_start'] ?? '07:00');
+        $workEnd = $schedule['work_end'] ?? ($settings['presensi_work_end'] ?? '15:00');
+        $lateTolerance = (int) ($schedule['late_tolerance'] ?? ($settings['presensi_late_tolerance'] ?? 15));
+
+        $workStartTime = Carbon::parse($date . ' ' . $workStart);
+        $toleranceEnd = $workStartTime->copy()->addMinutes($lateTolerance);
 
         if (!$attendance) {
             // Belum absen masuk -> CHECK IN
-            $status = ($time > $toleranceEnd) ? 'terlambat' : 'hadir';
+            $status = $now->greaterThan($toleranceEnd) ? 'terlambat' : 'hadir';
+
+            $notePrefix = 'Presensi via Mesin RFID';
+            if (!empty($schedule['is_piket']) && !empty($schedule['piket_name'])) {
+                $notePrefix .= " ({$schedule['piket_name']})";
+            } elseif (!empty($schedule['is_special']) && !empty($schedule['special_name'])) {
+                $notePrefix .= " ({$schedule['special_name']})";
+            }
 
             $newAtt = Attendance::create([
                 'user_id' => $user->id,
                 'date' => $date,
                 'time_in' => $time,
                 'status' => $status,
-                'notes' => 'Presensi via Mesin RFID',
+                'notes' => $notePrefix,
             ]);
 
             return response()->json([
@@ -122,6 +143,9 @@ class AttendanceRFIDController extends Controller
                     'name' => $user->name,
                     'status' => $status,
                     'time' => $time,
+                    'work_start' => $workStart,
+                    'is_piket' => !empty($schedule['is_piket']),
+                    'schedule_info' => !empty($schedule['piket_name']) ? $schedule['piket_name'] : (!empty($schedule['special_name']) ? $schedule['special_name'] : null),
                 ],
                 'attendance' => [
                     'id' => $newAtt->id,
@@ -129,14 +153,15 @@ class AttendanceRFIDController extends Controller
                     'time_in' => $time,
                     'time_out' => null,
                     'status' => $status,
-                    'notes' => 'Presensi via Mesin RFID',
+                    'notes' => $notePrefix,
                 ],
-                'message' => "Selamat datang, {$user->name}!",
+                'message' => "Selamat datang, {$user->name}!" . ($status === 'terlambat' ? ' (Terlambat)' : ''),
             ]);
         } else {
             // Sudah absen masuk
             // Update time_out (Check out)
-            $isPulangCepat = $time < $workEnd;
+            $workEndTime = Carbon::parse($date . ' ' . $workEnd);
+            $isPulangCepat = $now->lessThan($workEndTime);
 
             $attendance->update([
                 'time_out' => $time,
@@ -150,6 +175,7 @@ class AttendanceRFIDController extends Controller
                     'name' => $user->name,
                     'time' => $time,
                     'is_pulang_cepat' => $isPulangCepat,
+                    'work_end' => $workEnd,
                 ],
                 'attendance' => [
                     'id' => $attendance->id,
@@ -157,10 +183,10 @@ class AttendanceRFIDController extends Controller
                     'time_in' => $attendance->time_in,
                     'time_out' => $time,
                     'status' => $attendance->status,
+                    'notes' => $attendance->notes,
                 ],
-                'message' => "Sampai jumpa, {$user->name}!",
+                'message' => "Sampai jumpa, {$user->name}!" . ($isPulangCepat ? ' (Pulang Cepat)' : ''),
             ]);
-
         }
     }
 }

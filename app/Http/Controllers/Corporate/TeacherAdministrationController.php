@@ -132,6 +132,7 @@ class TeacherAdministrationController extends Controller
         $validated = $request->validate([
             'academic_year' => 'required|string|max:20',
             'semester'      => 'required|in:ganjil,genap',
+            'month'         => 'nullable|string|max:30',
             'grade_level'   => 'nullable|string|max:50',
             'subject'       => 'nullable|string|max:100',
             'category'      => 'required|string|max:50',
@@ -170,6 +171,7 @@ class TeacherAdministrationController extends Controller
             'user_id'        => $user->id,
             'academic_year'  => $request->academic_year,
             'semester'       => $request->semester,
+            'month'          => $request->month,
             'grade_level'    => $request->grade_level,
             'subject'        => $request->subject,
             'category'       => $request->category,
@@ -203,6 +205,7 @@ class TeacherAdministrationController extends Controller
 
         $validated = $request->validate([
             'grade_level'   => 'nullable|string|max:50',
+            'month'         => 'nullable|string|max:30',
             'subject'       => 'nullable|string|max:100',
             'category'      => 'required|string|max:50',
             'title'         => 'required|string|max:255',
@@ -212,6 +215,7 @@ class TeacherAdministrationController extends Controller
 
         $updateData = [
             'grade_level' => $request->grade_level,
+            'month'       => $request->month,
             'subject'     => $request->subject,
             'category'    => $request->category,
             'title'       => $request->title,

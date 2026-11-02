@@ -14,6 +14,7 @@ class TeacherAdministration extends Model
         'user_id',
         'academic_year',
         'semester',
+        'month',
         'grade_level',
         'subject',
         'category',

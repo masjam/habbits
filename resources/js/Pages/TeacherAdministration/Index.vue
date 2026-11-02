@@ -74,10 +74,72 @@ const applyFilters = () => {
     })
 }
 
+// Master Data Pilihan
+const gradeList = [
+    'Kelas 1',
+    'Kelas 2',
+    'Kelas 3',
+    'Kelas 4',
+    'Kelas 5',
+    'Kelas 6',
+    'Umum'
+]
+
+const subjectList = [
+    'Al Islam',
+    'Kemuhammadiyahan',
+    'Pendidikan Pancasila',
+    'Bahasa Indonesia',
+    'Matematika',
+    'IPAS',
+    'PJOK',
+    'Seni Budaya',
+    'Bahasa Jawa',
+    'Bahasa Inggris',
+    'Bahasa Arab',
+    'Tahsin-Tahfid',
+]
+
+const ganjilMonths = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+const genapMonths = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni']
+
+const availableMonths = computed(() => {
+    return form.semester === 'genap' ? genapMonths : ganjilMonths
+})
+
+const editAvailableMonths = computed(() => {
+    return editForm.semester === 'genap' ? genapMonths : ganjilMonths
+})
+
+const selectedSubjectOption = ref('')
+const customSubject = ref('')
+
+const onSubjectOptionChange = () => {
+    if (selectedSubjectOption.value === 'Lainnya') {
+        form.subject = customSubject.value
+    } else {
+        form.subject = selectedSubjectOption.value
+        customSubject.value = ''
+    }
+}
+
+const onCustomSubjectInput = () => {
+    if (selectedSubjectOption.value === 'Lainnya') {
+        form.subject = customSubject.value
+    }
+}
+
+const onSemesterChange = () => {
+    if (form.month && !availableMonths.value.includes(form.month)) {
+        form.month = ''
+    }
+}
+
 // Upload Form
 const form = useForm({
     academic_year: props.currentAcademicYear,
     semester: props.currentSemester,
+    month: '',
     grade_level: '',
     subject: '',
     category: '',
@@ -112,6 +174,8 @@ const submitUpload = () => {
         onSuccess: () => {
             showUploadModal.value = false
             form.reset()
+            selectedSubjectOption.value = ''
+            customSubject.value = ''
             selectedFileName.value = ''
             selectedFileSize.value = ''
         }
@@ -121,6 +185,8 @@ const submitUpload = () => {
 // Edit / Revision Form
 const editForm = useForm({
     id: null,
+    semester: 'ganjil',
+    month: '',
     grade_level: '',
     subject: '',
     category: '',
@@ -129,16 +195,55 @@ const editForm = useForm({
     file: null,
 })
 const editSelectedFileName = ref('')
+const editSelectedSubjectOption = ref('')
+const editCustomSubject = ref('')
+
+const onEditSubjectOptionChange = () => {
+    if (editSelectedSubjectOption.value === 'Lainnya') {
+        editForm.subject = editCustomSubject.value
+    } else {
+        editForm.subject = editSelectedSubjectOption.value
+        editCustomSubject.value = ''
+    }
+}
+
+const onEditCustomSubjectInput = () => {
+    if (editSelectedSubjectOption.value === 'Lainnya') {
+        editForm.subject = editCustomSubject.value
+    }
+}
+
+const onEditSemesterChange = () => {
+    if (editForm.month && !editAvailableMonths.value.includes(editForm.month)) {
+        editForm.month = ''
+    }
+}
 
 const openEditModal = (doc) => {
     editForm.id = doc.id
+    editForm.semester = doc.semester || 'ganjil'
+    editForm.month = doc.month || ''
     editForm.grade_level = doc.grade_level || ''
-    editForm.subject = doc.subject || ''
     editForm.category = doc.category
     editForm.title = doc.title
     editForm.description = doc.description || ''
     editForm.file = null
     editSelectedFileName.value = ''
+
+    if (subjectList.includes(doc.subject)) {
+        editSelectedSubjectOption.value = doc.subject
+        editCustomSubject.value = ''
+        editForm.subject = doc.subject
+    } else if (doc.subject) {
+        editSelectedSubjectOption.value = 'Lainnya'
+        editCustomSubject.value = doc.subject
+        editForm.subject = doc.subject
+    } else {
+        editSelectedSubjectOption.value = ''
+        editCustomSubject.value = ''
+        editForm.subject = ''
+    }
+
     showEditModal.value = true
 }
 
@@ -155,6 +260,8 @@ const submitEdit = () => {
         onSuccess: () => {
             showEditModal.value = false
             editForm.reset()
+            editSelectedSubjectOption.value = ''
+            editCustomSubject.value = ''
             editSelectedFileName.value = ''
         }
     })
@@ -555,9 +662,14 @@ const progressPercent = computed(() => {
                                 <td class="py-4 px-4 whitespace-nowrap">
                                     <div class="text-xs space-y-0.5">
                                         <p class="font-semibold text-slate-800 dark:text-slate-200">{{ doc.academic_year }}</p>
-                                        <span class="inline-block text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                            Semester {{ doc.semester }}
-                                        </span>
+                                        <div class="flex items-center gap-1 flex-wrap">
+                                            <span class="inline-block text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                Semester {{ doc.semester }}
+                                            </span>
+                                            <span v-if="doc.month" class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/60">
+                                                {{ doc.month }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </td>
 
@@ -701,7 +813,7 @@ const progressPercent = computed(() => {
                 </div>
 
                 <form @submit.prevent="submitUpload" class="space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <!-- Tahun Ajaran -->
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Tahun Ajaran <span class="text-rose-500">*</span></label>
@@ -721,11 +833,24 @@ const progressPercent = computed(() => {
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Semester <span class="text-rose-500">*</span></label>
                             <select
                                 v-model="form.semester"
+                                @change="onSemesterChange"
                                 required
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
                             >
                                 <option value="ganjil">Ganjil</option>
                                 <option value="genap">Genap</option>
+                            </select>
+                        </div>
+
+                        <!-- Bulan (Sesuai Semester) -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Bulan (Opsional)</label>
+                            <select
+                                v-model="form.month"
+                                class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
+                            >
+                                <option value="">-- Semua / 1 Semester --</option>
+                                <option v-for="m in availableMonths" :key="m" :value="m">{{ m }}</option>
                             </select>
                         </div>
                     </div>
@@ -745,52 +870,39 @@ const progressPercent = computed(() => {
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- Tingkat / Kelas -->
+                        <!-- Tingkat / Kelas (Dropdown) -->
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Tingkat / Kelas</label>
-                            <input
-                                type="text"
+                            <select
                                 v-model="form.grade_level"
-                                list="createClassesListOptions"
-                                placeholder="Pilih atau ketik misal: Kelas 1, Kelas 2, Umum"
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
-                            />
-                            <datalist id="createClassesListOptions">
-                                <option value="Kelas 1" />
-                                <option value="Kelas 2" />
-                                <option value="Kelas 3" />
-                                <option value="Kelas 4" />
-                                <option value="Kelas 5" />
-                                <option value="Kelas 6" />
-                                <option value="Umum" />
-                            </datalist>
-                            <div class="flex items-center gap-1 flex-wrap mt-1.5">
-                                <button
-                                    v-for="c in ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6', 'Umum']"
-                                    :key="c"
-                                    type="button"
-                                    @click="form.grade_level = c"
-                                    :class="[
-                                        'px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer transition-colors',
-                                        form.grade_level === c
-                                            ? 'bg-emerald-600 text-white border-emerald-600'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-subtle hover:border-emerald-400'
-                                    ]"
-                                >
-                                    {{ c }}
-                                </button>
-                            </div>
+                            >
+                                <option value="">-- Pilih Kelas / Tingkat --</option>
+                                <option v-for="c in gradeList" :key="c" :value="c">{{ c }}</option>
+                            </select>
                         </div>
 
-                        <!-- Mata Pelajaran -->
+                        <!-- Mata Pelajaran (Dropdown + Input Manual jika Lainnya) -->
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Mata Pelajaran</label>
-                            <input
-                                type="text"
-                                v-model="form.subject"
-                                placeholder="Misal: Matematika, PAI, Tematik"
+                            <select
+                                v-model="selectedSubjectOption"
+                                @change="onSubjectOptionChange"
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
-                            />
+                            >
+                                <option value="">-- Pilih Mata Pelajaran --</option>
+                                <option v-for="sub in subjectList" :key="sub" :value="sub">{{ sub }}</option>
+                                <option value="Lainnya">Lainnya (Ketik Manual)</option>
+                            </select>
+                            <div v-if="selectedSubjectOption === 'Lainnya'" class="mt-2">
+                                <input
+                                    type="text"
+                                    v-model="customSubject"
+                                    @input="onCustomSubjectInput"
+                                    placeholder="Ketik nama mata pelajaran..."
+                                    class="w-full text-xs md:text-sm rounded-xl border border-emerald-400 dark:border-emerald-600 bg-emerald-50/40 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -899,64 +1011,66 @@ const progressPercent = computed(() => {
                 </div>
 
                 <form @submit.prevent="submitEdit" class="space-y-4">
-                    <!-- Kategori Berkas -->
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Kategori Dokumen <span class="text-rose-500">*</span></label>
-                        <select
-                            v-model="editForm.category"
-                            required
-                            class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
-                        >
-                            <option v-for="(lbl, key) in categories" :key="key" :value="key">{{ lbl }}</option>
-                        </select>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Kategori Berkas -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Kategori Dokumen <span class="text-rose-500">*</span></label>
+                            <select
+                                v-model="editForm.category"
+                                required
+                                class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
+                            >
+                                <option v-for="(lbl, key) in categories" :key="key" :value="key">{{ lbl }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Bulan (Sesuai Semester) -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Bulan (Opsional)</label>
+                            <select
+                                v-model="editForm.month"
+                                class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
+                            >
+                                <option value="">-- Semua / 1 Semester --</option>
+                                <option v-for="m in editAvailableMonths" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- Tingkat / Kelas -->
+                        <!-- Tingkat / Kelas (Dropdown) -->
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Tingkat / Kelas</label>
-                            <input
-                                type="text"
+                            <select
                                 v-model="editForm.grade_level"
-                                list="editClassesListOptions"
-                                placeholder="Pilih atau ketik misal: Kelas 1, Kelas 2, Umum"
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
-                            />
-                            <datalist id="editClassesListOptions">
-                                <option value="Kelas 1" />
-                                <option value="Kelas 2" />
-                                <option value="Kelas 3" />
-                                <option value="Kelas 4" />
-                                <option value="Kelas 5" />
-                                <option value="Kelas 6" />
-                                <option value="Umum" />
-                            </datalist>
-                            <div class="flex items-center gap-1 flex-wrap mt-1.5">
-                                <button
-                                    v-for="c in ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6', 'Umum']"
-                                    :key="c"
-                                    type="button"
-                                    @click="editForm.grade_level = c"
-                                    :class="[
-                                        'px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer transition-colors',
-                                        editForm.grade_level === c
-                                            ? 'bg-emerald-600 text-white border-emerald-600'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-subtle hover:border-emerald-400'
-                                    ]"
-                                >
-                                    {{ c }}
-                                </button>
-                            </div>
+                            >
+                                <option value="">-- Pilih Kelas / Tingkat --</option>
+                                <option v-for="c in gradeList" :key="c" :value="c">{{ c }}</option>
+                            </select>
                         </div>
 
-                        <!-- Mata Pelajaran -->
+                        <!-- Mata Pelajaran (Dropdown + Input Manual jika Lainnya) -->
                         <div>
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Mata Pelajaran</label>
-                            <input
-                                type="text"
-                                v-model="editForm.subject"
+                            <select
+                                v-model="editSelectedSubjectOption"
+                                @change="onEditSubjectOptionChange"
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2.5 focus:ring-2 focus:ring-emerald-500"
-                            />
+                            >
+                                <option value="">-- Pilih Mata Pelajaran --</option>
+                                <option v-for="sub in subjectList" :key="sub" :value="sub">{{ sub }}</option>
+                                <option value="Lainnya">Lainnya (Ketik Manual)</option>
+                            </select>
+                            <div v-if="editSelectedSubjectOption === 'Lainnya'" class="mt-2">
+                                <input
+                                    type="text"
+                                    v-model="editCustomSubject"
+                                    @input="onEditCustomSubjectInput"
+                                    placeholder="Ketik nama mata pelajaran..."
+                                    class="w-full text-xs md:text-sm rounded-xl border border-emerald-400 dark:border-emerald-600 bg-emerald-50/40 dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3 py-2 focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
                         </div>
                     </div>
 

@@ -744,6 +744,9 @@ const getFileIconColor = (ext) => {
                                                             <span v-if="filterGradeLevel === 'all' && doc.grade_level" class="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 font-semibold text-slate-600 dark:text-slate-300">
                                                                 {{ doc.grade_level }}
                                                             </span>
+                                                            <span v-if="doc.month" class="px-1.5 py-0.2 rounded bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/60 font-semibold">
+                                                                {{ doc.month }}
+                                                            </span>
                                                         </div>
                                                         <p v-if="doc.description" class="text-[11px] text-slate-500 dark:text-slate-400 pl-8 italic line-clamp-1">
                                                             "{{ doc.description }}"

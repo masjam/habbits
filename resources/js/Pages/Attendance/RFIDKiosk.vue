@@ -8,6 +8,15 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    initialStats: {
+        type: Object,
+        default: () => ({
+            total_hadir: 0,
+            tepat_waktu: 0,
+            terlambat: 0,
+            total_pegawai: 0
+        })
+    },
     kioskToken: {
         type: String,
         default: ''
@@ -16,6 +25,12 @@ const props = defineProps({
 
 const page = usePage()
 const attendances = ref(props.initialAttendances || [])
+const stats = ref({
+    total_hadir: props.initialStats?.total_hadir ?? (props.initialAttendances?.length || 0),
+    tepat_waktu: props.initialStats?.tepat_waktu ?? 0,
+    terlambat: props.initialStats?.terlambat ?? 0,
+    total_pegawai: props.initialStats?.total_pegawai ?? 0,
+})
 
 const isScannerFocused = ref(true)
 const rfidInput = ref('')
@@ -82,6 +97,12 @@ const handleScan = async () => {
                     attendances.value[idx] = response.data.attendance;
                 } else {
                     attendances.value.unshift(response.data.attendance);
+                    stats.value.total_hadir++;
+                    if (response.data.attendance.status === 'terlambat') {
+                        stats.value.terlambat++;
+                    } else {
+                        stats.value.tepat_waktu++;
+                    }
                 }
             }
         } else {
@@ -364,8 +385,21 @@ const handleScan = async () => {
                                  </svg>
                              </div>
                              
-                             <div class="bg-emerald-100 text-emerald-700 px-5 py-1.5 rounded-full font-black mb-4 uppercase tracking-[0.2em] text-xs border border-emerald-200 shadow-sm">
-                                 {{ scanResult.type === 'in' ? 'BERHASIL CHECK-IN' : 'BERHASIL CHECK-OUT' }}
+                             <div class="flex flex-wrap items-center justify-center gap-2 mb-3">
+                                 <div :class="[
+                                     'px-5 py-1.5 rounded-full font-black uppercase tracking-[0.2em] text-xs border shadow-sm',
+                                     scanResult.type === 'in' 
+                                         ? (scanResult.user.status === 'terlambat' ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-emerald-100 text-emerald-700 border-emerald-200')
+                                         : (scanResult.user.is_pulang_cepat ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-blue-100 text-blue-700 border-blue-200')
+                                 ]">
+                                     {{ scanResult.type === 'in' 
+                                         ? (scanResult.user.status === 'terlambat' ? '⚠️ TERLAMBAT MASUK' : '✓ BERHASIL CHECK-IN') 
+                                         : (scanResult.user.is_pulang_cepat ? '⚠️ PULANG MENDAHULUI' : '✓ BERHASIL CHECK-OUT') 
+                                     }}
+                                 </div>
+                                 <div v-if="scanResult.user.schedule_info" class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold border border-indigo-200 shadow-sm">
+                                     {{ scanResult.user.schedule_info }}
+                                 </div>
                              </div>
                              
                              <h2 class="text-4xl font-black text-slate-800 mb-2 tracking-tight">{{ scanResult.user.name }}</h2>
@@ -406,14 +440,26 @@ const handleScan = async () => {
 
             <!-- Right Column: History Table -->
             <div class="w-full bg-white/60 backdrop-blur-3xl border border-white/80 rounded-[2.5rem] p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col lg:h-[85vh]">
-                <div class="px-4 py-3 border-b border-slate-200/60 mb-4 flex items-center justify-between">
-                    <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                        <svg class="w-7 h-7 text-emerald-600 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Riwayat Presensi Hari Ini
-                    </h2>
-                    <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold shadow-inner border border-emerald-200">{{ attendances.length }} Data</span>
+                <div class="px-4 py-3 border-b border-slate-200/60 mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                            <svg class="w-7 h-7 text-emerald-600 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Riwayat Presensi Hari Ini
+                        </h2>
+                        <p class="text-xs text-slate-500 font-semibold mt-0.5">
+                            Total <span class="font-bold text-slate-700">{{ attendances.length }}</span><template v-if="stats.total_pegawai"> dari {{ stats.total_pegawai }}</template> Pegawai Hadir
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200 shadow-sm">
+                            ✓ {{ stats.tepat_waktu }} Tepat Waktu
+                        </span>
+                        <span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold border border-amber-200 shadow-sm">
+                            ⚠️ {{ stats.terlambat }} Terlambat
+                        </span>
+                    </div>
                 </div>
                 
                 <div class="overflow-y-auto flex-1 pr-2 custom-scrollbar">
