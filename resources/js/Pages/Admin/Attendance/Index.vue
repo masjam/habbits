@@ -17,7 +17,9 @@ const props = defineProps({
     formattedMonth: String,
     formattedDate: String,
     divisions: Array,
+    allUsers: Array,
     isSuperadmin: Boolean,
+    isAdmin: Boolean,
 })
 
 // Hak akses edit presensi: Superadmin
@@ -177,7 +179,7 @@ const exportTugasLuar = () => {
 // ─── HELPER CEK PENGAJUAN IZIN / PULANG CEPAT ───────────────────────────────
 const hasPermitOrEarlyDeparture = (record) => {
     if (!record) return false
-    return ['izin', 'sakit'].includes(record.status) ||
+    return ['izin', 'sakit', 'cuti'].includes(record.status) ||
            !!record.is_early_departure ||
            (!!record.approval_type && record.approval_type !== 'none') ||
            record.approval_status === 'pending'
@@ -186,6 +188,7 @@ const hasPermitOrEarlyDeparture = (record) => {
 const getPermitTypeLabel = (record) => {
     if (!record) return 'Izin'
     if (record.status === 'sakit' || record.approval_type === 'sakit') return 'Sakit'
+    if (record.status === 'cuti' || record.approval_type === 'cuti') return 'Cuti'
     if (record.approval_type === 'dinas_luar' || record.status === 'dinas_luar') return 'Dinas Luar'
     if (record.is_early_departure || record.approval_type === 'pulang_cepat' || record.approval_type === 'pulang_mendahului') return 'Pulang Mendahului'
     if (record.status === 'izin' || record.approval_type === 'izin') return 'Izin Tidak Masuk'
@@ -263,8 +266,13 @@ const editForm = useForm({
 })
 
 const openCellDetail = (user, dayItem, record) => {
-    // Jika bukan superadmin dan tidak ada data presensi, abaikan
-    if (!canEditAttendance.value && !record) return
+    // Jika bukan superadmin, arahkan admin ke modal input ketidakhadiran
+    if (!canEditAttendance.value) {
+        if (canInputLeave.value) {
+            openLeaveModal(user, dayItem.date)
+        }
+        return
+    }
 
     selectedDetailModal.value = {
         userId: user.user_id,
@@ -331,7 +339,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
     }
 
     // Jika pegawai belum absen pulang (hanya absen datang, tidak dihitung presensi)
-    if (!record.is_complete && !['izin', 'sakit'].includes(record.status)) {
+    if (!record.is_complete && !['izin', 'sakit', 'cuti', 'alpa'].includes(record.status)) {
         return 'bg-rose-50/80 text-rose-900 border border-dashed border-rose-300 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/80 hover:scale-105 shadow-2xs'
     }
 
@@ -344,7 +352,66 @@ const getCellClass = (record, isWeekend, isFuture) => {
     if (record.status === 'terlambat') {
         return 'bg-amber-50/90 text-amber-900 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800/80 hover:scale-105 shadow-2xs'
     }
+    if (record.status === 'sakit') {
+        return 'bg-indigo-50/90 text-indigo-900 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-200 dark:border-indigo-800/80 hover:scale-105 shadow-2xs'
+    }
+    if (record.status === 'izin') {
+        return 'bg-violet-50/90 text-violet-900 border border-violet-200 dark:bg-violet-950/40 dark:text-violet-200 dark:border-violet-800/80 hover:scale-105 shadow-2xs'
+    }
+    if (record.status === 'cuti') {
+        return 'bg-teal-50/90 text-teal-900 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-200 dark:border-teal-800/80 hover:scale-105 shadow-2xs'
+    }
+    if (record.status === 'alpa') {
+        return 'bg-rose-50/90 text-rose-900 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-200 dark:border-rose-800/80 hover:scale-105 shadow-2xs'
+    }
     return 'bg-emerald-50/90 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800/80 hover:scale-105 shadow-2xs'
+}
+
+// ─── MODAL INPUT STATUS KETIDAKHADIRAN (ADMIN) ─────────────────────────────
+const canInputLeave = computed(() => !!(props.isAdmin || props.isSuperadmin || page.props.auth?.roles?.includes('admin') || page.props.auth?.roles?.includes('superadmin')))
+
+const isLeaveModalOpen = ref(false)
+const userOptions = computed(() => {
+    if (props.allUsers && props.allUsers.length > 0) return props.allUsers
+    if (props.monthlyReportData && props.monthlyReportData.length > 0) {
+        return props.monthlyReportData.map(u => ({ id: u.user_id, name: u.name, nip: u.nip, divisi: u.divisi }))
+    }
+    return []
+})
+const leaveForm = useForm({
+    user_id: '',
+    date: new Date().toISOString().split('T')[0],
+    status: 'sakit',
+    notes: '',
+    attachment: null,
+})
+
+const openLeaveModal = (user = null, date = null) => {
+    leaveForm.reset()
+    leaveForm.clearErrors()
+    if (user) {
+        leaveForm.user_id = user.user_id || user.id || ''
+    } else if (userOptions.value.length > 0 && !leaveForm.user_id) {
+        leaveForm.user_id = userOptions.value[0].id
+    }
+    if (date) leaveForm.date = date
+    isLeaveModalOpen.value = true
+}
+
+const closeLeaveModal = () => {
+    isLeaveModalOpen.value = false
+    leaveForm.reset()
+    leaveForm.clearErrors()
+}
+
+const submitLeaveForm = () => {
+    leaveForm.post(route('admin.attendance.store-leave'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            closeLeaveModal()
+        },
+    })
 }
 </script>
 
@@ -411,6 +478,21 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         <span class="hidden sm:inline">Ekspor Tugas Luar</span>
+                    </button>
+
+                    <!-- Tombol Input Ketidakhadiran (Admin & Superadmin) -->
+                    <button
+                        v-if="canInputLeave"
+                        type="button"
+                        @click="openLeaveModal()"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md hover:shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer"
+                        title="Input status Sakit / Izin / Alpa untuk pegawai"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span class="hidden sm:inline">Input Ketidakhadiran</span>
+                        <span class="sm:hidden">Izin/Sakit</span>
                     </button>
 
                     <!-- Tombol Ekspor Excel -->
@@ -538,6 +620,22 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             <p class="text-[10px] font-bold text-purple-600 leading-none whitespace-nowrap">Pulang Cepat</p>
                             <p class="text-sm font-black text-purple-600 leading-none mt-1">{{ monthlyStats?.total_pulang_cepat_sebulan || 0 }}</p>
                         </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Sakit">
+                            <p class="text-[10px] font-bold text-indigo-600 leading-none whitespace-nowrap">Sakit</p>
+                            <p class="text-sm font-black text-indigo-600 leading-none mt-1">{{ monthlyStats?.total_sakit_sebulan || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Izin">
+                            <p class="text-[10px] font-bold text-violet-600 leading-none whitespace-nowrap">Izin</p>
+                            <p class="text-sm font-black text-violet-600 leading-none mt-1">{{ monthlyStats?.total_izin_sebulan || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Cuti">
+                            <p class="text-[10px] font-bold text-teal-600 leading-none whitespace-nowrap">Cuti</p>
+                            <p class="text-sm font-black text-teal-600 leading-none mt-1">{{ monthlyStats?.total_cuti_sebulan || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Alpa (Tanpa Keterangan)">
+                            <p class="text-[10px] font-bold text-rose-600 leading-none whitespace-nowrap">Alpa</p>
+                            <p class="text-sm font-black text-rose-600 leading-none mt-1">{{ monthlyStats?.total_alpa_sebulan || 0 }}</p>
+                        </div>
                         <div v-if="monthlyStats?.total_belum_lengkap > 0" class="px-2.5 py-1.5 bg-rose-50/70 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 shadow-2xs text-center min-w-[64px]" title="Sudah absen datang tapi belum absen pulang (tidak dihitung presensi)">
                             <p class="text-[10px] font-bold text-rose-600 dark:text-rose-400 leading-none whitespace-nowrap">Belum Pulang</p>
                             <p class="text-sm font-black text-rose-600 dark:text-rose-400 leading-none mt-1">{{ monthlyStats?.total_belum_lengkap || 0 }}</p>
@@ -581,9 +679,21 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             <p class="text-[10px] font-bold text-purple-600 leading-none whitespace-nowrap">Pulang Cepat</p>
                             <p class="text-sm font-black text-purple-600 leading-none mt-1">{{ dailyStats?.pulang_cepat || 0 }}</p>
                         </div>
-                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[64px]">
-                            <p class="text-[10px] font-bold text-indigo-600 leading-none whitespace-nowrap">Izin / Sakit</p>
-                            <p class="text-sm font-black text-indigo-600 leading-none mt-1">{{ dailyStats?.izin_sakit || 0 }}</p>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Sakit">
+                            <p class="text-[10px] font-bold text-indigo-600 leading-none whitespace-nowrap">Sakit</p>
+                            <p class="text-sm font-black text-indigo-600 leading-none mt-1">{{ dailyStats?.sakit || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Izin">
+                            <p class="text-[10px] font-bold text-violet-600 leading-none whitespace-nowrap">Izin</p>
+                            <p class="text-sm font-black text-violet-600 leading-none mt-1">{{ dailyStats?.izin || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Cuti">
+                            <p class="text-[10px] font-bold text-teal-600 leading-none whitespace-nowrap">Cuti</p>
+                            <p class="text-sm font-black text-teal-600 leading-none mt-1">{{ dailyStats?.cuti || 0 }}</p>
+                        </div>
+                        <div class="px-2.5 py-1.5 bg-card-subtle/80 rounded-xl border border-theme/60 shadow-2xs text-center min-w-[55px]" title="Alpa (Tanpa Keterangan)">
+                            <p class="text-[10px] font-bold text-rose-600 leading-none whitespace-nowrap">Alpa</p>
+                            <p class="text-sm font-black text-rose-600 leading-none mt-1">{{ dailyStats?.alpa || 0 }}</p>
                         </div>
                         <div 
                             v-if="dailyStats?.belum_lengkap > 0"
@@ -644,6 +754,8 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 <option value="dinas_luar">Tugas Luar</option>
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
+                                <option value="cuti">Cuti</option>
+                                <option value="alpa">Alpa</option>
                                 <option value="belum_hadir">Belum Hadir</option>
                             </select>
                         </div>
@@ -735,13 +847,17 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 </th>
 
                                 <!-- Kolom Ringkasan Akumulasi di Kanan -->
-                                <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-yellow-600 border-r border-subtle/70" title="Tepat Waktu Murni">⭐</th>
-                                <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-emerald-600 border-r border-subtle/70" title="Tepat Waktu">H</th>
-                                <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-amber-600 border-r border-subtle/70" title="Terlambat">T</th>
-                                <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-blue-600 border-r border-subtle/70" title="Tugas Luar">DL</th>
-                                <th class="py-2 px-2.5 text-center min-w-[40px] font-bold text-purple-600 border-r border-subtle/70" title="Pulang Mendahului">PC</th>
-                                <th class="py-2 px-3 text-center min-w-[50px] font-black text-slate-800 dark:text-slate-100 border-r border-subtle/70" title="Total Hadir">Total</th>
-                                <th class="py-2 px-3 text-center min-w-[55px] font-black text-emerald-600" title="Persentase">%</th>
+                                <th class="py-2 px-2 text-center min-w-[36px] font-bold text-yellow-600 border-r border-subtle/70" title="Tepat Waktu Murni">⭐</th>
+                                <th class="py-2 px-2 text-center min-w-[36px] font-bold text-emerald-600 border-r border-subtle/70" title="Tepat Waktu">H</th>
+                                <th class="py-2 px-2 text-center min-w-[36px] font-bold text-amber-600 border-r border-subtle/70" title="Terlambat">T</th>
+                                <th class="py-2 px-2 text-center min-w-[36px] font-bold text-blue-600 border-r border-subtle/70" title="Tugas Luar">DL</th>
+                                <th class="py-2 px-2 text-center min-w-[36px] font-bold text-purple-600 border-r border-subtle/70" title="Pulang Mendahului">PC</th>
+                                <th class="py-2 px-2 text-center min-w-[34px] font-bold text-indigo-600 border-r border-subtle/70" title="Sakit">S</th>
+                                <th class="py-2 px-2 text-center min-w-[34px] font-bold text-violet-600 border-r border-subtle/70" title="Izin">I</th>
+                                <th class="py-2 px-2 text-center min-w-[34px] font-bold text-teal-600 border-r border-subtle/70" title="Cuti">C</th>
+                                <th class="py-2 px-2 text-center min-w-[34px] font-bold text-rose-600 border-r border-subtle/70" title="Alpa (Tanpa Keterangan)">A</th>
+                                <th class="py-2 px-3 text-center min-w-[48px] font-black text-slate-800 dark:text-slate-100 border-r border-subtle/70" title="Total Hadir">Total</th>
+                                <th class="py-2 px-3 text-center min-w-[50px] font-black text-emerald-600" title="Persentase">%</th>
                             </tr>
                         </thead>
 
@@ -782,27 +898,44 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                         ]"
                                     >
                                         <template v-if="user.daily_records?.[d.day]">
-                                            <!-- Jam Masuk (Atas) -->
-                                            <div class="text-[8px] sm:text-[10px] font-black font-mono leading-none tracking-tight flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
-                                                <span>{{ user.daily_records[d.day].time_in || '--:--' }}</span>
-                                                <span 
-                                                    v-if="hasPermitOrEarlyDeparture(user.daily_records[d.day])" 
-                                                    class="text-[7px] sm:text-[9px] cursor-help inline-block leading-none mt-0.5 sm:mt-0" 
-                                                    :title="`🚩 ${getPermitTypeLabel(user.daily_records[d.day])}`"
-                                                >🚩</span>
-                                                <span 
-                                                    v-if="user.daily_records[d.day].is_pure_ontime" 
-                                                    class="text-[7px] sm:text-[9px] cursor-help inline-block leading-none mt-0.5 sm:mt-0 text-yellow-500" 
-                                                    title="⭐ Tepat Waktu Murni (Tanpa Toleransi)"
-                                                >⭐</span>
-                                            </div>
-                                            <!-- Jam Pulang (Bawah) -->
-                                            <div class="text-[7px] sm:text-[9px] font-mono leading-none tracking-tight mt-0.5 sm:mt-1 flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
-                                                <span :class="(!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status)) ? 'text-rose-600 dark:text-rose-400 font-black' : 'opacity-80'">
-                                                    {{ user.daily_records[d.day].time_out || '--:--' }}
-                                                </span>
-                                                <span v-if="user.daily_records[d.day].is_overtime" class="text-[6px] sm:text-[8px] text-amber-500 font-black mt-0.5 sm:mt-0" :title="`Lembur: ${user.daily_records[d.day].overtime_minutes}m`">⚡</span>
-                                            </div>
+                                            <template v-if="['sakit', 'izin', 'cuti', 'alpa'].includes(user.daily_records[d.day].status)">
+                                                <div class="py-1 text-center">
+                                                    <span 
+                                                        :class="[
+                                                            'text-[8px] sm:text-[9px] font-black uppercase px-0.5 py-0.5 rounded tracking-tighter block',
+                                                            user.daily_records[d.day].status === 'sakit' ? 'text-indigo-800 dark:text-indigo-200' :
+                                                            user.daily_records[d.day].status === 'izin' ? 'text-violet-800 dark:text-violet-200' :
+                                                            user.daily_records[d.day].status === 'cuti' ? 'text-teal-800 dark:text-teal-200' :
+                                                            'text-rose-800 dark:text-rose-200'
+                                                        ]"
+                                                    >
+                                                        {{ user.daily_records[d.day].status }}
+                                                    </span>
+                                                </div>
+                                            </template>
+                                            <template v-else>
+                                                <!-- Jam Masuk (Atas) -->
+                                                <div class="text-[8px] sm:text-[10px] font-black font-mono leading-none tracking-tight flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
+                                                    <span>{{ user.daily_records[d.day].time_in || '--:--' }}</span>
+                                                    <span 
+                                                        v-if="hasPermitOrEarlyDeparture(user.daily_records[d.day])" 
+                                                        class="text-[7px] sm:text-[9px] cursor-help inline-block leading-none mt-0.5 sm:mt-0" 
+                                                        :title="`🚩 ${getPermitTypeLabel(user.daily_records[d.day])}`"
+                                                    >🚩</span>
+                                                    <span 
+                                                        v-if="user.daily_records[d.day].is_pure_ontime" 
+                                                        class="text-[7px] sm:text-[9px] cursor-help inline-block leading-none mt-0.5 sm:mt-0 text-yellow-500" 
+                                                        title="⭐ Tepat Waktu Murni (Tanpa Toleransi)"
+                                                    >⭐</span>
+                                                </div>
+                                                <!-- Jam Pulang (Bawah) -->
+                                                <div class="text-[7px] sm:text-[9px] font-mono leading-none tracking-tight mt-0.5 sm:mt-1 flex flex-col xl:flex-row items-center justify-center gap-0 sm:gap-0.5">
+                                                    <span :class="(!user.daily_records[d.day].is_complete && !['izin', 'sakit', 'cuti', 'alpa'].includes(user.daily_records[d.day].status)) ? 'text-rose-600 dark:text-rose-400 font-black' : 'opacity-80'">
+                                                        {{ user.daily_records[d.day].time_out || '--:--' }}
+                                                    </span>
+                                                    <span v-if="user.daily_records[d.day].is_overtime" class="text-[6px] sm:text-[8px] text-amber-500 font-black mt-0.5 sm:mt-0" :title="`Lembur: ${user.daily_records[d.day].overtime_minutes}m`">⚡</span>
+                                                </div>
+                                            </template>
                                         </template>
                                         <template v-else>
                                             <span 
@@ -818,20 +951,32 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                 </td>
 
                                 <!-- Ringkasan Hitungan Sebulan -->
-                                <td class="py-2.5 px-2.5 text-center font-bold text-yellow-600 border-r border-subtle/60 text-xs">
+                                <td class="py-2.5 px-2 text-center font-bold text-yellow-600 border-r border-subtle/60 text-xs">
                                     {{ user.total_pure_ontime || 0 }}
                                 </td>
-                                <td class="py-2.5 px-2.5 text-center font-bold text-emerald-600 border-r border-subtle/60 text-xs">
+                                <td class="py-2.5 px-2 text-center font-bold text-emerald-600 border-r border-subtle/60 text-xs">
                                     {{ user.total_hadir }}
                                 </td>
-                                <td class="py-2.5 px-2.5 text-center font-bold text-amber-600 border-r border-subtle/60 text-xs">
+                                <td class="py-2.5 px-2 text-center font-bold text-amber-600 border-r border-subtle/60 text-xs">
                                     {{ user.total_terlambat }}
                                 </td>
-                                <td class="py-2.5 px-2.5 text-center font-bold text-blue-600 border-r border-subtle/60 text-xs">
+                                <td class="py-2.5 px-2 text-center font-bold text-blue-600 border-r border-subtle/60 text-xs">
                                     {{ user.total_dinas_luar }}
                                 </td>
-                                <td class="py-2.5 px-2.5 text-center font-bold text-purple-600 border-r border-subtle/60 text-xs">
+                                <td class="py-2.5 px-2 text-center font-bold text-purple-600 border-r border-subtle/60 text-xs">
                                     {{ user.total_pulang_cepat }}
+                                </td>
+                                <td class="py-2.5 px-2 text-center font-bold text-indigo-600 border-r border-subtle/60 text-xs" title="Sakit">
+                                    {{ user.total_sakit || 0 }}
+                                </td>
+                                <td class="py-2.5 px-2 text-center font-bold text-violet-600 border-r border-subtle/60 text-xs" title="Izin">
+                                    {{ user.total_izin || 0 }}
+                                </td>
+                                <td class="py-2.5 px-2 text-center font-bold text-teal-600 border-r border-subtle/60 text-xs" title="Cuti">
+                                    {{ user.total_cuti || 0 }}
+                                </td>
+                                <td class="py-2.5 px-2 text-center font-bold text-rose-600 border-r border-subtle/60 text-xs" title="Alpa (Tanpa Keterangan)">
+                                    {{ user.total_alpa || 0 }}
                                 </td>
                                 <td class="py-2.5 px-3 text-center font-black text-slate-800 dark:text-slate-100 border-r border-subtle/60 text-xs">
                                     {{ user.total_kehadiran }}
@@ -842,7 +987,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                             </tr>
 
                             <tr v-if="!monthlyReportData || monthlyReportData.length === 0">
-                                <td :colspan="daysList.length + 7" class="py-12 text-center text-slate-400">
+                                <td :colspan="daysList.length + 12" class="py-12 text-center text-slate-400">
                                     Tidak ada data pegawai yang sesuai dengan filter.
                                 </td>
                             </tr>
@@ -1055,8 +1200,10 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                                     item.status === 'hadir' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
                                                     item.status === 'terlambat' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
                                                     item.status === 'dinas_luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
-                                                    item.status === 'izin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                                                    item.status === 'izin' ? 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300' :
                                                     item.status === 'sakit' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300' :
+                                                    item.status === 'cuti' ? 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300' :
+                                                    item.status === 'alpa' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300' :
                                                     'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                                                 ]"
                                             >
@@ -1258,12 +1405,26 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                             </svg>
                                             <span>Detail / Edit</span>
                                         </button>
+
+                                        <!-- Tombol Input Ketidakhadiran (Admin) -->
+                                        <button 
+                                            v-else-if="canInputLeave"
+                                            type="button" 
+                                            @click="openLeaveModal(item, selectedDate)"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                                            title="Input Sakit / Izin / Cuti / Alpa untuk pegawai ini"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            <span>Ketidakhadiran</span>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
 
                             <tr v-if="!dailyReportData || dailyReportData.length === 0">
-                                <td :colspan="canEditAttendance ? 7 : 6" class="py-12 text-center text-slate-400">
+                                <td :colspan="canEditAttendance || canInputLeave ? 7 : 6" class="py-12 text-center text-slate-400">
                                     Tidak ada data pegawai yang sesuai dengan filter pada tanggal ini.
                                 </td>
                             </tr>
@@ -1420,6 +1581,7 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     <option value="dinas_luar">Dinas / Tugas Luar</option>
                                     <option value="izin">Izin</option>
                                     <option value="sakit">Sakit</option>
+                                    <option value="cuti">Cuti</option>
                                     <option value="alpa">Alpa (Tanpa Keterangan)</option>
                                 </select>
                                 <p v-if="editForm.errors.status" class="text-[10px] text-rose-500 mt-0.5">{{ editForm.errors.status }}</p>
@@ -1882,6 +2044,199 @@ const getCellClass = (record, isWeekend, isFuture) => {
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
                                 <span>Konfirmasi Penolakan</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ── MODAL 4: INPUT STATUS KETIDAKHADIRAN OLEH ADMIN (SAKIT / IZIN / CUTI / ALPA) ── -->
+            <div 
+                v-if="isLeaveModalOpen" 
+                class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto"
+                @click="closeLeaveModal"
+            >
+                <div class="relative bg-sidebar max-w-lg w-full rounded-3xl overflow-hidden shadow-2xl border border-theme my-8" @click.stop>
+                    <div class="p-5 border-b border-subtle flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-indigo-600 border border-indigo-200 dark:border-indigo-900">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-slate-800 dark:text-slate-100">Input Ketidakhadiran</h3>
+                                <p class="text-xs text-slate-400">Pencatatan status Sakit, Izin, Cuti, atau Alpa oleh Admin</p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button" 
+                            @click="closeLeaveModal"
+                            class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitLeaveForm">
+                        <div class="p-5 space-y-4">
+                            <!-- Pilihan Pegawai -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                                    Pegawai <span class="text-rose-500">*</span>
+                                </label>
+                                <select 
+                                    v-model="leaveForm.user_id" 
+                                    required
+                                    class="w-full text-xs font-semibold rounded-xl border border-theme bg-card-subtle px-3 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="" disabled>Pilih Pegawai...</option>
+                                    <option v-for="u in userOptions" :key="u.id" :value="u.id">
+                                        {{ u.name }} {{ u.divisi ? `(${u.divisi})` : '' }}
+                                    </option>
+                                </select>
+                                <p v-if="leaveForm.errors.user_id" class="text-[10px] text-rose-500 mt-1 font-semibold">
+                                    {{ leaveForm.errors.user_id }}
+                                </p>
+                            </div>
+
+                            <!-- Tanggal -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                                    Tanggal <span class="text-rose-500">*</span>
+                                </label>
+                                <input 
+                                    type="date" 
+                                    v-model="leaveForm.date" 
+                                    required
+                                    class="w-full text-xs font-semibold rounded-xl border border-theme bg-card-subtle px-3 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <p v-if="leaveForm.errors.date" class="text-[10px] text-rose-500 mt-1 font-semibold">
+                                    {{ leaveForm.errors.date }}
+                                </p>
+                            </div>
+
+                            <!-- Pilihan Status Ketidakhadiran (Grid 4 Pilihan) -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                                    Status Ketidakhadiran <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                    <!-- Sakit -->
+                                    <label 
+                                        :class="[
+                                            'flex flex-col items-center justify-center p-3 rounded-2xl border cursor-pointer transition-all text-center',
+                                            leaveForm.status === 'sakit' 
+                                                ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20 font-bold shadow-xs' 
+                                                : 'bg-card-subtle border-theme text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                                        ]"
+                                    >
+                                        <input type="radio" v-model="leaveForm.status" value="sakit" class="sr-only" />
+                                        <span class="text-lg">🩺</span>
+                                        <span class="text-xs font-bold mt-1">Sakit</span>
+                                    </label>
+
+                                    <!-- Izin -->
+                                    <label 
+                                        :class="[
+                                            'flex flex-col items-center justify-center p-3 rounded-2xl border cursor-pointer transition-all text-center',
+                                            leaveForm.status === 'izin' 
+                                                ? 'bg-violet-50 dark:bg-violet-950/60 border-violet-500 text-violet-700 dark:text-violet-300 ring-2 ring-violet-500/20 font-bold shadow-xs' 
+                                                : 'bg-card-subtle border-theme text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                                        ]"
+                                    >
+                                        <input type="radio" v-model="leaveForm.status" value="izin" class="sr-only" />
+                                        <span class="text-lg">📝</span>
+                                        <span class="text-xs font-bold mt-1">Izin</span>
+                                    </label>
+
+                                    <!-- Cuti -->
+                                    <label 
+                                        :class="[
+                                            'flex flex-col items-center justify-center p-3 rounded-2xl border cursor-pointer transition-all text-center',
+                                            leaveForm.status === 'cuti' 
+                                                ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-500 text-teal-700 dark:text-teal-300 ring-2 ring-teal-500/20 font-bold shadow-xs' 
+                                                : 'bg-card-subtle border-theme text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                                        ]"
+                                    >
+                                        <input type="radio" v-model="leaveForm.status" value="cuti" class="sr-only" />
+                                        <span class="text-lg">🏖️</span>
+                                        <span class="text-xs font-bold mt-1">Cuti</span>
+                                    </label>
+
+                                    <!-- Alpa -->
+                                    <label 
+                                        :class="[
+                                            'flex flex-col items-center justify-center p-3 rounded-2xl border cursor-pointer transition-all text-center',
+                                            leaveForm.status === 'alpa' 
+                                                ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-500 text-rose-700 dark:text-rose-300 ring-2 ring-rose-500/20 font-bold shadow-xs' 
+                                                : 'bg-card-subtle border-theme text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                                        ]"
+                                    >
+                                        <input type="radio" v-model="leaveForm.status" value="alpa" class="sr-only" />
+                                        <span class="text-lg">❌</span>
+                                        <span class="text-xs font-bold mt-1">Alpa</span>
+                                    </label>
+                                </div>
+                                <p v-if="leaveForm.errors.status" class="text-[10px] text-rose-500 mt-1 font-semibold">
+                                    {{ leaveForm.errors.status }}
+                                </p>
+                            </div>
+
+                            <!-- Catatan / Keterangan -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                                    Keterangan / Alasan
+                                </label>
+                                <textarea 
+                                    v-model="leaveForm.notes" 
+                                    rows="3"
+                                    placeholder="Contoh: Cuti tahunan / Surat dokter nomor 123 / Izin keperluan keluarga..."
+                                    class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500"
+                                ></textarea>
+                                <p v-if="leaveForm.errors.notes" class="text-[10px] text-rose-500 mt-1 font-semibold">
+                                    {{ leaveForm.errors.notes }}
+                                </p>
+                            </div>
+
+                            <!-- Lampiran Dokumen (Opsional) -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                                    Lampiran Berkas (Opsional)
+                                </label>
+                                <input 
+                                    type="file" 
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    @change="e => leaveForm.attachment = e.target.files[0]"
+                                    class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                                />
+                                <p class="text-[10px] text-slate-400 mt-1">Format PDF, JPG, PNG (Maks. 5MB)</p>
+                                <p v-if="leaveForm.errors.attachment" class="text-[10px] text-rose-500 mt-1 font-semibold">
+                                    {{ leaveForm.errors.attachment }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border-t border-subtle bg-card-subtle flex items-center justify-end gap-2">
+                            <button 
+                                type="button" 
+                                @click="closeLeaveModal"
+                                class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 transition-colors cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="leaveForm.processing"
+                                class="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md hover:shadow-indigo-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                                <svg v-if="leaveForm.processing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                <span>Simpan Status</span>
                             </button>
                         </div>
                     </form>

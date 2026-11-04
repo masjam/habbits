@@ -120,6 +120,10 @@ class AttendanceReportController extends Controller
             $dinasLuarCount = 0;
             $pulangCepatCount = 0;
             $pureOntimeCount = 0;
+            $sakitCount = 0;
+            $izinCount = 0;
+            $cutiCount = 0;
+            $alpaCount = 0;
 
             $dailyRecords = [];
             for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -135,6 +139,12 @@ class AttendanceReportController extends Controller
                         elseif ($att->status === 'terlambat') $terlambatCount++;
                         elseif ($att->status === 'dinas_luar') $dinasLuarCount++;
                     }
+
+                    // Hitung status ketidakhadiran (sakit/izin/cuti/alpa — tidak perlu time_in/out)
+                    if ($att->status === 'sakit') $sakitCount++;
+                    elseif ($att->status === 'izin') $izinCount++;
+                    elseif ($att->status === 'cuti') $cutiCount++;
+                    elseif ($att->status === 'alpa') $alpaCount++;
 
                     // Cek pulang mendahului / pulang cepat jika ada time_out dan jadwal work_end
                     $daySchedule = $u->getEffectiveWorkSchedule($dateKey);
@@ -194,7 +204,7 @@ class AttendanceReportController extends Controller
             }
 
             $totalKehadiran = $hadirCount + $terlambatCount + $dinasLuarCount;
-            $belumHadirCount = max(0, $effectiveWorkdays - $totalKehadiran);
+            $belumHadirCount = max(0, $effectiveWorkdays - $totalKehadiran - $sakitCount - $izinCount - $cutiCount - $alpaCount);
             $rate = round(($totalKehadiran / $effectiveWorkdays) * 100);
 
             return [
@@ -212,6 +222,10 @@ class AttendanceReportController extends Controller
                 'total_dinas_luar'   => $dinasLuarCount,
                 'total_pulang_cepat' => $pulangCepatCount,
                 'total_pure_ontime'  => $pureOntimeCount,
+                'total_sakit'        => $sakitCount,
+                'total_izin'         => $izinCount,
+                'total_cuti'         => $cutiCount,
+                'total_alpa'         => $alpaCount,
                 'total_kehadiran'    => $totalKehadiran,
                 'total_belum_hadir'  => $belumHadirCount,
                 'total_hari_kerja'   => $effectiveWorkdays,
@@ -310,7 +324,11 @@ class AttendanceReportController extends Controller
             'total_hadir_sebulan'        => $validMonthlyAttendances->where('status', 'hadir')->count(),
             'total_terlambat_sebulan'    => $validMonthlyAttendances->where('status', 'terlambat')->count(),
             'total_dinas_luar_sebulan'   => $validMonthlyAttendances->where('status', 'dinas_luar')->count(),
-            'total_izin_sakit_sebulan'   => $monthlyAttendances->whereIn('status', ['izin', 'sakit'])->count(),
+            'total_sakit_sebulan'        => $monthlyAttendances->where('status', 'sakit')->count(),
+            'total_izin_sebulan'         => $monthlyAttendances->where('status', 'izin')->count(),
+            'total_cuti_sebulan'         => $monthlyAttendances->where('status', 'cuti')->count(),
+            'total_alpa_sebulan'         => $monthlyAttendances->where('status', 'alpa')->count(),
+            'total_izin_sakit_sebulan'   => $monthlyAttendances->whereIn('status', ['izin', 'sakit', 'cuti'])->count(),
             'total_pulang_cepat_sebulan' => $monthlyReportData->sum('total_pulang_cepat'),
             'total_pending_approval'     => $monthlyAttendances->where('approval_status', 'pending')->count(),
             'total_belum_lengkap'        => $monthlyAttendances->filter(fn($a) => in_array($a->status, ['hadir', 'terlambat', 'dinas_luar']) && (empty($a->time_in) || empty($a->time_out)))->count(),
@@ -320,17 +338,22 @@ class AttendanceReportController extends Controller
         // Statistik Harian pada Tanggal Terpilih (Dihitung hadir jika absen datang dan pulang)
         $validDailyAttendances = $dailyAttendances->filter(fn($a) => !empty($a->time_in) && !empty($a->time_out));
         $belumLengkapCount = $dailyAttendances->filter(fn($a) => in_array($a->status, ['hadir', 'terlambat', 'dinas_luar']) && (empty($a->time_in) || empty($a->time_out)))->count();
+        $dailyIzinSakitAlpaCount = $dailyAttendances->whereIn('status', ['izin', 'sakit', 'cuti', 'alpa'])->count();
 
         $dailyStats = [
             'total_pegawai'    => $totalUsers,
             'hadir'            => $validDailyAttendances->where('status', 'hadir')->count(),
             'terlambat'        => $validDailyAttendances->where('status', 'terlambat')->count(),
             'dinas_luar'       => $validDailyAttendances->where('status', 'dinas_luar')->count(),
-            'izin_sakit'       => $dailyAttendances->whereIn('status', ['izin', 'sakit'])->count(),
+            'sakit'            => $dailyAttendances->where('status', 'sakit')->count(),
+            'izin'             => $dailyAttendances->where('status', 'izin')->count(),
+            'cuti'             => $dailyAttendances->where('status', 'cuti')->count(),
+            'alpa'             => $dailyAttendances->where('status', 'alpa')->count(),
+            'izin_sakit'       => $dailyAttendances->whereIn('status', ['izin', 'sakit', 'cuti'])->count(),
             'pulang_cepat'     => $dailyReportData->where('is_pulang_cepat', true)->where('is_complete', true)->count(),
             'pending_approval' => $dailyAttendances->where('approval_status', 'pending')->count(),
             'belum_lengkap'    => $belumLengkapCount,
-            'belum_hadir'      => max(0, $totalUsers - ($validDailyAttendances->count() + $dailyAttendances->whereIn('status', ['izin', 'sakit'])->count() + $belumLengkapCount)),
+            'belum_hadir'      => max(0, $totalUsers - ($validDailyAttendances->count() + $dailyIzinSakitAlpaCount + $belumLengkapCount)),
         ];
 
         $divisions = Division::orderBy('name')->get();
@@ -364,7 +387,9 @@ class AttendanceReportController extends Controller
             'formattedMonth'    => $monthCarbon->locale('id')->isoFormat('MMMM Y'),
             'formattedDate'     => Carbon::parse($selectedDate)->locale('id')->isoFormat('dddd, D MMMM Y'),
             'divisions'         => $divisions,
+            'allUsers'          => $allUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'nip' => $u->nip, 'divisi' => $u->divisi]),
             'isSuperadmin'      => (bool) (auth()->user()?->isActualSuperadmin() || auth()->user()?->hasRole('superadmin')),
+            'isAdmin'           => (bool) (auth()->user()?->hasRole('admin') || auth()->user()?->hasRole('superadmin') || auth()->user()?->isActualSuperadmin()),
         ]);
     }
 
@@ -431,7 +456,7 @@ class AttendanceReportController extends Controller
             'date'      => 'required|date',
             'time_in'   => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
             'time_out'  => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/'],
-            'status'    => 'required|in:hadir,terlambat,dinas_luar,izin,sakit,alpa',
+            'status'    => 'required|in:hadir,terlambat,dinas_luar,izin,sakit,alpa,cuti',
             'notes'     => 'nullable|string|max:500',
         ]);
 
@@ -468,6 +493,61 @@ class AttendanceReportController extends Controller
 
         $formattedDate = Carbon::parse($data['date'])->locale('id')->isoFormat('D MMMM Y');
         return redirect()->back()->with('success', "Presensi {$user->name} tanggal {$formattedDate} berhasil disimpan oleh Superadmin.");
+    }
+
+    /**
+     * Input Status Ketidakhadiran (Sakit/Izin/Alpa) oleh Admin
+     * Admin biasa bisa menggunakan ini; superadmin sudah punya updateRecord.
+     */
+    public function storeLeave(Request $request)
+    {
+        $currentUser = auth()->user();
+        // Hanya admin dan superadmin
+        if (!$currentUser->hasRole('admin') && !$currentUser->hasRole('superadmin') && !$currentUser->isActualSuperadmin()) {
+            abort(403, 'Hanya Admin atau Superadmin yang dapat menginput status ketidakhadiran pegawai.');
+        }
+
+        $data = $request->validate([
+            'user_id'    => 'required|exists:users,id',
+            'date'       => 'required|date',
+            'status'     => 'required|in:sakit,izin,cuti,alpa',
+            'notes'      => 'nullable|string|max:1000',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $user = User::findOrFail($data['user_id']);
+        $dateStr = Carbon::parse($data['date'])->format('Y-m-d');
+
+        // Handle upload lampiran (opsional)
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('attendance/attachments', 'private');
+        }
+
+        $updateData = [
+            'status'          => $data['status'],
+            'notes'           => $data['notes'] ?? null,
+            'time_in'         => null,
+            'time_out'        => null,
+            'approval_status' => 'approved',
+            'approval_type'   => in_array($data['status'], ['sakit', 'izin', 'cuti']) ? $data['status'] : 'none',
+            'approved_by'     => $currentUser->id,
+            'approved_at'     => now(),
+        ];
+
+        if ($attachmentPath) {
+            $updateData['attachment'] = $attachmentPath;
+        }
+
+        Attendance::updateOrCreate(
+            ['user_id' => $user->id, 'date' => $dateStr],
+            $updateData
+        );
+
+        $formattedDate = Carbon::parse($dateStr)->locale('id')->isoFormat('D MMMM Y');
+        $statusLabel = ['sakit' => 'Sakit', 'izin' => 'Izin', 'cuti' => 'Cuti', 'alpa' => 'Alpa'][$data['status']] ?? $data['status'];
+
+        return redirect()->back()->with('success', "Status {$statusLabel} untuk {$user->name} tanggal {$formattedDate} berhasil disimpan.");
     }
 
     /**

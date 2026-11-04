@@ -123,6 +123,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/presensi/approval', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateApproval'])->name('admin.attendance.approval');
         Route::post('/presensi/location', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateLocation'])->name('admin.attendance.location');
         Route::post('/presensi/record', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateRecord'])->name('admin.attendance.update-record');
+        Route::post('/presensi/leave', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'storeLeave'])->name('admin.attendance.store-leave');
         Route::delete('/presensi/record/{id}', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'deleteRecord'])->name('admin.attendance.delete-record');
         Route::get('/presensi/export', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'export'])->name('admin.attendance.export');
 

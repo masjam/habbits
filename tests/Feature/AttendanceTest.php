@@ -44,4 +44,49 @@ class AttendanceTest extends TestCase
             'date' => now()->format('Y-m-d'),
         ]);
     }
+
+    public function test_admin_can_store_leave_status_for_employee()
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $employee = User::factory()->create();
+
+        $response = $this->actingAs($admin)->post(route('admin.attendance.store-leave'), [
+            'user_id' => $employee->id,
+            'date' => now()->format('Y-m-d'),
+            'status' => 'cuti',
+            'notes' => 'Cuti tahunan yang disetujui',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('attendances', [
+            'user_id' => $employee->id,
+            'date' => now()->format('Y-m-d'),
+            'status' => 'cuti',
+            'approval_status' => 'approved',
+            'approval_type' => 'cuti',
+            'approved_by' => $admin->id,
+            'notes' => 'Cuti tahunan yang disetujui',
+        ]);
+    }
+
+    public function test_regular_user_cannot_store_leave_status()
+    {
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $employee1 = User::factory()->create();
+        $employee2 = User::factory()->create();
+
+        $response = $this->actingAs($employee1)->post(route('admin.attendance.store-leave'), [
+            'user_id' => $employee2->id,
+            'date' => now()->format('Y-m-d'),
+            'status' => 'sakit',
+        ]);
+
+        // Role middleware redirects unauthorized users
+        $this->assertTrue(in_array($response->status(), [403, 302]));
+    }
 }

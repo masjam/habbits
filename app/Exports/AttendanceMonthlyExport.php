@@ -53,6 +53,10 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
         $headers[] = 'Terlambat';
         $headers[] = 'Dinas Luar';
         $headers[] = 'Pulang Cepat';
+        $headers[] = 'Sakit';
+        $headers[] = 'Izin';
+        $headers[] = 'Cuti';
+        $headers[] = 'Alpa';
         $headers[] = 'Total Hadir';
         $headers[] = '% Kehadiran';
 
@@ -80,9 +84,13 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
         for ($d = 1; $d <= $this->daysInMonth; $d++) {
             $rec = $row['daily_records'][$d] ?? null;
             if ($rec) {
-                $in = $rec['time_in'] ?: '--:--';
-                $out = $rec['time_out'] ?: '--:--';
-                $data[] = "{$in}\n{$out}";
+                if (in_array($rec['status'], ['sakit', 'izin', 'cuti', 'alpa'])) {
+                    $data[] = strtoupper($rec['status']);
+                } else {
+                    $in = $rec['time_in'] ?: '--:--';
+                    $out = $rec['time_out'] ?: '--:--';
+                    $data[] = "{$in}\n{$out}";
+                }
             } else {
                 $data[] = '-';
             }
@@ -94,6 +102,10 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
         $data[] = $row['total_terlambat'];
         $data[] = $row['total_dinas_luar'];
         $data[] = $row['total_pulang_cepat'];
+        $data[] = $row['total_sakit'] ?? 0;
+        $data[] = $row['total_izin'] ?? 0;
+        $data[] = $row['total_cuti'] ?? 0;
+        $data[] = $row['total_alpa'] ?? 0;
         $data[] = $row['total_kehadiran'];
         $data[] = $row['attendance_rate'] . '%';
 
@@ -110,7 +122,7 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(11)->getColor()->setRGB('4B5563');
 
-                $lastColumnIndex = 5 + $this->daysInMonth + 7;
+                $lastColumnIndex = 5 + $this->daysInMonth + 11;
                 $lastColumnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastColumnIndex);
 
                 // Style Header Tabel (Baris 4)
@@ -198,6 +210,14 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                                     $color = 'FFF8E1'; // Terlambat (Kuning/Amber)
                                 } elseif ($rec['status'] === 'dinas_luar') {
                                     $color = 'E3F2FD'; // Dinas Luar (Biru muda)
+                                } elseif ($rec['status'] === 'sakit') {
+                                    $color = 'E0E7FF'; // Sakit (Indigo muda)
+                                } elseif ($rec['status'] === 'izin') {
+                                    $color = 'EDE9FE'; // Izin (Violet muda)
+                                } elseif ($rec['status'] === 'cuti') {
+                                    $color = 'CCFBF1'; // Cuti (Teal muda)
+                                } elseif ($rec['status'] === 'alpa') {
+                                    $color = 'FFE4E6'; // Alpa (Rose muda)
                                 }
 
                                 $sheet->getStyle("{$colLetter}{$rowIndex}")->applyFromArray([
