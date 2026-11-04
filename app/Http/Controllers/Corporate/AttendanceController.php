@@ -124,7 +124,8 @@ class AttendanceController extends Controller
             // Cek keterlambatan berdasarkan jam kerja efektif user
             $schedule = $user->getEffectiveWorkSchedule($today);
             $workStartTime = Carbon::parse($today . ' ' . $schedule['work_start']);
-            $toleranceLimit = $workStartTime->copy()->addMinutes($schedule['late_tolerance']);
+            // Batas toleransi berlaku penuh sampai detik terakhir di menit tersebut (xx:xx:59)
+            $toleranceLimit = $workStartTime->copy()->addMinutes((int)$schedule['late_tolerance'])->endOfMinute();
             $now = Carbon::now();
 
             if ($now->greaterThan($toleranceLimit)) {

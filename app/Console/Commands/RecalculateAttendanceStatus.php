@@ -80,7 +80,8 @@ class RecalculateAttendanceStatus extends Command
             $workEnd = $schedule['work_end'] ?? '15:00';
 
             $workStartTime = Carbon::parse($dateStr . ' ' . $workStart);
-            $toleranceEnd = $workStartTime->copy()->addMinutes($lateTolerance);
+            // Batas toleransi berlaku penuh sampai detik terakhir di menit tersebut (xx:xx:59)
+            $toleranceEnd = $workStartTime->copy()->addMinutes($lateTolerance)->endOfMinute();
 
             $actualIn = Carbon::parse($dateStr . ' ' . $att->time_in);
             $calculatedStatus = $actualIn->greaterThan($toleranceEnd) ? 'terlambat' : 'hadir';

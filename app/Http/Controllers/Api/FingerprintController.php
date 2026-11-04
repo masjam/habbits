@@ -65,7 +65,8 @@ class FingerprintController extends Controller
                 $lateTolerance = (int) ($schedule['late_tolerance'] ?? ($settings['presensi_late_tolerance'] ?? 15));
 
                 $workStartTime = Carbon::parse($date . ' ' . $workStart);
-                $toleranceEnd = $workStartTime->copy()->addMinutes($lateTolerance);
+                // Batas toleransi berlaku penuh sampai detik terakhir di menit tersebut (xx:xx:59)
+                $toleranceEnd = $workStartTime->copy()->addMinutes($lateTolerance)->endOfMinute();
 
                 if (!$attendance) {
                     // Check IN
