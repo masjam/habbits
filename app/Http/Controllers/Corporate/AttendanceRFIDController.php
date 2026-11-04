@@ -30,10 +30,42 @@ class AttendanceRFIDController extends Controller
             abort(403, 'Akses Ditolak: Token Keamanan Kiosk tidak valid. Pastikan Anda membuka URL dengan ?token= yang benar.');
         }
 
-        $today = Carbon::now()->toDateString();
+        $now = Carbon::now();
+        $today = $now->toDateString();
+        $dayOfWeek = (int) $now->dayOfWeekIso; // 1 = Senin, ..., 7 = Minggu
+
+        // Ambil jadwal harian sekolah untuk hari ini
+        $dailySchedulesRaw = $settings['presensi_daily_schedules'] ?? null;
+        $decodedDaily = $dailySchedulesRaw ? json_decode($dailySchedulesRaw, true) : [];
+        $todayDaily = $decodedDaily[$dayOfWeek] ?? null;
+
+        $globalStart = $settings['presensi_work_start'] ?? '07:00';
+        $globalEnd   = $settings['presensi_work_end'] ?? '15:00';
+
+        // Cek jika ada jadwal khusus sekolah (Special Schedule)
+        $specialSchedule = \App\Models\SpecialSchedule::where('is_active', true)
+            ->where('start_date', '<=', $today)
+            ->where('end_date', '>=', $today)
+            ->first();
+
+        if ($specialSchedule) {
+            $kioskWorkStart = $specialSchedule->time_in;
+            $kioskWorkEnd   = $specialSchedule->time_out;
+            $kioskScheduleName = $specialSchedule->name;
+        } elseif ($todayDaily && !empty($todayDaily['is_active'])) {
+            $kioskWorkStart = $todayDaily['start'] ?? $globalStart;
+            $kioskWorkEnd   = $todayDaily['end'] ?? $globalEnd;
+            $kioskScheduleName = 'Jadwal ' . (\App\Models\DutySchedule::getDayNames()[$dayOfWeek] ?? '');
+        } else {
+            $kioskWorkStart = $globalStart;
+            $kioskWorkEnd   = $globalEnd;
+            $kioskScheduleName = 'Jadwal Standar';
+        }
+
+        // Ambil data presensi hari ini diurutkan sesuai urutan jam kedatangan (time_in ASC)
         $attendances = Attendance::with('user:id,name')
             ->where('date', $today)
-            ->orderBy('updated_at', 'desc')
+            ->orderBy('time_in', 'asc')
             ->get()
             ->map(function ($att) {
                 return [
@@ -60,6 +92,11 @@ class AttendanceRFIDController extends Controller
         return Inertia::render('Attendance/RFIDKiosk', [
             'initialAttendances' => $attendances,
             'initialStats' => $stats,
+            'todayWorkSchedule' => [
+                'work_start' => substr($kioskWorkStart, 0, 5),
+                'work_end'   => substr($kioskWorkEnd, 0, 5),
+                'schedule_name' => $kioskScheduleName,
+            ],
             'kioskToken' => $validToken
         ]);
     }

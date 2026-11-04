@@ -17,6 +17,10 @@ const props = defineProps({
             total_pegawai: 0
         })
     },
+    todayWorkSchedule: {
+        type: Object,
+        default: () => null
+    },
     kioskToken: {
         type: String,
         default: ''
@@ -24,7 +28,26 @@ const props = defineProps({
 })
 
 const page = usePage()
-const attendances = ref(props.initialAttendances || [])
+const attendances = ref([...(props.initialAttendances || [])])
+const sortOrder = ref('asc') // 'asc' = sesuai urutan jam kedatangan (terawal), 'desc' = terbaru
+
+const sortAttendances = () => {
+    attendances.value.sort((a, b) => {
+        const timeA = a.time_in || '99:99:99'
+        const timeB = b.time_in || '99:99:99'
+        if (sortOrder.value === 'asc') {
+            return timeA.localeCompare(timeB)
+        } else {
+            return timeB.localeCompare(timeA)
+        }
+    })
+}
+
+const toggleSortOrder = () => {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    sortAttendances()
+}
+
 const stats = ref({
     total_hadir: props.initialStats?.total_hadir ?? (props.initialAttendances?.length || 0),
     tepat_waktu: props.initialStats?.tepat_waktu ?? 0,
@@ -49,6 +72,7 @@ const updateTime = () => {
 }
 
 onMounted(() => {
+    sortAttendances()
     updateTime()
     timeInterval = setInterval(updateTime, 1000)
     
@@ -96,7 +120,7 @@ const handleScan = async () => {
                 if (idx !== -1) {
                     attendances.value[idx] = response.data.attendance;
                 } else {
-                    attendances.value.unshift(response.data.attendance);
+                    attendances.value.push(response.data.attendance);
                     stats.value.total_hadir++;
                     if (response.data.attendance.status === 'terlambat') {
                         stats.value.terlambat++;
@@ -104,6 +128,7 @@ const handleScan = async () => {
                         stats.value.tepat_waktu++;
                     }
                 }
+                sortAttendances();
             }
         } else {
             scanResult.value = {
@@ -236,16 +261,21 @@ const handleScan = async () => {
                  <!-- STATE: Idle / Waiting for Scan -->
                  <transition name="fade" mode="out-in">
                      <div v-if="!scanResult && !isLoading" class="flex flex-col items-center">
-                         <!-- Info Jam Kerja -->
-                         <div class="mb-6 flex gap-4 md:gap-8 justify-center">
-                             <div class="bg-white/50 backdrop-blur-md border border-white/60 px-4 py-2 rounded-xl text-center shadow-sm">
-                                 <p class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-0.5">Jam Masuk</p>
-                                 <p class="text-xl font-black text-emerald-600">{{ $page.props.global_settings?.presensi_work_start || '07:00' }}</p>
+                         <!-- Info Jam Kerja Hari Ini -->
+                         <div class="mb-6 flex flex-col items-center">
+                             <div class="flex gap-4 md:gap-8 justify-center">
+                                 <div class="bg-white/50 backdrop-blur-md border border-white/60 px-4 py-2 rounded-xl text-center shadow-sm">
+                                     <p class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-0.5">Jam Masuk</p>
+                                     <p class="text-xl font-black text-emerald-600">{{ todayWorkSchedule?.work_start || $page.props.global_settings?.presensi_work_start || '07:00' }}</p>
+                                 </div>
+                                 <div class="bg-white/50 backdrop-blur-md border border-white/60 px-4 py-2 rounded-xl text-center shadow-sm">
+                                     <p class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-0.5">Jam Keluar</p>
+                                     <p class="text-xl font-black text-rose-600">{{ todayWorkSchedule?.work_end || $page.props.global_settings?.presensi_work_end || '15:00' }}</p>
+                                 </div>
                              </div>
-                             <div class="bg-white/50 backdrop-blur-md border border-white/60 px-4 py-2 rounded-xl text-center shadow-sm">
-                                 <p class="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-0.5">Jam Keluar</p>
-                                 <p class="text-xl font-black text-rose-600">{{ $page.props.global_settings?.presensi_work_end || '16:00' }}</p>
-                             </div>
+                             <span v-if="todayWorkSchedule?.schedule_name" class="mt-2 text-[11px] font-bold text-slate-500 bg-white/60 px-3 py-0.5 rounded-full border border-white/60 shadow-xs">
+                                 {{ todayWorkSchedule.schedule_name }}
+                             </span>
                          </div>
 
                          <!-- Flex Row for ENTER and EXIT Scanners -->
@@ -453,6 +483,13 @@ const handleScan = async () => {
                         </p>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button @click="toggleSortOrder" type="button" class="px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                            title="Klik untuk ubah urutan jam kedatangan">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            </svg>
+                            <span>{{ sortOrder === 'asc' ? 'Urut: Terawal' : 'Urut: Terbaru' }}</span>
+                        </button>
                         <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200 shadow-sm">
                             ✓ {{ stats.tepat_waktu }} Tepat Waktu
                         </span>
@@ -466,14 +503,23 @@ const handleScan = async () => {
                     <table class="w-full text-left border-collapse">
                         <thead class="sticky top-0 bg-white/90 backdrop-blur-md z-10 shadow-sm rounded-lg">
                             <tr>
-                                <th class="py-3 px-4 text-xs font-black text-slate-500 uppercase tracking-widest rounded-l-xl">Nama Pegawai</th>
-                                <th class="py-3 px-4 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Masuk</th>
+                                <th class="py-3 px-3 text-xs font-black text-slate-500 uppercase tracking-widest text-center w-12 rounded-l-xl">No</th>
+                                <th class="py-3 px-4 text-xs font-black text-slate-500 uppercase tracking-widest">Nama Pegawai</th>
+                                <th class="py-3 px-4 text-xs font-black text-slate-500 uppercase tracking-widest text-center cursor-pointer select-none hover:text-emerald-700 transition-colors" @click="toggleSortOrder" title="Klik untuk ubah urutan jam kedatangan">
+                                    <span class="inline-flex items-center gap-1">
+                                        Masuk
+                                        <span class="text-[10px] text-slate-400">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
+                                    </span>
+                                </th>
                                 <th class="py-3 px-4 text-xs font-black text-slate-500 uppercase tracking-widest text-center">Keluar</th>
                                 <th class="py-3 px-4 text-xs font-black text-slate-500 uppercase tracking-widest text-center rounded-r-xl">Status</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200/50">
-                            <tr v-for="att in attendances" :key="att.id" class="hover:bg-white/50 transition-colors group">
+                            <tr v-for="(att, index) in attendances" :key="att.id" class="hover:bg-white/50 transition-colors group">
+                                <td class="py-4 px-3 text-center font-bold text-xs text-slate-400 group-hover:text-emerald-700 transition-colors">
+                                    {{ index + 1 }}
+                                </td>
                                 <td class="py-4 px-4 font-bold text-slate-800 text-sm group-hover:text-emerald-700 transition-colors">{{ att.name }}</td>
                                 <td class="py-4 px-4 text-sm font-bold text-slate-600 text-center">
                                     <span class="inline-flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md shadow-sm" :title="att.notes">
@@ -517,7 +563,7 @@ const handleScan = async () => {
                                 </td>
                             </tr>
                             <tr v-if="attendances.length === 0">
-                                <td colspan="4" class="text-center py-16">
+                                <td colspan="5" class="text-center py-16">
                                     <div class="flex flex-col items-center justify-center text-slate-400">
                                         <svg class="w-12 h-12 mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
