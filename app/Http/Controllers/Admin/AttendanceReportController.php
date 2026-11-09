@@ -303,16 +303,6 @@ class AttendanceReportController extends Controller
             ];
         });
 
-        if ($statusFilter) {
-            if ($statusFilter === 'pending') {
-                $dailyReportData = $dailyReportData->where('approval_status', 'pending')->values();
-            } elseif ($statusFilter === 'belum_lengkap') {
-                $dailyReportData = $dailyReportData->where('is_complete', false)->whereIn('status', ['hadir', 'terlambat', 'dinas_luar'])->values();
-            } else {
-                $dailyReportData = $dailyReportData->where('status', $statusFilter)->values();
-            }
-        }
-
         // Statistik Bulanan (Hanya hitung hadir/terlambat/dinas_luar yang lengkap datang dan pulang)
         $totalUsers = $allUsers->count();
         $avgAttendanceRate = $totalUsers > 0 ? round($monthlyReportData->avg('attendance_rate')) : 0;
@@ -356,6 +346,59 @@ class AttendanceReportController extends Controller
             'belum_hadir'      => max(0, $totalUsers - ($validDailyAttendances->count() + $dailyIzinSakitAlpaCount + $belumLengkapCount)),
         ];
 
+        // Daftar Seluruh Permohonan yang Menunggu Review di Bulan Terpilih
+        $pendingApprovals = $monthlyAttendances->where('approval_status', 'pending')
+            ->map(function ($att) use ($allUsers, $formatDate) {
+                $u = $allUsers->firstWhere('id', $att->user_id) ?? $att->user;
+                $dateStr = $formatDate($att->date);
+                $schedule = $u ? $u->getEffectiveWorkSchedule($dateStr) : null;
+                return [
+                    'id'                     => $att->id,
+                    'attendance_id'          => $att->id,
+                    'user_id'                => $att->user_id,
+                    'userName'               => $u?->name ?? 'Pegawai',
+                    'name'                   => $u?->name ?? 'Pegawai',
+                    'nip'                    => $u?->nip,
+                    'divisi'                 => $u?->divisi,
+                    'avatar'                 => $u?->avatar,
+                    'date'                   => $dateStr,
+                    'formatted_date'         => Carbon::parse($dateStr)->locale('id')->isoFormat('dddd, D MMMM Y'),
+                    'status'                 => $att->status,
+                    'time_in'                => $att->time_in ? substr($att->time_in, 0, 5) : null,
+                    'time_out'               => $att->time_out ? substr($att->time_out, 0, 5) : null,
+                    'is_early_departure'     => (bool) $att->is_early_departure,
+                    'early_departure_reason' => $att->early_departure_reason,
+                    'approval_status'        => $att->approval_status,
+                    'approval_type'          => $att->approval_type,
+                    'notes'                  => $att->notes,
+                    'attachment'             => $att->attachment,
+                    'work_schedule'          => $schedule ? ($schedule['work_start'] . ' - ' . $schedule['work_end']) : '-',
+                ];
+            })->values();
+
+        // Terapkan Filter Status pada data tabel
+        if ($statusFilter) {
+            if ($statusFilter === 'pending') {
+                $dailyReportData = $dailyReportData->where('approval_status', 'pending')->values();
+                $monthlyReportData = $monthlyReportData->filter(function ($row) {
+                    return collect($row['daily_records'])->contains(fn($r) => $r && ($r['approval_status'] ?? null) === 'pending');
+                })->values();
+            } elseif ($statusFilter === 'belum_lengkap') {
+                $dailyReportData = $dailyReportData->where('is_complete', false)->whereIn('status', ['hadir', 'terlambat', 'dinas_luar'])->values();
+                $monthlyReportData = $monthlyReportData->filter(function ($row) {
+                    return collect($row['daily_records'])->contains(fn($r) => $r && in_array($r['status'] ?? '', ['hadir', 'terlambat', 'dinas_luar']) && empty($r['is_complete']));
+                })->values();
+            } elseif (in_array($statusFilter, ['hadir', 'terlambat', 'dinas_luar', 'sakit', 'izin', 'cuti', 'alpa'])) {
+                $dailyReportData = $dailyReportData->where('status', $statusFilter)->values();
+                $monthlyReportData = $monthlyReportData->filter(function ($row) use ($statusFilter) {
+                    $key = 'total_' . $statusFilter;
+                    return ($row[$key] ?? 0) > 0;
+                })->values();
+            } else {
+                $dailyReportData = $dailyReportData->where('status', $statusFilter)->values();
+            }
+        }
+
         $divisions = Division::orderBy('name')->get();
 
         $settings = Setting::all()->pluck('value', 'key')->toArray();
@@ -373,6 +416,7 @@ class AttendanceReportController extends Controller
             'dailyReportData'   => $dailyReportData,
             'monthlyStats'      => $monthlyStats,
             'dailyStats'        => $dailyStats,
+            'pendingApprovals'  => $pendingApprovals,
             'daysList'          => $daysList,
             'daysInMonth'       => $daysInMonth,
             'officeLocation'    => $officeLocation,

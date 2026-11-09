@@ -51,7 +51,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/quran/tandai-baca', [\App\Http\Controllers\Personal\QuranHadisController::class, 'tandaiBaca'])->name('quran.tandai.baca');
     Route::delete('/quran/hapus-sesi/{sesiId}', [\App\Http\Controllers\Personal\QuranHadisController::class, 'hapusSesi'])->name('quran.hapus.sesi');
     Route::get('/dzikir', [\App\Http\Controllers\Personal\DzikirController::class, 'index'])->name('dzikir.index');
-    Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qibla.index');
+    Route::get('/qiblat', function () { return Inertia::render('Qibla/Index'); })->name('qiblat.index');
+    Route::get('/hpt', function () {return Inertia::render('Hpt/Index'); })->name('hpt.index');
 
     // Jurnal Harian Guru
     Route::resource('teacher-journals', \App\Http\Controllers\Corporate\TeacherJournalController::class)->parameters([

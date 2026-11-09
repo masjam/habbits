@@ -90,19 +90,67 @@ class AuthController extends Controller
             }
 
             // Record login log
-            $ip = $request->ip();
-            $location = null;
-            if ($ip && $ip !== '127.0.0.1' && $ip !== '::1') {
+            $rawIp = $request->header('CF-Connecting-IP')
+                ?? $request->header('X-Forwarded-For')
+                ?? $request->ip();
+
+            if (str_contains($rawIp, ',')) {
+                $rawIp = trim(explode(',', $rawIp)[0]);
+            }
+            $ip = $rawIp;
+
+            $isPublicIp = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+
+            $lat = $request->input('latitude');
+            $lon = $request->input('longitude');
+            $source = ($lat && $lon) ? 'gps' : null;
+
+            $city = null;
+            $region = null;
+            $country = null;
+            $isp = null;
+
+            if ($isPublicIp) {
                 try {
-                    $response = Http::timeout(2)->get("http://ip-api.com/json/{$ip}");
+                    $response = Http::timeout(2)->get("http://ip-api.com/json/{$ip}?fields=status,message,country,countryCode,regionName,city,district,zip,lat,lon,isp,org");
                     if ($response->successful() && $response->json('status') === 'success') {
-                        $location = $response->json('city') . ', ' . $response->json('country');
+                        $city = $response->json('city');
+                        $region = $response->json('regionName');
+                        $country = $response->json('country');
+                        $isp = $response->json('isp') ?: $response->json('org');
+
+                        // Jika GPS tidak tersedia dari browser, gunakan estimasi koordinat dari IP
+                        if (!$lat || !$lon) {
+                            $lat = $response->json('lat');
+                            $lon = $response->json('lon');
+                            $source = 'ip';
+                        }
                     }
                 } catch (\Exception $e) {
-                    // Ignore, let location be null
+                    // Ignore API error
                 }
             } else {
-                $location = 'Lokal (Localhost)';
+                $city = ($ip === '127.0.0.1' || $ip === '::1') ? 'Lokal (Localhost)' : 'Jaringan Lokal (LAN)';
+                if (!$source) {
+                    $source = 'local';
+                }
+            }
+
+            // Susun data detail lokasi (format JSON ringkas agar muat di kolom location varchar 255)
+            $locationData = array_filter([
+                'city' => \Illuminate\Support\Str::limit($city, 50, ''),
+                'region' => \Illuminate\Support\Str::limit($region, 50, ''),
+                'country' => \Illuminate\Support\Str::limit($country, 40, ''),
+                'isp' => \Illuminate\Support\Str::limit($isp, 50, ''),
+                'lat' => $lat ? round((float)$lat, 6) : null,
+                'lon' => $lon ? round((float)$lon, 6) : null,
+                'source' => $source, // 'gps', 'ip', 'local'
+            ], fn($val) => !is_null($val) && $val !== '');
+
+            $location = !empty($locationData) ? json_encode($locationData, JSON_UNESCAPED_UNICODE) : null;
+            if ($location && strlen($location) > 255) {
+                $fallback = array_filter([$city, $region, $country]);
+                $location = !empty($fallback) ? \Illuminate\Support\Str::limit(implode(', ', $fallback), 250) : null;
             }
 
             LoginLog::create([

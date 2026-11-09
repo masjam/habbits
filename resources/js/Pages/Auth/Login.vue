@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const showPassword = ref(false)
 
@@ -8,6 +8,28 @@ const form = useForm({
     email: '',
     password: '',
     remember: false,
+    latitude: null,
+    longitude: null,
+})
+
+onMounted(() => {
+    // Opsional: Rekam koordinat GPS perangkat secara aman jika diizinkan oleh pengguna/browser
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                form.latitude = pos.coords.latitude
+                form.longitude = pos.coords.longitude
+            },
+            () => {
+                // Abaikan jika user menolak izin lokasi atau tidak didukung
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 60000,
+            }
+        )
+    }
 })
 
 const submit = () => {

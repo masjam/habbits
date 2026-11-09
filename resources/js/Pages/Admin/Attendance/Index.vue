@@ -10,6 +10,7 @@ const props = defineProps({
     dailyReportData: Array,
     monthlyStats: Object,
     dailyStats: Object,
+    pendingApprovals: Array,
     daysList: Array,
     daysInMonth: Number,
     officeLocation: Object,
@@ -249,6 +250,22 @@ const submitRejectApproval = () => {
             approvalForm.reset()
         }
     })
+}
+
+// ─── MODAL DAFTAR SELURUH PERMOHONAN MENUNGGU REVIEW ────────────────────────
+const isPendingReviewsModalOpen = ref(false)
+const pendingApprovalsList = computed(() => props.pendingApprovals || [])
+
+const openPendingReviewsModal = () => {
+    isPendingReviewsModalOpen.value = true
+}
+
+const jumpToDateAndInspect = (targetDate) => {
+    isPendingReviewsModalOpen.value = false
+    selectedDate.value = targetDate
+    activeTab.value = 'daily'
+    selectedStatus.value = 'pending'
+    applyFilters()
 }
 
 // ─── MODAL DETAIL & EDIT PRESENSI (SUPERADMIN) ──────────────────────────────
@@ -641,20 +658,20 @@ const submitLeaveForm = () => {
                             <p class="text-sm font-black text-rose-600 dark:text-rose-400 leading-none mt-1">{{ monthlyStats?.total_belum_lengkap || 0 }}</p>
                         </div>
                         <div 
-                            @click="selectedStatus = (selectedStatus === 'pending' ? '' : 'pending'); applyFilters()"
+                            @click="openPendingReviewsModal"
                             class="px-2.5 py-1.5 rounded-xl border shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95 text-center min-w-[64px]"
                             :class="[
                                 selectedStatus === 'pending'
-                                    ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/50'
-                                    : (monthlyStats?.total_pending_approval > 0 ? 'border-amber-400 bg-amber-50/30' : 'border-theme/60 bg-card-subtle/80')
+                                    ? 'border-amber-500 bg-amber-100/80 dark:bg-amber-950/70 ring-2 ring-amber-400/50'
+                                    : (monthlyStats?.total_pending_approval > 0 ? 'border-amber-400 bg-amber-50/60 dark:bg-amber-950/40 hover:bg-amber-100/60' : 'border-theme/60 bg-card-subtle/80')
                             ]"
-                            title="Klik untuk filter yang perlu review"
+                            title="Klik untuk melihat dan meninjau seluruh permohonan yang perlu review"
                         >
                             <div class="flex items-center justify-center gap-1">
-                                <p class="text-[10px] font-bold text-amber-600 leading-none whitespace-nowrap">Perlu Review</p>
+                                <p class="text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-none whitespace-nowrap">Perlu Review</p>
                                 <span v-if="monthlyStats?.total_pending_approval > 0" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                             </div>
-                            <p class="text-sm font-black text-amber-600 leading-none mt-1">{{ monthlyStats?.total_pending_approval || 0 }}</p>
+                            <p class="text-sm font-black text-amber-600 dark:text-amber-400 leading-none mt-1">{{ monthlyStats?.total_pending_approval || 0 }}</p>
                         </div>
                     </div>
 
@@ -710,20 +727,20 @@ const submitLeaveForm = () => {
                             <p class="text-sm font-black text-rose-600 dark:text-rose-400 leading-none mt-1">{{ dailyStats?.belum_lengkap || 0 }}</p>
                         </div>
                         <div 
-                            @click="selectedStatus = (selectedStatus === 'pending' ? '' : 'pending'); applyFilters()"
+                            @click="openPendingReviewsModal"
                             class="px-2.5 py-1.5 rounded-xl border shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95 text-center min-w-[64px]"
                             :class="[
                                 selectedStatus === 'pending'
-                                    ? 'border-amber-500 bg-amber-50/70 dark:bg-amber-950/50'
-                                    : (dailyStats?.pending_approval > 0 ? 'border-amber-400 bg-amber-50/30' : 'border-theme/60 bg-card-subtle/80')
+                                    ? 'border-amber-500 bg-amber-100/80 dark:bg-amber-950/70 ring-2 ring-amber-400/50'
+                                    : (dailyStats?.pending_approval > 0 ? 'border-amber-400 bg-amber-50/60 dark:bg-amber-950/40 hover:bg-amber-100/60' : 'border-theme/60 bg-card-subtle/80')
                             ]"
-                            title="Klik untuk filter yang perlu review"
+                            title="Klik untuk melihat dan meninjau seluruh permohonan yang perlu review"
                         >
                             <div class="flex items-center justify-center gap-1">
-                                <p class="text-[10px] font-bold text-amber-600 leading-none whitespace-nowrap">Perlu Review</p>
+                                <p class="text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-none whitespace-nowrap">Perlu Review</p>
                                 <span v-if="dailyStats?.pending_approval > 0" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                             </div>
-                            <p class="text-sm font-black text-amber-600 leading-none mt-1">{{ dailyStats?.pending_approval || 0 }}</p>
+                            <p class="text-sm font-black text-amber-600 dark:text-amber-400 leading-none mt-1">{{ dailyStats?.pending_approval || 0 }}</p>
                         </div>
                     </div>
 
@@ -2240,6 +2257,151 @@ const submitLeaveForm = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- ── MODAL 5: DAFTAR SELURUH PERMOHONAN MENUNGGU REVIEW ────────── -->
+            <div 
+                v-if="isPendingReviewsModalOpen" 
+                class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto"
+                @click="isPendingReviewsModalOpen = false"
+            >
+                <div class="relative bg-sidebar max-w-2xl w-full rounded-3xl overflow-hidden shadow-2xl border border-theme my-8 flex flex-col max-h-[90vh]" @click.stop>
+                    <!-- Header -->
+                    <div class="p-5 border-b border-subtle flex items-center justify-between bg-amber-500/10 flex-shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 font-bold text-lg">
+                                ⏳
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    Daftar Menunggu Review
+                                    <span class="px-2 py-0.5 rounded-full text-xs bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold">
+                                        {{ pendingApprovalsList.length }} Permohonan
+                                    </span>
+                                </h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    Periode {{ formattedMonth }}. Klik Setujui atau Tolak untuk memproses permohonan pegawai.
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button" 
+                            @click="isPendingReviewsModalOpen = false"
+                            class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                        >
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Body List -->
+                    <div class="p-5 overflow-y-auto space-y-4 divide-y divide-subtle/60 flex-1">
+                        <div v-if="pendingApprovalsList.length === 0" class="text-center py-10">
+                            <span class="text-4xl block mb-2">🎉</span>
+                            <p class="font-bold text-slate-700 dark:text-slate-300 text-sm">Tidak ada permohonan yang menunggu review</p>
+                            <p class="text-xs text-slate-400 mt-1">Semua permohonan pegawai untuk bulan ini telah selesai ditinjau.</p>
+                        </div>
+
+                        <div 
+                            v-for="item in pendingApprovalsList" 
+                            :key="item.id"
+                            class="pt-4 first:pt-0 flex flex-col sm:flex-row sm:items-start justify-between gap-3.5"
+                        >
+                            <!-- Detail Info Pegawai & Pengajuan -->
+                            <div class="space-y-2 flex-1">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center font-bold text-xs text-emerald-700 dark:text-emerald-400 flex-shrink-0 overflow-hidden border border-emerald-200 dark:border-emerald-800">
+                                        <img v-if="item.avatar" :src="item.avatar.startsWith('http') ? item.avatar : `/storage/${item.avatar}`" class="w-full h-full object-cover" />
+                                        <span v-else>{{ item.name?.charAt(0).toUpperCase() }}</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-sm text-slate-800 dark:text-slate-100 leading-tight">{{ item.name }}</p>
+                                        <p class="text-[11px] text-slate-400">{{ item.divisi || 'Tanpa Divisi' }} <span v-if="item.nip">&bull; NIP: {{ item.nip }}</span></p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 flex-wrap text-xs">
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                        {{ getPermitTypeLabel(item) }}
+                                    </span>
+                                    <span class="text-slate-700 dark:text-slate-300 font-semibold text-[11px]">
+                                        📅 {{ item.formatted_date || item.date }}
+                                    </span>
+                                    <span v-if="item.time_out" class="text-slate-500 text-[11px]">
+                                        (Jam Pulang: {{ item.time_out }})
+                                    </span>
+                                </div>
+
+                                <!-- Keterangan / Alasan -->
+                                <div class="p-3 rounded-2xl bg-card-subtle/80 border border-theme/60 text-xs text-slate-700 dark:text-slate-300">
+                                    <p class="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Alasan / Catatan:</p>
+                                    <p class="italic">"{{ item.notes || item.early_departure_reason || 'Tidak ada catatan' }}"</p>
+                                </div>
+
+                                <!-- Lampiran File jika ada -->
+                                <div v-if="item.attachment" class="pt-0.5">
+                                    <a 
+                                        :href="`/storage/${item.attachment}`" 
+                                        target="_blank"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[11px] font-bold text-purple-700 dark:text-purple-300 hover:underline"
+                                    >
+                                        <span>📎 Buka Berkas Lampiran</span>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Tombol Aksi -->
+                            <div class="flex items-center sm:flex-col gap-2 flex-shrink-0 pt-2 sm:pt-0">
+                                <button 
+                                    type="button"
+                                    @click="handleQuickApprove(item)"
+                                    class="flex-1 sm:w-full inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span>Setujui</span>
+                                </button>
+                                <button 
+                                    type="button"
+                                    @click="openRejectModal(item)"
+                                    class="flex-1 sm:w-full inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    <span>Tolak</span>
+                                </button>
+                                <button 
+                                    type="button"
+                                    @click="jumpToDateAndInspect(item.date)"
+                                    class="text-[11px] text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold underline text-center pt-1"
+                                >
+                                    Lihat di Tabel Harian
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="p-3.5 bg-card-subtle border-t border-subtle flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
+                        <button
+                            type="button"
+                            @click="selectedStatus = 'pending'; isPendingReviewsModalOpen = false; applyFilters()"
+                            class="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline cursor-pointer"
+                        >
+                            Filter Tabel Status: "Menunggu Review" &rarr;
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="isPendingReviewsModalOpen = false"
+                            class="px-4 py-1.5 rounded-xl border border-theme bg-sidebar hover:bg-card-subtle font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                        >
+                            Tutup
+                        </button>
+                    </div>
                 </div>
             </div>
 
