@@ -173,7 +173,7 @@ const openTopic = (query) => {
                 </div>
 
                 <a
-                    href="https://tarjih.or.id/tanya-jawab-agama/"
+                    href="https://hpt.muhammadiyah.or.id/explore?koleksi=tja"
                     target="_blank"
                     rel="noopener noreferrer"
                     class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-900 transition shrink-0"
