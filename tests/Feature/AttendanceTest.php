@@ -89,4 +89,75 @@ class AttendanceTest extends TestCase
         // Role middleware redirects unauthorized users
         $this->assertTrue(in_array($response->status(), [403, 302]));
     }
+
+    public function test_employee_with_late_attendance_can_edit_late_reason_without_changing_times()
+    {
+        $employee = User::factory()->create();
+        $attendance = Attendance::create([
+            'user_id' => $employee->id,
+            'date' => now()->format('Y-m-d'),
+            'time_in' => '07:45:00',
+            'time_out' => '15:10:00',
+            'status' => 'terlambat',
+            'notes' => 'Presensi via Mesin RFID',
+            'late_reason' => null,
+        ]);
+
+        // Kirim juga time_in / time_out / status palsu untuk memastikan server mengabaikannya
+        $response = $this->actingAs($employee)->patch(route('attendance.update-late-reason', $attendance->id), [
+            'late_reason' => 'Ban motor bocor di perjalanan',
+            'time_in' => '06:50:00',
+            'time_out' => '16:00:00',
+            'status' => 'hadir',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        $attendance->refresh();
+        $this->assertEquals('Ban motor bocor di perjalanan', $attendance->late_reason);
+        $this->assertEquals('07:45:00', $attendance->time_in);
+        $this->assertEquals('15:10:00', $attendance->time_out);
+        $this->assertEquals('terlambat', $attendance->status);
+        $this->assertEquals('Presensi via Mesin RFID', $attendance->notes);
+    }
+
+    public function test_employee_cannot_edit_another_employees_late_reason()
+    {
+        $employee1 = User::factory()->create();
+        $employee2 = User::factory()->create();
+        $attendance = Attendance::create([
+            'user_id' => $employee2->id,
+            'date' => now()->format('Y-m-d'),
+            'time_in' => '07:45:00',
+            'status' => 'terlambat',
+            'late_reason' => 'Alasan awal',
+        ]);
+
+        $response = $this->actingAs($employee1)->patch(route('attendance.update-late-reason', $attendance->id), [
+            'late_reason' => 'Diubah orang lain',
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertEquals('Alasan awal', $attendance->fresh()->late_reason);
+    }
+
+    public function test_employee_cannot_edit_late_reason_if_status_is_not_terlambat()
+    {
+        $employee = User::factory()->create();
+        $attendance = Attendance::create([
+            'user_id' => $employee->id,
+            'date' => now()->format('Y-m-d'),
+            'time_in' => '06:55:00',
+            'status' => 'hadir',
+            'late_reason' => null,
+        ]);
+
+        $response = $this->actingAs($employee)->patch(route('attendance.update-late-reason', $attendance->id), [
+            'late_reason' => 'Mencoba isi alasan',
+        ]);
+
+        $response->assertSessionHas('error');
+        $this->assertNull($attendance->fresh()->late_reason);
+    }
 }

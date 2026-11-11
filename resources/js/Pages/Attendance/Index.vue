@@ -380,6 +380,37 @@ const handleLatePhotoChange = (e) => {
     reader.readAsDataURL(file)
 }
 
+// ─── Edit Keterangan Keterlambatan (Khusus Status Terlambat) ────────────────
+const isEditLateReasonModalOpen = ref(false)
+const editingLateAttendance = ref(null)
+const editLateReasonForm = useForm({
+    late_reason: '',
+})
+
+const openEditLateReasonModal = (att) => {
+    if (!att || att.status !== 'terlambat') return
+    editingLateAttendance.value = att
+    editLateReasonForm.late_reason = att.late_reason || ''
+    editLateReasonForm.clearErrors()
+    isEditLateReasonModalOpen.value = true
+}
+
+const submitEditLateReason = () => {
+    if (!editingLateAttendance.value) return
+    if (!editLateReasonForm.late_reason.trim()) {
+        alert('Keterangan alasan keterlambatan wajib diisi.')
+        return
+    }
+    editLateReasonForm.patch(route('attendance.update-late-reason', editingLateAttendance.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isEditLateReasonModalOpen.value = false
+            editingLateAttendance.value = null
+            editLateReasonForm.reset()
+        }
+    })
+}
+
 // ─── Deteksi Pulang Mendahului (< Jam Kerja Berakhir) ──────────────────────
 const isEarlyDepartureModalOpen = ref(false)
 
@@ -998,6 +1029,37 @@ onUnmounted(() => {
                                     Alasan Penolakan: "{{ todayAttendance.rejection_note }}"
                                 </div>
                             </div>
+
+                            <!-- Info Keterangan Terlambat Hari Ini (Bisa Diedit Pegawai) -->
+                            <div v-if="todayAttendance?.status === 'terlambat'" class="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs space-y-2">
+                                <div class="flex items-center justify-between gap-2 flex-wrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-base">⏰</span>
+                                        <div>
+                                            <span class="font-black text-amber-900 dark:text-amber-200 block">
+                                                Keterangan Keterlambatan Hari Ini
+                                                <span v-if="todayAttendance.time_in" class="font-mono text-[11px] font-bold text-amber-700 dark:text-amber-300 ml-1">
+                                                    (Masuk: {{ todayAttendance.time_in.substring(0, 5) }})
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        @click="openEditLateReasonModal(todayAttendance)"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-2xs transition active:scale-95 cursor-pointer"
+                                    >
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                                        </svg>
+                                        <span>{{ todayAttendance.late_reason ? 'Edit Keterangan' : 'Isi Keterangan' }}</span>
+                                    </button>
+                                </div>
+                                <div class="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-amber-200/70 dark:border-amber-800/40 text-amber-950 dark:text-amber-100">
+                                    <span v-if="todayAttendance.late_reason" class="italic">"{{ todayAttendance.late_reason }}"</span>
+                                    <span v-else class="text-amber-700/70 dark:text-amber-300/70 italic">Belum ada keterangan alasan terlambat. Klik tombol di atas untuk mengisi.</span>
+                                </div>
+                            </div>
                         </template>
 
                     </div>
@@ -1185,9 +1247,34 @@ onUnmounted(() => {
                                         </span>
                                     </div>
                                 </td>
-                                <td class="py-3 px-4 text-slate-500 max-w-xs space-y-1">
+                                <td class="py-3 px-4 text-slate-500 max-w-xs space-y-1.5">
                                     <div v-if="att.notes" class="text-xs text-slate-700 dark:text-slate-200">
                                         {{ att.notes }}
+                                    </div>
+
+                                    <!-- Keterangan Alasan Terlambat & Tombol Edit (Khusus Status Terlambat) -->
+                                    <div v-if="att.status === 'terlambat' || att.late_reason" class="p-2 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-[11px] text-amber-900 dark:text-amber-200 space-y-1">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="font-bold text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-400">Alasan Terlambat:</span>
+                                            <button
+                                                v-if="att.status === 'terlambat'"
+                                                type="button"
+                                                @click="openEditLateReasonModal(att)"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-600/15 hover:bg-amber-600/25 text-amber-800 dark:text-amber-300 font-bold text-[10px] transition cursor-pointer"
+                                                title="Edit keterangan alasan keterlambatan"
+                                            >
+                                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                                                </svg>
+                                                <span>{{ att.late_reason ? 'Edit' : 'Isi' }}</span>
+                                            </button>
+                                        </div>
+                                        <p v-if="att.late_reason" class="italic text-amber-950 dark:text-amber-100 leading-snug">
+                                            "{{ att.late_reason }}"
+                                        </p>
+                                        <p v-else class="italic text-amber-600/75 dark:text-amber-400/75">
+                                            Belum ada keterangan terlambat.
+                                        </p>
                                     </div>
 
                                     <!-- Keterangan Izin Pulang Mendahului -->
@@ -1220,7 +1307,7 @@ onUnmounted(() => {
                                         ⚡ Lembur: {{ att.overtime_activity }}
                                     </div>
 
-                                    <span v-if="!att.notes && !att.is_early_departure && !att.attachment && (!att.is_overtime || !att.overtime_activity)">-</span>
+                                    <span v-if="!att.notes && att.status !== 'terlambat' && !att.late_reason && !att.is_early_departure && !att.attachment && (!att.is_overtime || !att.overtime_activity)">-</span>
                                 </td>
                             </tr>
                             <tr v-if="!monthlyAttendances || monthlyAttendances.length === 0">
@@ -1943,6 +2030,109 @@ onUnmounted(() => {
                                 permitForm.status === 'pulang_cepat' ? '🏃 Ajukan Pulang Cepat' :
                                 'Kirim Permohonan'
                             ) }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ── Modal Edit Keterangan Keterlambatan (Waktu Masuk/Pulang Terkunci) ───── -->
+        <div v-if="isEditLateReasonModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/65 backdrop-blur-xs" @click="isEditLateReasonModalOpen = false" />
+
+            <div class="relative z-10 w-full max-w-lg bg-sidebar rounded-3xl shadow-2xl border border-theme overflow-hidden flex flex-col">
+                <!-- Modal Header -->
+                <div class="p-5 border-b border-subtle flex items-center justify-between bg-amber-500/10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-black text-slate-800 dark:text-slate-100">
+                                Edit Keterangan Keterlambatan
+                            </h3>
+                            <p class="text-xs text-amber-700 dark:text-amber-300 font-semibold">
+                                {{ formatRecordDate(editingLateAttendance?.date) }}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        @click="isEditLateReasonModalOpen = false"
+                        class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitEditLateReason">
+                    <div class="p-5 space-y-4">
+                        <!-- Info Read-Only Waktu Masuk & Pulang -->
+                        <div class="p-3.5 rounded-2xl bg-card-subtle border border-theme/70 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Data Waktu Presensi (Terkunci)</span>
+                                <span class="px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
+                                    🔒 Tidak dapat diubah
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-xs pt-1">
+                                <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900/50 border border-theme/50">
+                                    <span class="block text-[10px] text-slate-400 font-semibold uppercase">Jam Masuk</span>
+                                    <span class="font-mono font-black text-sm text-amber-600 dark:text-amber-400">
+                                        {{ editingLateAttendance?.time_in ? editingLateAttendance.time_in.substring(0, 5) : '--:--' }}
+                                    </span>
+                                </div>
+                                <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900/50 border border-theme/50">
+                                    <span class="block text-[10px] text-slate-400 font-semibold uppercase">Jam Pulang</span>
+                                    <span class="font-mono font-black text-sm text-slate-700 dark:text-slate-200">
+                                        {{ editingLateAttendance?.time_out ? editingLateAttendance.time_out.substring(0, 5) : '--:--' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input Keterangan / Alasan Keterlambatan -->
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                Keterangan / Alasan Terlambat <span class="text-rose-500">*</span>
+                            </label>
+                            <textarea
+                                v-model="editLateReasonForm.late_reason"
+                                rows="3"
+                                required
+                                maxlength="500"
+                                placeholder="Contoh: Terjebak kemacetan di jalan raya / Ban motor bocor / Mengantar anak sakit..."
+                                class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3 py-2.5 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            ></textarea>
+                            <div class="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>Hanya keterangan keterlambatan yang akan diperbarui.</span>
+                                <span class="font-mono">{{ (editLateReasonForm.late_reason || '').length }}/500</span>
+                            </div>
+                            <p v-if="editLateReasonForm.errors.late_reason" class="text-[10px] text-rose-500 font-semibold">
+                                {{ editLateReasonForm.errors.late_reason }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="p-4 bg-card-subtle border-t border-subtle flex items-center justify-end gap-3">
+                        <button
+                            type="button"
+                            @click="isEditLateReasonModalOpen = false"
+                            class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="editLateReasonForm.processing || !editLateReasonForm.late_reason.trim()"
+                            class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs sm:text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                        >
+                            {{ editLateReasonForm.processing ? 'Menyimpan...' : 'Simpan Keterangan' }}
                         </button>
                     </div>
                 </form>

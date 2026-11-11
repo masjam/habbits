@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/presensi/check-in', [\App\Http\Controllers\Corporate\AttendanceController::class, 'checkIn'])->name('attendance.check-in');
     Route::post('/presensi/check-out', [\App\Http\Controllers\Corporate\AttendanceController::class, 'checkOut'])->name('attendance.check-out');
     Route::post('/presensi/izin', [\App\Http\Controllers\Corporate\AttendanceController::class, 'storePermit'])->name('attendance.store-permit');
+    Route::patch('/presensi/{attendance}/keterangan-terlambat', [\App\Http\Controllers\Corporate\AttendanceController::class, 'updateLateReason'])->name('attendance.update-late-reason');
     
     // Kiosk RFID (Bisa diakses public atau admin khusus, ditaruh di dalam auth sbg fallback admin Kiosk, namun lebih baik ditaruh di luar middleware auth jika Kiosk dibiarkan tanpa login. Mari biarkan di auth dulu jika kiosK di-login pakai akun dummy). Tapi wait, Kiosk RFID idealnya terbuka tanpa auth.
     // Mari saya letakkan di luar auth agar bisa dipakai tanpa login.

@@ -58,6 +58,10 @@ class ProcessAttendanceExport implements ShouldQueue
                 $schedule = $u->getEffectiveWorkSchedule($date);
 
                 $notes = $att?->notes;
+                if ($att?->late_reason) {
+                    $lateText = "Alasan Terlambat: {$att->late_reason}";
+                    $notes = $notes ? "{$notes} | {$lateText}" : $lateText;
+                }
                 if ($att?->is_early_departure && $att?->early_departure_reason) {
                     $edText = "Izin Pulang Mendahului: {$att->early_departure_reason}";
                     $notes = $notes ? "{$notes} | {$edText}" : $edText;

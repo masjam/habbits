@@ -447,6 +447,37 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Edit keterangan alasan keterlambatan oleh pegawai yang bersangkutan.
+     * Hanya diperbolehkan mengedit keterangan (bukan waktu masuk/pulang maupun status).
+     */
+    public function updateLateReason(Request $request, Attendance $attendance)
+    {
+        if ($attendance->user_id !== Auth::id()) {
+            abort(403, 'Anda tidak memiliki akses untuk mengubah data presensi ini.');
+        }
+
+        if ($attendance->status !== 'terlambat') {
+            return redirect()->back()->with('error', 'Hanya presensi dengan status terlambat yang dapat diedit keterangannya.');
+        }
+
+        $validated = $request->validate([
+            'late_reason' => 'required|string|max:500',
+        ], [
+            'late_reason.required' => 'Keterangan alasan keterlambatan wajib diisi.',
+            'late_reason.max'      => 'Keterangan maksimal 500 karakter.',
+        ]);
+
+        // Hanya memperbarui keterangan keterlambatan, waktu masuk/pulang & status tidak berubah
+        $attendance->update([
+            'late_reason' => trim($validated['late_reason']),
+        ]);
+
+        $formattedDate = Carbon::parse($attendance->date)->locale('id')->isoFormat('D MMMM Y');
+
+        return redirect()->back()->with('success', "Keterangan keterlambatan tanggal {$formattedDate} berhasil diperbarui.");
+    }
+
+    /**
      * Hitung jarak dua titik koordinat bumi menggunakan Haversine Formula (hasil dalam meter).
      */
     private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): int

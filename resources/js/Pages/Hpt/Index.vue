@@ -107,13 +107,13 @@ const openTopic = (query) => {
             </div>
 
             <!-- Catatan Informasi Keamanan (Penjelasan kenapa dibuka di Tab Baru) -->
-            <div class="flex items-start gap-3.5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs sm:text-sm leading-relaxed">
+            <!-- <div class="flex items-start gap-3.5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs sm:text-sm leading-relaxed">
                 <span class="text-lg shrink-0 mt-0.5">ℹ️</span>
                 <div>
                     <span class="font-bold">Mengapa dibuka di tab baru?</span>
                     Situs resmi HPT Muhammadiyah menerapkan protokol keamanan ketat (<code class="bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded text-xs font-mono font-bold text-amber-800 dark:text-amber-300">X-Frame-Options: DENY</code>) untuk mencegah pembajakan klik (anti-clickjacking). Demi kelancaran dan kenyamanan membaca tanpa batasan browser, portal dirancang untuk diakses langsung pada jendela tersendiri.
                 </div>
-            </div>
+            </div> -->
 
             <!-- Topik Utama HPT -->
             <div class="space-y-3">
