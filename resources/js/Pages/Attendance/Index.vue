@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { Head, useForm, router } from '@inertiajs/vue3'
+import { Head, useForm, router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+
+const page = usePage()
 
 const props = defineProps({
     todayAttendance: Object,
@@ -550,14 +552,151 @@ const submitPermitForm = () => {
             return
         }
     }
+    const snapshot = {
+        status: permitForm.status,
+        date: permitForm.date,
+        time_out: permitForm.status === 'pulang_cepat' ? permitForm.time_out : null,
+        notes: permitForm.notes.trim(),
+        hasAttachment: Boolean(permitForm.attachment),
+    }
+
     permitForm.post(route('attendance.store-permit'), {
         preserveScroll: true,
         forceFormData: true,
-        onSuccess: () => {
+        onSuccess: (res) => {
+            if (res?.props?.flash?.error) return
             isPermitModalOpen.value = false
             permitForm.reset()
+            openWaModalFromData(snapshot)
         }
     })
+}
+
+// ─── Format & Kirim WhatsApp Ketidakhadiran / Dinas Luar ─────────────────────
+const isWaModalOpen = ref(false)
+const waMessageText = ref('')
+const waCopied = ref(false)
+const waModalSubtitle = ref('')
+
+const waTargetPhone = computed(() => {
+    const raw = page.props.global_settings?.presensi_whatsapp_target || ''
+    let cleaned = String(raw).replace(/[^0-9]/g, '')
+    if (!cleaned) return ''
+    if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.slice(1)
+    }
+    return cleaned
+})
+
+const formatFullIndoDate = (rawDate) => {
+    if (!rawDate) return '-'
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+
+    const datePart = String(rawDate).split('T')[0]
+    const parts = datePart.split('-')
+    if (parts.length === 3) {
+        const year = parseInt(parts[0], 10)
+        const monthIdx = parseInt(parts[1], 10) - 1
+        const day = parseInt(parts[2], 10)
+        if (!isNaN(year) && !isNaN(monthIdx) && !isNaN(day)) {
+            const localDate = new Date(year, monthIdx, day)
+            return `${days[localDate.getDay()]}, ${day} ${months[monthIdx] || ''} ${year}`
+        }
+    }
+    return String(rawDate)
+}
+
+const getStatusWaLabel = (status) => {
+    const map = {
+        izin: 'Izin',
+        sakit: 'Sakit',
+        dinas_luar: 'Dinas Luar',
+        pulang_cepat: 'Izin Pulang Cepat',
+        cuti: 'Cuti',
+    }
+    return map[status] || status
+}
+
+const buildWaMessage = ({ status, date, time_out, notes, hasAttachment }) => {
+    const user = page.props.auth?.user || {}
+    const userName = user.name || 'Pegawai'
+    const userDivisi = user.divisi ? `🏷️ *Divisi/Jabatan:* ${user.divisi}\n` : ''
+    const statusLabel = getStatusWaLabel(status)
+    const formattedDate = formatFullIndoDate(date)
+
+    let cleanNotes = (notes || '-').trim()
+    cleanNotes = cleanNotes.replace(/^(Dinas Luar|Izin Pulang Cepat):\s*/i, '')
+
+    const timeLine = (status === 'pulang_cepat' && time_out)
+        ? `⏰ *Rencana Pulang:* ${String(time_out).substring(0, 5)} WIB\n`
+        : ''
+    const attachmentLine = hasAttachment
+        ? `📎 *Lampiran:* Terlampir di aplikasi SAHABAT SDAM\n`
+        : ''
+
+    return `*PEMBERITAHUAN ${statusLabel.toUpperCase()}*\n` +
+        `_SAHABAT SDAM - SD Al Mujahidin Wonosari_\n\n` +
+        `Assalamu'alaikum Wr. Wb.\n` +
+        `Mohon maaf, Pak Joko, bu Nofi serta teman-teman semua menginformasikan pengajuan ijin tidak masuk berikut:\n\n` +
+        `👤 *Nama:* ${userName}\n` +
+        userDivisi +
+        `📋 *Jenis:* ${statusLabel}\n` +
+        `📅 *Tanggal:* ${formattedDate}\n` +
+        timeLine +
+        `📝 *Keterangan:* ${cleanNotes}\n` +
+        attachmentLine +
+        `\nadapun untuk terkait ketugasan saya pada hari ini telah kami kami komunikasikan dengan teman-teman yang lain\n` +
+        `\nPengajuan telah dicatat pada sistem SAHABAT SDAM.\n` +
+        `Terima kasih atas perhatian Bapak/Ibu.\n` +
+        `Wassalamu'alaikum Wr. Wb.`
+}
+
+const openWaModalFromData = (data) => {
+    waMessageText.value = buildWaMessage(data)
+    waModalSubtitle.value = `${getStatusWaLabel(data.status)} • ${formatFullIndoDate(data.date)}`
+    waCopied.value = false
+    isWaModalOpen.value = true
+}
+
+const openWaModalFromRecord = (att) => {
+    if (!att) return
+    const statusKey = att.is_early_departure ? 'pulang_cepat' : att.status
+    const reasonText = (att.is_early_departure && att.early_departure_reason)
+        ? att.early_departure_reason
+        : (att.notes || '-')
+
+    openWaModalFromData({
+        status: statusKey,
+        date: att.date,
+        time_out: att.is_early_departure ? att.time_out : null,
+        notes: reasonText,
+        hasAttachment: Boolean(att.attachment),
+    })
+}
+
+const copyWaMessage = async () => {
+    if (!waMessageText.value) return
+    try {
+        await navigator.clipboard.writeText(waMessageText.value)
+        waCopied.value = true
+        setTimeout(() => {
+            waCopied.value = false
+        }, 2500)
+    } catch (e) {
+        alert('Gagal menyalin otomatis. Silakan blok dan salin teks secara manual.')
+    }
+}
+
+const sendWaToTarget = () => {
+    if (!waTargetPhone.value) return
+    const url = `https://api.whatsapp.com/send?phone=${waTargetPhone.value}&text=${encodeURIComponent(waMessageText.value)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+const sendWaGeneral = () => {
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(waMessageText.value)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 const handleCheckInDirect = () => {
@@ -913,9 +1052,10 @@ onUnmounted(() => {
                                 </p>
                             </div>
 
-                            <!-- Lampiran Berkas / Surat Dokter -->
-                            <div v-if="todayAttendance.attachment" class="pt-1">
+                            <!-- Lampiran Berkas & Tombol Kirim Format WA -->
+                            <div class="pt-1 flex items-center gap-2 flex-wrap">
                                 <a 
+                                    v-if="todayAttendance.attachment"
                                     :href="'/storage/' + todayAttendance.attachment" 
                                     target="_blank" 
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800 text-xs font-bold text-purple-700 dark:text-purple-300 hover:underline shadow-2xs"
@@ -925,6 +1065,17 @@ onUnmounted(() => {
                                     </svg>
                                     <span>Lihat Berkas Lampiran / Surat Dokter</span>
                                 </a>
+
+                                <button
+                                    type="button"
+                                    @click="openWaModalFromRecord(todayAttendance)"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12.031 2c-5.516 0-9.969 4.453-9.969 9.969 0 1.766.469 3.484 1.344 5l-1.406 5.156 5.281-1.391c1.484.813 3.125 1.234 4.75 1.234 5.516 0 9.969-4.453 9.969-9.969 0-5.515-4.453-9.999-9.969-9.999zm5.844 14.125c-.25.703-1.453 1.344-2 1.422-.516.078-1.156.109-1.875-.125-.438-.141-1-.328-1.719-.641-3.031-1.313-5-4.391-5.156-4.594-.156-.203-1.234-1.641-1.234-3.125s.781-2.219 1.063-2.516c.281-.297.609-.375.813-.375s.406 0 .578.016c.188.016.438-.078.688.531.25.609.859 2.094.938 2.25.078.156.125.344.016.547-.109.203-.156.344-.313.516-.156.172-.328.391-.469.531-.156.156-.328.328-.141.656.188.328.844 1.391 1.813 2.25 1.25 1.109 2.297 1.453 2.625 1.609.328.156.516.125.703-.094.188-.219.813-.953 1.031-1.281.219-.328.438-.266.734-.156.297.109 1.891.891 2.219 1.047.328.156.547.234.625.375.078.141.078.797-.172 1.5z"/>
+                                    </svg>
+                                    <span>Format Kirim WA</span>
+                                </button>
                             </div>
                         </div>
 
@@ -1059,6 +1210,29 @@ onUnmounted(() => {
                                     <span v-if="todayAttendance.late_reason" class="italic">"{{ todayAttendance.late_reason }}"</span>
                                     <span v-else class="text-amber-700/70 dark:text-amber-300/70 italic">Belum ada keterangan alasan terlambat. Klik tombol di atas untuk mengisi.</span>
                                 </div>
+                            </div>
+
+                            <!-- Tombol Format WA Khusus Dinas Luar / Pulang Cepat Hari Ini -->
+                            <div v-if="todayAttendance && (todayAttendance.status === 'dinas_luar' || todayAttendance.is_early_departure)" class="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/50 flex items-center justify-between gap-3 flex-wrap text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-base">{{ todayAttendance.status === 'dinas_luar' ? '🚗' : '🏃' }}</span>
+                                    <div>
+                                        <span class="font-bold text-blue-950 dark:text-blue-100 block">
+                                            {{ todayAttendance.status === 'dinas_luar' ? 'Presensi Dinas Luar Tercatat' : 'Izin Pulang Mendahului Tercatat' }}
+                                        </span>
+                                        <span class="text-[11px] text-blue-700 dark:text-blue-300">Kirim pemberitahuan ke Pimpinan / Grup WA Sekolah</span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    @click="openWaModalFromRecord(todayAttendance)"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12.031 2c-5.516 0-9.969 4.453-9.969 9.969 0 1.766.469 3.484 1.344 5l-1.406 5.156 5.281-1.391c1.484.813 3.125 1.234 4.75 1.234 5.516 0 9.969-4.453 9.969-9.969 0-5.515-4.453-9.999-9.969-9.999zm5.844 14.125c-.25.703-1.453 1.344-2 1.422-.516.078-1.156.109-1.875-.125-.438-.141-1-.328-1.719-.641-3.031-1.313-5-4.391-5.156-4.594-.156-.203-1.234-1.641-1.234-3.125s.781-2.219 1.063-2.516c.281-.297.609-.375.813-.375s.406 0 .578.016c.188.016.438-.078.688.531.25.609.859 2.094.938 2.25.078.156.125.344.016.547-.109.203-.156.344-.313.516-.156.172-.328.391-.469.531-.156.156-.328.328-.141.656.188.328.844 1.391 1.813 2.25 1.25 1.109 2.297 1.453 2.625 1.609.328.156.516.125.703-.094.188-.219.813-.953 1.031-1.281.219-.328.438-.266.734-.156.297.109 1.891.891 2.219 1.047.328.156.547.234.625.375.078.141.078.797-.172 1.5z"/>
+                                    </svg>
+                                    <span>Format Kirim WA</span>
+                                </button>
                             </div>
                         </template>
 
@@ -1307,7 +1481,22 @@ onUnmounted(() => {
                                         ⚡ Lembur: {{ att.overtime_activity }}
                                     </div>
 
-                                    <span v-if="!att.notes && att.status !== 'terlambat' && !att.late_reason && !att.is_early_departure && !att.attachment && (!att.is_overtime || !att.overtime_activity)">-</span>
+                                    <!-- Tombol Format Kirim WA (Untuk Izin / Sakit / Dinas Luar / Pulang Cepat) -->
+                                    <div v-if="['izin', 'sakit', 'dinas_luar'].includes(att.status) || att.is_early_departure" class="pt-0.5">
+                                        <button
+                                            type="button"
+                                            @click="openWaModalFromRecord(att)"
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#128C7E] dark:text-[#25D366] font-bold text-[10px] border border-[#25D366]/30 transition cursor-pointer"
+                                            title="Buat & kirim pesan WhatsApp laporan ketidakhadiran/dinas"
+                                        >
+                                            <svg class="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                                                <path d="M12.031 2c-5.516 0-9.969 4.453-9.969 9.969 0 1.766.469 3.484 1.344 5l-1.406 5.156 5.281-1.391c1.484.813 3.125 1.234 4.75 1.234 5.516 0 9.969-4.453 9.969-9.969 0-5.515-4.453-9.999-9.969-9.999zm5.844 14.125c-.25.703-1.453 1.344-2 1.422-.516.078-1.156.109-1.875-.125-.438-.141-1-.328-1.719-.641-3.031-1.313-5-4.391-5.156-4.594-.156-.203-1.234-1.641-1.234-3.125s.781-2.219 1.063-2.516c.281-.297.609-.375.813-.375s.406 0 .578.016c.188.016.438-.078.688.531.25.609.859 2.094.938 2.25.078.156.125.344.016.547-.109.203-.156.344-.313.516-.156.172-.328.391-.469.531-.156.156-.328.328-.141.656.188.328.844 1.391 1.813 2.25 1.25 1.109 2.297 1.453 2.625 1.609.328.156.516.125.703-.094.188-.219.813-.953 1.031-1.281.219-.328.438-.266.734-.156.297.109 1.891.891 2.219 1.047.328.156.547.234.625.375.078.141.078.797-.172 1.5z"/>
+                                            </svg>
+                                            <span>Format WA</span>
+                                        </button>
+                                    </div>
+
+                                    <span v-if="!att.notes && att.status !== 'terlambat' && !att.late_reason && !att.is_early_departure && !['izin', 'sakit', 'dinas_luar'].includes(att.status) && !att.attachment && (!att.is_overtime || !att.overtime_activity)">-</span>
                                 </td>
                             </tr>
                             <tr v-if="!monthlyAttendances || monthlyAttendances.length === 0">
@@ -2136,6 +2325,115 @@ onUnmounted(() => {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- ── Modal Format & Kirim Laporan WhatsApp (Izin / Sakit / Dinas Luar) ─── -->
+        <div v-if="isWaModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-slate-900/65 backdrop-blur-xs" @click="isWaModalOpen = false" />
+
+            <div class="relative z-10 w-full max-w-lg bg-sidebar rounded-3xl shadow-2xl border border-theme overflow-hidden flex flex-col">
+                <!-- Modal Header -->
+                <div class="p-5 border-b border-subtle flex items-center justify-between bg-[#25D366]/10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-[#25D366] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                                <path d="M12.031 2c-5.516 0-9.969 4.453-9.969 9.969 0 1.766.469 3.484 1.344 5l-1.406 5.156 5.281-1.391c1.484.813 3.125 1.234 4.75 1.234 5.516 0 9.969-4.453 9.969-9.969 0-5.515-4.453-9.999-9.969-9.999zm5.844 14.125c-.25.703-1.453 1.344-2 1.422-.516.078-1.156.109-1.875-.125-.438-.141-1-.328-1.719-.641-3.031-1.313-5-4.391-5.156-4.594-.156-.203-1.234-1.641-1.234-3.125s.781-2.219 1.063-2.516c.281-.297.609-.375.813-.375s.406 0 .578.016c.188.016.438-.078.688.531.25.609.859 2.094.938 2.25.078.156.125.344.016.547-.109.203-.156.344-.313.516-.156.172-.328.391-.469.531-.156.156-.328.328-.141.656.188.328.844 1.391 1.813 2.25 1.25 1.109 2.297 1.453 2.625 1.609.328.156.516.125.703-.094.188-.219.813-.953 1.031-1.281.219-.328.438-.266.734-.156.297.109 1.891.891 2.219 1.047.328.156.547.234.625.375.078.141.078.797-.172 1.5z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-black text-slate-800 dark:text-slate-100">
+                                Format Laporan WhatsApp
+                            </h3>
+                            <p class="text-xs text-[#128C7E] dark:text-[#25D366] font-semibold">
+                                {{ waModalSubtitle }}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        @click="isWaModalOpen = false"
+                        class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="p-5 space-y-4">
+                    <div class="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                        Data ketidakhadiran / dinas Anda telah tersimpan di sistem. Silakan salin atau kirim langsung format pemberitahuan di bawah ini ke WhatsApp Waka SDM / Pimpinan / Grup Sekolah.
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                                Pratinjau Pesan (Dapat Diedit)
+                            </label>
+                            <button
+                                type="button"
+                                @click="copyWaMessage"
+                                :class="[
+                                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer',
+                                    waCopied
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-theme'
+                                ]"
+                            >
+                                <svg v-if="!waCopied" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>{{ waCopied ? 'Tersalin!' : 'Salin Teks' }}</span>
+                            </button>
+                        </div>
+
+                        <textarea
+                            v-model="waMessageText"
+                            rows="11"
+                            class="w-full text-xs font-sans leading-relaxed rounded-2xl border border-theme bg-card-subtle p-3.5 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-[#25D366] focus:border-[#25D366]"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="p-4 bg-card-subtle border-t border-subtle flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+                    <button
+                        type="button"
+                        @click="isWaModalOpen = false"
+                        class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer order-3 sm:order-1"
+                    >
+                        Tutup
+                    </button>
+
+                    <button
+                        type="button"
+                        @click="sendWaGeneral"
+                        class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white font-bold text-xs shadow-sm transition active:scale-95 cursor-pointer order-2"
+                        title="Buka WhatsApp dan pilih kontak atau grup tujuan"
+                    >
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M12.031 2c-5.516 0-9.969 4.453-9.969 9.969 0 1.766.469 3.484 1.344 5l-1.406 5.156 5.281-1.391c1.484.813 3.125 1.234 4.75 1.234 5.516 0 9.969-4.453 9.969-9.969 0-5.515-4.453-9.999-9.969-9.999zm5.844 14.125c-.25.703-1.453 1.344-2 1.422-.516.078-1.156.109-1.875-.125-.438-.141-1-.328-1.719-.641-3.031-1.313-5-4.391-5.156-4.594-.156-.203-1.234-1.641-1.234-3.125s.781-2.219 1.063-2.516c.281-.297.609-.375.813-.375s.406 0 .578.016c.188.016.438-.078.688.531.25.609.859 2.094.938 2.25.078.156.125.344.016.547-.109.203-.156.344-.313.516-.156.172-.328.391-.469.531-.156.156-.328.328-.141.656.188.328.844 1.391 1.813 2.25 1.25 1.109 2.297 1.453 2.625 1.609.328.156.516.125.703-.094.188-.219.813-.953 1.031-1.281.219-.328.438-.266.734-.156.297.109 1.891.891 2.219 1.047.328.156.547.234.625.375.078.141.078.797-.172 1.5z"/>
+                        </svg>
+                        <span>Pilih Kontak / Grup WA</span>
+                    </button>
+
+                    <button
+                        v-if="waTargetPhone"
+                        type="button"
+                        @click="sendWaToTarget"
+                        class="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-white font-black text-xs shadow-md transition active:scale-95 cursor-pointer order-1 sm:order-3"
+                    >
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M12.031 2c-5.516 0-9.969 4.453-9.969 9.969 0 1.766.469 3.484 1.344 5l-1.406 5.156 5.281-1.391c1.484.813 3.125 1.234 4.75 1.234 5.516 0 9.969-4.453 9.969-9.969 0-5.515-4.453-9.999-9.969-9.999zm5.844 14.125c-.25.703-1.453 1.344-2 1.422-.516.078-1.156.109-1.875-.125-.438-.141-1-.328-1.719-.641-3.031-1.313-5-4.391-5.156-4.594-.156-.203-1.234-1.641-1.234-3.125s.781-2.219 1.063-2.516c.281-.297.609-.375.813-.375s.406 0 .578.016c.188.016.438-.078.688.531.25.609.859 2.094.938 2.25.078.156.125.344.016.547-.109.203-.156.344-.313.516-.156.172-.328.391-.469.531-.156.156-.328.328-.141.656.188.328.844 1.391 1.813 2.25 1.25 1.109 2.297 1.453 2.625 1.609.328.156.516.125.703-.094.188-.219.813-.953 1.031-1.281.219-.328.438-.266.734-.156.297.109 1.891.891 2.219 1.047.328.156.547.234.625.375.078.141.078.797-.172 1.5z"/>
+                        </svg>
+                        <span>Kirim ke Admin / SDM</span>
+                    </button>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>

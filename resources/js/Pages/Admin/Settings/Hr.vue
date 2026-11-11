@@ -90,6 +90,7 @@ const form = useForm({
     presensi_work_start: props.settings.presensi_work_start || '07:00',
     presensi_late_tolerance: props.settings.presensi_late_tolerance || 15,
     presensi_work_end: props.settings.presensi_work_end || '15:00',
+    presensi_whatsapp_target: props.settings.presensi_whatsapp_target || '',
     
     // Multi-Mode Presensi
     attendance_mode_gps: props.settings.attendance_mode_gps === '1' || props.settings.attendance_mode_gps === 'true' || props.settings.attendance_mode_gps === undefined, // default true if not set
@@ -1103,6 +1104,18 @@ const submit = () => {
                                                 v-model="form.presensi_work_end" 
                                                 class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 font-mono shadow-xs"
                                             />
+                                        </div>
+                                        <div class="pt-2 border-t border-slate-200/70 dark:border-slate-700/70">
+                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">No. WhatsApp Admin / SDM (Opsional)</label>
+                                            <input 
+                                                type="text" 
+                                                v-model="form.presensi_whatsapp_target" 
+                                                placeholder="081234567890"
+                                                class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 font-mono shadow-xs"
+                                            />
+                                            <p class="text-[10px] text-slate-400 mt-1 leading-snug">
+                                                Tujuan langsung kirim WA saat pegawai mengajukan Izin / Sakit / Dinas Luar.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

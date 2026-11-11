@@ -113,6 +113,7 @@ class SettingController extends Controller
             $rules['presensi_work_start'] = 'nullable|string|max:10';
             $rules['presensi_late_tolerance'] = 'nullable|numeric|min:0|max:120';
             $rules['presensi_work_end'] = 'nullable|string|max:10';
+            $rules['presensi_whatsapp_target'] = 'nullable|string|max:30';
 
             // Multi-Mode Presensi
             $rules['attendance_mode_gps'] = 'boolean';
