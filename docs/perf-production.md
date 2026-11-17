@@ -19,6 +19,7 @@ LOG_LEVEL=warning
 # Gunakan Redis untuk session, cache, dan queue (atau 'file'/'database' jika Redis belum diinstal)
 CACHE_STORE=redis
 SESSION_DRIVER=redis
+SESSION_SECURE_COOKIE=true
 QUEUE_CONNECTION=redis
 
 # Jika menggunakan Redis
