@@ -298,6 +298,8 @@ watch(activeTab, (newTab) => {
                 }, 150)
             }
         })
+    } else if (newTab === 'notifikasi') {
+        loadPushStatus()
     }
 })
 
@@ -604,8 +606,9 @@ onMounted(() => {
     window.addEventListener('keydown', handleKeyDown)
     if (activeTab.value === 'presensi' && form.feature_presensi) {
         nextTick(() => initHrMap())
+    } else if (activeTab.value === 'notifikasi') {
+        loadPushStatus()
     }
-    loadPushStatus()
 })
 
 onUnmounted(() => {

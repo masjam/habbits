@@ -226,14 +226,32 @@ const goToBookmark = async () => {
     }, 400)
 }
 
-// Fetch daftar surah
+// Fetch daftar surah (dengan caching localStorage)
 const fetchSurahList = async () => {
+    // 1. Coba ambil dari localStorage terlebih dahulu
+    try {
+        const cached = localStorage.getItem('quran_surah_list_cache')
+        if (cached) {
+            const parsed = JSON.parse(cached)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                surahList.value = parsed
+                loadingSurah.value = false
+                return
+            }
+        }
+    } catch (e) {}
+
     loadingSurah.value = true
     quranError.value = null
     try {
         const res = await fetch(`${QURAN_API}/surat`)
         const json = await res.json()
         surahList.value = json.data || []
+        if (surahList.value.length > 0) {
+            try {
+                localStorage.setItem('quran_surah_list_cache', JSON.stringify(surahList.value))
+            } catch (e) {}
+        }
     } catch (e) {
         quranError.value = 'Gagal memuat daftar surah. Periksa koneksi internet.'
     } finally {
@@ -962,12 +980,14 @@ onMounted(() => {
             if (perawi) selectedPerawi.value = perawi
             if (nomor) fetchHadis(parseInt(nomor))
             else fetchHadis(1)
-        } else {
+        }
+    }
+
+    watch(activeTab, (newTab) => {
+        if (newTab === 'hadis' && !hadisDetail.value && !loadingHadis.value) {
             fetchHadis(1)
         }
-    } else {
-        fetchHadis(1)
-    }
+    })
 
     loadBookmark()
     loadQuranSettings()

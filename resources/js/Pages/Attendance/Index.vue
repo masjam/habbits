@@ -39,11 +39,22 @@ const startLiveClock = () => {
 }
 
 // ─── Geolocation Tracking ───────────────────────────────────────────────────
-const userLat = ref(null)
-const userLng = ref(null)
-const userAccuracy = ref(null)
+let cachedPos = null
+try {
+    const raw = sessionStorage.getItem('last_known_attendance_pos')
+    if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && (Date.now() - parsed.time < 300000)) {
+            cachedPos = parsed
+        }
+    }
+} catch (e) {}
+
+const userLat = ref(cachedPos ? cachedPos.lat : null)
+const userLng = ref(cachedPos ? cachedPos.lng : null)
+const userAccuracy = ref(cachedPos ? cachedPos.acc : null)
 const gpsError = ref(null)
-const isGpsLoading = ref(true)
+const isGpsLoading = ref(!cachedPos)
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return null
@@ -103,6 +114,14 @@ const refreshGpsLocation = () => {
             userLng.value = pos.coords.longitude
             userAccuracy.value = Math.round(acc)
             isGpsLoading.value = false
+            try {
+                sessionStorage.setItem('last_known_attendance_pos', JSON.stringify({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    acc: Math.round(acc),
+                    time: Date.now()
+                }))
+            } catch (e) {}
         },
         (err) => {
             let msg = 'Gagal mendeteksi lokasi GPS.'
@@ -112,7 +131,7 @@ const refreshGpsLocation = () => {
             gpsError.value = msg
             isGpsLoading.value = false
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 120000 }
     )
 }
 
