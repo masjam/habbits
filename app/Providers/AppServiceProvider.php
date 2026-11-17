@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
                            ->numbers()
                            ->symbols();
         });
+
+        Gate::policy(\App\Models\Notulen::class, \App\Policies\NotulenPolicy::class);
 
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Notifications\Events\NotificationSent::class,

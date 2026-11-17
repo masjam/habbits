@@ -8,9 +8,11 @@ use App\Models\Notulen;
 use App\Models\User;
 use App\Jobs\SendNotulenApprovalNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Stevebauman\Purify\Facades\Purify;
 
 class NotulenController extends Controller
 {
@@ -100,6 +102,11 @@ class NotulenController extends Controller
 
         $validated['ttd_notulis'] = $this->storeBase64Signature($validated['ttd_notulis'], 'notulis', 'ttd_notulis');
 
+        $validated['isi_pembahasan'] = Purify::clean($validated['isi_pembahasan']);
+        if (!empty($validated['tindak_lanjut'])) {
+            $validated['tindak_lanjut'] = Purify::clean($validated['tindak_lanjut']);
+        }
+
         $validated['user_id'] = auth()->id();
         
         $notulen = Notulen::create($validated);
@@ -116,6 +123,8 @@ class NotulenController extends Controller
 
     public function destroy(Notulen $notulen)
     {
+        Gate::authorize('delete', $notulen);
+
         if ($notulen->dokumentasi) {
             foreach ($notulen->dokumentasi as $path) {
                 Storage::disk('public')->delete($path);
@@ -163,6 +172,8 @@ class NotulenController extends Controller
 
     public function edit(Notulen $notulen)
     {
+        Gate::authorize('update', $notulen);
+
         $notulen->load('pesertas');
         if ($notulen->is_approved) {
             return redirect()->route('notulen.index')->with('error', 'Notulen sudah disetujui dan tidak dapat diubah.');
@@ -180,6 +191,8 @@ class NotulenController extends Controller
 
     public function update(Request $request, Notulen $notulen)
     {
+        Gate::authorize('update', $notulen);
+
         if ($notulen->is_approved) {
             return redirect()->route('notulen.index')->with('error', 'Notulen sudah disetujui dan tidak dapat diubah.');
         }
@@ -200,7 +213,7 @@ class NotulenController extends Controller
         $userName = auth()->user()->name;
         $pimpinan = $validated['pimpinan_rapat'];
 
-        $pesertaList = $validated['peserta_rapat'] ? explode(', ', $validated['peserta_rapat']) : [];
+        $pesertaList = !empty($validated['peserta_rapat']) ? explode(', ', $validated['peserta_rapat']) : [];
         $hadirList = $notulen->daftar_hadir ? explode(', ', $notulen->daftar_hadir) : [];
 
         if (!in_array($userName, $pesertaList)) $pesertaList[] = $userName;
@@ -236,6 +249,11 @@ class NotulenController extends Controller
             unset($validated['ttd_notulis']);
         }
 
+        $validated['isi_pembahasan'] = Purify::clean($validated['isi_pembahasan']);
+        if (!empty($validated['tindak_lanjut'])) {
+            $validated['tindak_lanjut'] = Purify::clean($validated['tindak_lanjut']);
+        }
+
         $notulen->update($validated);
 
         // Update Pivot Table
@@ -250,6 +268,8 @@ class NotulenController extends Controller
 
     public function approve(Request $request, Notulen $notulen)
     {
+        Gate::authorize('approve', $notulen);
+
         $request->validate([
             'ttd_pimpinan' => 'required|string'
         ]);
