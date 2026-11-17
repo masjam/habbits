@@ -9,6 +9,7 @@ use App\Notifications\GenericWebPushNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use NotificationChannels\WebPush\PushSubscription;
 
 class PushSubscriptionController extends Controller
@@ -19,10 +20,46 @@ class PushSubscriptionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'endpoint' => 'required|string',
-            'keys.p256dh' => 'required|string',
-            'keys.auth' => 'required|string',
+            'endpoint' => 'required|url|max:500',
+            'keys.p256dh' => 'required|string|max:255',
+            'keys.auth' => 'required|string|max:255',
         ]);
+
+        $parsedUrl = parse_url($request->endpoint);
+        if (!isset($parsedUrl['scheme']) || strtolower($parsedUrl['scheme']) !== 'https') {
+            throw ValidationException::withMessages([
+                'endpoint' => ['Endpoint push notification harus menggunakan skema HTTPS.']
+            ]);
+        }
+
+        $host = strtolower($parsedUrl['host'] ?? '');
+        $allowedPatterns = [
+            'fcm.googleapis.com',
+            'android.googleapis.com',
+            'updates.push.services.mozilla.com',
+            '*.push.apple.com',
+            '*.notify.windows.com',
+        ];
+
+        $isAllowed = false;
+        foreach ($allowedPatterns as $pattern) {
+            if (str_starts_with($pattern, '*.')) {
+                $suffix = substr($pattern, 1);
+                if ($host === substr($pattern, 2) || str_ends_with($host, $suffix)) {
+                    $isAllowed = true;
+                    break;
+                }
+            } elseif ($host === $pattern) {
+                $isAllowed = true;
+                break;
+            }
+        }
+
+        if (!$isAllowed) {
+            throw ValidationException::withMessages([
+                'endpoint' => ['Host provider push notification tidak dikenal atau tidak diizinkan.']
+            ]);
+        }
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
