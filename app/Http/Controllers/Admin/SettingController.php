@@ -104,9 +104,10 @@ class SettingController extends Controller
         ];
 
         $user = auth()->user();
+        $isAdminOrSuperAdmin = $user && ($user->isActualSuperadmin() || $user->hasRole('superadmin') || $user->hasRole('admin'));
         $isSuperAdmin = $user && ($user->isActualSuperadmin() || $user->hasRole('superadmin'));
 
-        if ($isSuperAdmin) {
+        if ($isAdminOrSuperAdmin) {
             $rules['feature_presensi'] = 'boolean';
             $rules['presensi_latitude'] = 'nullable|string|max:50';
             $rules['presensi_longitude'] = 'nullable|string|max:50';
@@ -116,12 +117,14 @@ class SettingController extends Controller
             $rules['presensi_work_end'] = 'nullable|string|max:10';
             $rules['presensi_whatsapp_target'] = 'nullable|string|max:30';
 
-            // Multi-Mode Presensi
+            // Multi-Mode Presensi & Token Kiosk
             $rules['attendance_mode_gps'] = 'boolean';
             $rules['attendance_mode_rfid'] = 'boolean';
             $rules['attendance_mode_fingerprint'] = 'boolean';
             $rules['kiosk_api_token'] = 'nullable|string|min:32|max:100';
+        }
 
+        if ($isSuperAdmin) {
             $rules['gamification_active'] = 'boolean';
             $rules['dark_mode_active'] = 'boolean';
             $rules['auto_warning_active'] = 'boolean';
@@ -163,8 +166,8 @@ class SettingController extends Controller
     public function updateKioskToken(Request $request)
     {
         $user = auth()->user();
-        if (!$user || (!$user->isActualSuperadmin() && !$user->hasRole('superadmin'))) {
-            return response()->json(['success' => false, 'message' => 'Hanya Superadmin yang berhak mengubah token Kiosk.'], 403);
+        if (!$user || (!$user->isActualSuperadmin() && !$user->hasRole('superadmin') && !$user->hasRole('admin'))) {
+            return response()->json(['success' => false, 'message' => 'Hanya Admin dan Superadmin yang berhak mengubah token Kiosk.'], 403);
         }
 
         $request->validate([

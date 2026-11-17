@@ -100,4 +100,43 @@ class AdminSettingsTabTest extends TestCase
         $this->assertEquals('07:15', Setting::get('presensi_work_start'));
         $this->assertEquals('Updated announcement', Setting::get('announcement_text'));
     }
+
+    public function test_admin_can_update_kiosk_token_successfully()
+    {
+        $newToken = 'abcdefghijklmnopqrstuvwxyz0123456789_kiosk_test';
+
+        $response = $this->actingAs($this->admin)->postJson(route('admin.settings.kiosk-token'), [
+            'token' => $newToken,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'token' => $newToken,
+        ]);
+
+        $this->assertEquals($newToken, Setting::get('kiosk_api_token'));
+    }
+
+    public function test_admin_can_update_presensi_settings_successfully()
+    {
+        $response = $this->actingAs($this->admin)->post(route('admin.settings.update'), [
+            'feature_presensi' => true,
+            'attendance_mode_gps' => true,
+            'attendance_mode_rfid' => true,
+            'presensi_latitude' => '-7.7956000',
+            'presensi_longitude' => '110.3695000',
+            'presensi_radius_meters' => 200,
+            'presensi_work_start' => '07:00',
+            'presensi_late_tolerance' => 15,
+            'presensi_work_end' => '15:15',
+            'kiosk_api_token' => 'kiosk_token_min_32_characters_for_testing_admin_role',
+        ]);
+
+        $response->assertSessionHas('success');
+        $this->assertEquals('1', Setting::get('feature_presensi'));
+        $this->assertEquals('200', Setting::get('presensi_radius_meters'));
+        $this->assertEquals('07:00', Setting::get('presensi_work_start'));
+        $this->assertEquals('kiosk_token_min_32_characters_for_testing_admin_role', Setting::get('kiosk_api_token'));
+    }
 }
