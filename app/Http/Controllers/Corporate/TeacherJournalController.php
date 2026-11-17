@@ -82,7 +82,7 @@ class TeacherJournalController extends Controller
         $validated['user_id'] = Auth::id();
 
         if ($request->hasFile('photo')) {
-            $validated['photo'] = $request->file('photo')->store('journals', 'public');
+            $validated['photo'] = $request->file('photo')->store('journals', 'private');
         }
 
         TeacherJournal::create($validated);
@@ -140,9 +140,13 @@ class TeacherJournalController extends Controller
 
         if ($request->hasFile('photo')) {
             if ($teacherJournal->photo) {
-                Storage::disk('public')->delete($teacherJournal->photo);
+                if (Storage::disk('private')->exists($teacherJournal->photo)) {
+                    Storage::disk('private')->delete($teacherJournal->photo);
+                } elseif (Storage::disk('public')->exists($teacherJournal->photo)) {
+                    Storage::disk('public')->delete($teacherJournal->photo);
+                }
             }
-            $validated['photo'] = $request->file('photo')->store('journals', 'public');
+            $validated['photo'] = $request->file('photo')->store('journals', 'private');
         }
 
         $teacherJournal->update($validated);
@@ -161,7 +165,11 @@ class TeacherJournalController extends Controller
         }
 
         if ($teacherJournal->photo) {
-            Storage::disk('public')->delete($teacherJournal->photo);
+            if (Storage::disk('private')->exists($teacherJournal->photo)) {
+                Storage::disk('private')->delete($teacherJournal->photo);
+            } elseif (Storage::disk('public')->exists($teacherJournal->photo)) {
+                Storage::disk('public')->delete($teacherJournal->photo);
+            }
         }
         
         $teacherJournal->delete();

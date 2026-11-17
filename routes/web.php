@@ -22,6 +22,12 @@ Route::post('/kiosk-rfid/scan', [\App\Http\Controllers\Corporate\AttendanceRFIDC
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [\App\Http\Controllers\System\AuthController::class, 'logout'])->name('logout');
+
+    // Authorized Private Media Streaming Routes
+    Route::get('/storage/attendance/attachments/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'serveAttendanceAttachment'])->where('filename', '[a-zA-Z0-9_\-\.]+');
+    Route::get('/storage/attachments/permits/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'servePermitAttachment'])->where('filename', '[a-zA-Z0-9_\-\.]+');
+    Route::get('/storage/attendances/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'serveAttendancePhoto'])->where('filename', '[a-zA-Z0-9_\-\.]+');
+    Route::get('/storage/journals/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'serveJournalPhoto'])->where('filename', '[a-zA-Z0-9_\-\.]+');
     
     // Multi Account Routes
     Route::get('/multi-account/add', [\App\Http\Controllers\System\MultiAccountController::class, 'addAccount'])->name('multi-account.add');

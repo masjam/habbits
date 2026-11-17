@@ -322,7 +322,7 @@ class AttendanceController extends Controller
 
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('attachments/permits', 'public');
+            $attachmentPath = $request->file('attachment')->store('attachments/permits', 'private');
         } elseif ($existing?->attachment) {
             $attachmentPath = $existing->attachment;
         }
@@ -492,10 +492,10 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Simpan foto selfie base64 ke disk public storage secara aman.
+     * Simpan foto selfie base64 ke disk private storage secara aman.
      */
     private function storeBase64Photo(string $base64Data, string $prefix): string
     {
-        return \App\Services\Base64ImageService::store($base64Data, 'attendances', $prefix, 'photo');
+        return \App\Services\Base64ImageService::store($base64Data, 'attendances', $prefix, 'photo', 'private');
     }
 }
