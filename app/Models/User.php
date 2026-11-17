@@ -87,6 +87,38 @@ class User extends Authenticatable
         return $this->hasMany(PerformanceEvaluation::class, 'user_id');
     }
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function () {
+            self::clearUserRoleCache();
+        });
+
+        static::deleted(function () {
+            self::clearUserRoleCache();
+        });
+    }
+
+    public static function clearUserRoleCache(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('non_admin_user_ids');
+    }
+
+    /**
+     * Dapatkan daftar id pengguna non-admin (pegawai) ter-cache singkat.
+     *
+     * @return array<int>
+     */
+    public static function getNonAdminUserIds(): array
+    {
+        return \Illuminate\Support\Facades\Cache::remember('non_admin_user_ids', 120, function () {
+            return static::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+                ->pluck('id')
+                ->toArray();
+        });
+    }
+
     public function clearNotificationCache(): void
     {
         \Illuminate\Support\Facades\Cache::forget("user_{$this->id}_notifications_unread_count");

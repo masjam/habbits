@@ -78,7 +78,7 @@ class FormHabitController extends Controller
 
         // Ambil log pada tanggal yang dipilih
         $logsSelected = HabitLog::where('user_id', $user->id)
-            ->whereDate('tanggal', $selectedDate)
+            ->where('tanggal', $selectedDate->toDateString())
             ->get()
             ->keyBy('habit_id');
 
@@ -259,13 +259,13 @@ class FormHabitController extends Controller
         // tidak boleh melebihi skor maksimal normal (non-haid / semua habit utama).
         
         // Hitung skor maksimal harian normal (tanpa habit pengganti haid)
-        $skorMaksimalNormal = Habit::where('status_aktif', true)
+        $skorMaksimalNormal = Habit::allActiveCached()
             ->where('is_pengganti_haid', false)
             ->sum('skor_maksimal');
 
         // Ambil semua log hari ini (sudah tersimpan), hitung total
         $allLogsToday = \App\Models\HabitLog::where('user_id', $user->id)
-            ->whereDate('tanggal', $selectedDate->toDateString())
+            ->where('tanggal', $selectedDate->toDateString())
             ->get();
 
         $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');

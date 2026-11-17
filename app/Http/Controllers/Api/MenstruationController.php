@@ -46,12 +46,12 @@ class MenstruationController extends Controller
             // Saat mode haid diaktifkan: skor habit utama (hide_saat_haid) TIDAK dihapus.
             // Namun, total skor harian tidak boleh melebihi skor maksimal normal (non-haid).
             // Jika ada kelebihan, kurangi dari skor habit pengganti haid (jika ada).
-            $skorMaksimalNormal = \App\Models\Habit::where('status_aktif', true)
+            $skorMaksimalNormal = \App\Models\Habit::allActiveCached()
                 ->where('is_pengganti_haid', false)
                 ->sum('skor_maksimal');
 
             $allLogsToday = \App\Models\HabitLog::where('user_id', $user->id)
-                ->whereDate('tanggal', Carbon::today())
+                ->where('tanggal', Carbon::today()->toDateString())
                 ->get();
 
             $totalSkorHariIni = $allLogsToday->sum('skor_diperoleh');

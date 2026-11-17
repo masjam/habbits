@@ -28,15 +28,17 @@ class QuranRecapController extends Controller
             ->with('habit');
 
         if ($periode === 'bulan') {
-            $query->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
+            $start = Carbon::create($tahun, $bulan, 1)->startOfMonth()->format('Y-m-d');
+            $end = Carbon::create($tahun, $bulan, 1)->endOfMonth()->format('Y-m-d');
+            $query->whereBetween('tanggal', [$start, $end]);
         } elseif ($periode === 'semester') {
             $startMonth = $semester == 1 ? 1 : 7;
             $endMonth = $semester == 1 ? 6 : 12;
-            $query->whereYear('tanggal', $tahun)
-                  ->whereMonth('tanggal', '>=', $startMonth)
-                  ->whereMonth('tanggal', '<=', $endMonth);
+            $start = Carbon::create($tahun, $startMonth, 1)->startOfMonth()->format('Y-m-d');
+            $end = Carbon::create($tahun, $endMonth, 1)->endOfMonth()->format('Y-m-d');
+            $query->whereBetween('tanggal', [$start, $end]);
         } elseif ($periode === 'tahun') {
-            $query->whereYear('tanggal', $tahun);
+            $query->whereBetween('tanggal', ["{$tahun}-01-01", "{$tahun}-12-31"]);
         }
 
         $logs = $query->orderBy('tanggal', 'asc')->get();

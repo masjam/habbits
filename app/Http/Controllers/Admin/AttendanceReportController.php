@@ -54,9 +54,7 @@ class AttendanceReportController extends Controller
         };
 
         // Query seluruh user pegawai (kecuali admin & superadmin)
-        $userQuery = User::whereDoesntHave('roles', function ($q) {
-            $q->whereIn('name', ['admin', 'superadmin']);
-        });
+        $userQuery = User::whereIn('id', User::getNonAdminUserIds());
 
         if ($divisionFilter) {
             $userQuery->where('divisi', $divisionFilter);

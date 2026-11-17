@@ -56,7 +56,7 @@ class ProcessLaporanExport implements ShouldQueue
         $settingTargetVal = \App\Models\Setting::get('monthly_target_score');
         $targetBulanan = $settingTargetVal !== null ? (float) $settingTargetVal : 80.0;
 
-        $users = \App\Models\User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+        $users = \App\Models\User::whereIn('id', \App\Models\User::getNonAdminUserIds())
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
             })

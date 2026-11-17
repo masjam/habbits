@@ -32,7 +32,7 @@ class DashboardController extends Controller
         $endOfMonth   = Carbon::now()->endOfMonth();
 
         $skorHariIni = HabitLog::where('user_id', $user->id)
-            ->whereDate('tanggal', $today)
+            ->where('tanggal', $today->toDateString())
             ->sum('skor_diperoleh');
 
         $skorBulanIni = HabitLog::where('user_id', $user->id)

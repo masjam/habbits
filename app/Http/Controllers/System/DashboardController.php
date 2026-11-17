@@ -49,7 +49,7 @@ class DashboardController extends Controller
         $endOfMonth   = Carbon::now()->endOfMonth();
 
         $skorHariIni = HabitLog::where('user_id', $targetUserId)
-            ->whereDate('tanggal', $today)
+            ->where('tanggal', $today->format('Y-m-d'))
             ->sum('skor_diperoleh');
 
         $skorBulanIni = HabitLog::where('user_id', $targetUserId)
@@ -100,10 +100,11 @@ class DashboardController extends Controller
             10 => 'Oktober',   11 => 'November',   12 => 'Desember',
         ];
 
+        $startSemesterDate = Carbon::createFromDate($currentYear, $startMonth, 1)->startOfMonth()->format('Y-m-d');
+        $endSemesterDate = Carbon::createFromDate($currentYear, $endMonth, 1)->endOfMonth()->format('Y-m-d');
+
         $monthlyRaw = HabitLog::where('user_id', $targetUserId)
-            ->whereYear('tanggal', $currentYear)
-            ->whereMonth('tanggal', '>=', $startMonth)
-            ->whereMonth('tanggal', '<=', $endMonth)
+            ->whereBetween('tanggal', [$startSemesterDate, $endSemesterDate])
             ->select(
                 DB::raw('MONTH(tanggal) as bulan'),
                 DB::raw('SUM(skor_diperoleh) as total_skor')
@@ -353,9 +354,7 @@ class DashboardController extends Controller
         });
 
         $semesterAttendances = \App\Models\Attendance::where('user_id', $targetUserId)
-            ->whereYear('date', $currentYear)
-            ->whereMonth('date', '>=', $startMonth)
-            ->whereMonth('date', '<=', $endMonth)
+            ->whereBetween('date', [$startSemesterDate, $endSemesterDate])
             ->get(['time_in', 'time_out', 'status']);
 
         $validSemesterAttendances = $semesterAttendances->filter(fn($a) => !empty($a->time_in) && !empty($a->time_out));
@@ -418,7 +417,8 @@ class DashboardController extends Controller
         $startOfMonth = Carbon::now()->startOfMonth();
         $endOfMonth   = Carbon::now()->endOfMonth();
         
-        $totalPegawai = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))->count();
+        $nonAdminIds = User::getNonAdminUserIds();
+        $totalPegawai = count($nonAdminIds);
         if ($totalPegawai === 0) $totalPegawai = 1; // Prevent div by 0 just in case
 
         // Hitung Maksimal Skor (sehari) dinamis berdasarkan jumlah skor maksimal semua habit aktif (standar non-haid)
@@ -430,9 +430,7 @@ class DashboardController extends Controller
         $skorMaksimalHarianSeluruhPegawai = $totalPegawai * $skorMaksimalHarianPerUser;
 
         // ─── GRAFIK HARIAN (Bulan Berjalan) ───────────────────────────────
-        $dailyRaw = HabitLog::whereHas('user', function($q) {
-                $q->whereDoesntHave('roles', fn($rq) => $rq->whereIn('name', ['admin', 'superadmin']));
-            })
+        $dailyRaw = HabitLog::whereIn('user_id', $nonAdminIds)
             ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
             ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total_skor'))
             ->groupBy('tanggal')
@@ -468,12 +466,11 @@ class DashboardController extends Controller
             10 => 'Okt.', 11 => 'Nov.', 12 => 'Des.',
         ];
 
-        $monthlyRaw = HabitLog::whereHas('user', function($q) {
-                $q->whereDoesntHave('roles', fn($rq) => $rq->whereIn('name', ['admin', 'superadmin']));
-            })
-            ->whereYear('tanggal', $currentYear)
-            ->whereMonth('tanggal', '>=', $startMonth)
-            ->whereMonth('tanggal', '<=', $endMonth)
+        $startSemesterDate = Carbon::createFromDate($currentYear, $startMonth, 1)->startOfMonth()->format('Y-m-d');
+        $endSemesterDate = Carbon::createFromDate($currentYear, $endMonth, 1)->endOfMonth()->format('Y-m-d');
+
+        $monthlyRaw = HabitLog::whereIn('user_id', $nonAdminIds)
+            ->whereBetween('tanggal', [$startSemesterDate, $endSemesterDate])
             ->select(
                 DB::raw('MONTH(tanggal) as bulan'),
                 DB::raw('SUM(skor_diperoleh) as total_skor')
@@ -504,7 +501,7 @@ class DashboardController extends Controller
         $settingTargetValue = \App\Models\Setting::get('monthly_target_score');
         $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
         
-        $usersSkor = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+        $usersSkor = User::whereIn('id', $nonAdminIds)
             ->withSum(
                 ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
                 'skor_diperoleh'

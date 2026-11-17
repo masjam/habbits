@@ -37,9 +37,7 @@ class ProcessAttendanceExport implements ShouldQueue
         $date = $this->date;
         $divisionFilter = $this->divisionFilter;
 
-        $userQuery = \App\Models\User::whereDoesntHave('roles', function ($q) {
-            $q->whereIn('name', ['admin', 'superadmin']);
-        });
+        $userQuery = \App\Models\User::whereIn('id', \App\Models\User::getNonAdminUserIds());
 
         if ($divisionFilter) {
             $userQuery->where('divisi', $divisionFilter);
@@ -48,7 +46,7 @@ class ProcessAttendanceExport implements ShouldQueue
         $allUsers = $userQuery->orderBy('name')->get();
 
         if ($type === 'daily') {
-            $attendances = \App\Models\Attendance::whereDate('date', $date)
+            $attendances = \App\Models\Attendance::where('date', $date)
                 ->whereIn('user_id', $allUsers->pluck('id'))
                 ->get()
                 ->keyBy('user_id');

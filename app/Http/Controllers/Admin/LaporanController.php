@@ -42,7 +42,7 @@ class LaporanController extends Controller
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
 
         // Ambil data semua pegawai (bukan admin/superadmin) beserta pencarian dan pagination
-        $usersQuery = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+        $usersQuery = User::whereIn('id', User::getNonAdminUserIds())
             ->with('badges')
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
@@ -317,7 +317,7 @@ class LaporanController extends Controller
         }
 
         // Ambil semua pegawai aktif (bukan admin)
-        $users = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+        $users = User::whereIn('id', User::getNonAdminUserIds())
             ->where('status_kehadiran', 'Aktif')
             ->orderBy('name')
             ->get();
@@ -395,7 +395,7 @@ class LaporanController extends Controller
             $endOfMonth = Carbon::today();
         }
 
-        $users = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+        $users = User::whereIn('id', User::getNonAdminUserIds())
             ->where('status_kehadiran', 'Aktif')
             ->orderBy('name')
             ->get();

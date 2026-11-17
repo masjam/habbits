@@ -35,13 +35,11 @@ class HistoryController extends Controller
         $user = Auth::user();
 
         // Get all active habits
-        $habits = \App\Models\Habit::where('status_aktif', true)
-            ->orderBy('urutan')
-            ->get();
+        $habits = \App\Models\Habit::allActiveCached();
 
         // Get logs for the specified date
         $logs = \App\Models\HabitLog::where('user_id', $user->id)
-            ->whereDate('tanggal', $date)
+            ->where('tanggal', $date)
             ->get()
             ->keyBy('habit_id');
 

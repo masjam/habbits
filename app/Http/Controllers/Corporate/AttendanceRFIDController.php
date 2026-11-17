@@ -78,9 +78,7 @@ class AttendanceRFIDController extends Controller
                 ];
             });
 
-        $totalPegawai = User::whereDoesntHave('roles', function ($q) {
-            $q->whereIn('name', ['admin', 'superadmin']);
-        })->count();
+        $totalPegawai = count(User::getNonAdminUserIds());
 
         $stats = [
             'total_hadir' => $attendances->count(),

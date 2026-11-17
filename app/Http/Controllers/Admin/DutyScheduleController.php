@@ -27,7 +27,7 @@ class DutyScheduleController extends Controller
 
         // Daftar semua pegawai aktif untuk dipilih (hanya non-admin)
         $employees = User::select('id', 'name', 'email', 'avatar', 'divisi', 'nip')
-            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['admin', 'superadmin']))
+            ->whereIn('id', User::getNonAdminUserIds())
             ->orderBy('name')
             ->get();
 
@@ -115,10 +115,7 @@ class DutyScheduleController extends Controller
 
         $validUserIds = [];
         if (!empty($validated['user_ids'])) {
-            $validUserIds = User::whereIn('id', $validated['user_ids'])
-                ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['admin', 'superadmin']))
-                ->pluck('id')
-                ->toArray();
+            $validUserIds = array_values(array_intersect($validated['user_ids'], User::getNonAdminUserIds()));
         }
 
         $schedule->users()->sync($validUserIds);
