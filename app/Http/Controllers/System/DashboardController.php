@@ -394,8 +394,8 @@ class DashboardController extends Controller
             'adminTargetSkorMinimal' => $adminTargetSkorMinimal,
             'isPersonalTarget' => !is_null($user->personal_target),
             'isSedangHaid'     => $isSedangHaid,
-            'dailyChartData'   => $dailyChartData,
-            'monthlyChartData' => $monthlyChartData,
+            'dailyChartData'   => $dailyChartData instanceof \Illuminate\Support\Collection ? $dailyChartData->toArray() : $dailyChartData,
+            'monthlyChartData' => $monthlyChartData instanceof \Illuminate\Support\Collection ? $monthlyChartData->toArray() : $monthlyChartData,
             'semester'         => $isSemester1 ? 'Semester 1' : 'Semester 2',
             'tahun'            => $currentYear,
             'leaderboard'      => [], // Pindah ke Laporan
@@ -407,7 +407,7 @@ class DashboardController extends Controller
                 'current_streak' => $user->current_streak ?? 0,
                 'longest_streak' => $user->longest_streak ?? 0
             ],
-            'userBadges'       => $userBadges,
+            'userBadges'       => $userBadges instanceof \Illuminate\Support\Collection ? $userBadges->toArray() : $userBadges,
             'insightMessage'   => $insightMessage,
             'pegawaiList'      => [],
             'missedDates'      => $missedDates,
@@ -419,7 +419,7 @@ class DashboardController extends Controller
             'featurePresensiActive' => $featurePresensiActive,
             'selectedMonth'    => (int) $selectedMonth,
             'selectedYear'     => (int) $selectedYear,
-            'presensiBulanIni' => $presensiBulanIni,
+            'presensiBulanIni' => $presensiBulanIni instanceof \Illuminate\Support\Collection ? $presensiBulanIni->toArray() : $presensiBulanIni,
             'semesterPresensiSummary' => $semesterPresensiSummary,
         ];
         });
@@ -551,8 +551,8 @@ class DashboardController extends Controller
                 'skorHariIni'          => (int) $skorHariIni,
                 'skorMaksimalHariIni'  => $skorMaksimalHarianSeluruhPegawai,
                 'totalPegawai'         => $totalPegawai,
-                'dailyChartData'       => $dailyChartData,
-                'monthlyChartData'     => $monthlyChartData,
+                'dailyChartData'       => $dailyChartData instanceof \Illuminate\Support\Collection ? $dailyChartData->toArray() : $dailyChartData,
+                'monthlyChartData'     => $monthlyChartData instanceof \Illuminate\Support\Collection ? $monthlyChartData->toArray() : $monthlyChartData,
                 'semester'             => $isSemester1 ? 'Semester 1' : 'Semester 2',
                 'tahun'                => $currentYear,
                 'targetRatio'          => [

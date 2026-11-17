@@ -45,12 +45,15 @@ class SpecialSchedule extends Model
     public static function clearCache(): void
     {
         Cache::forget('active_special_schedules');
+        Cache::forget('active_special_schedules_v2');
     }
 
     public static function getActiveCached()
     {
-        return Cache::remember('active_special_schedules', 300, function () {
-            return static::where('is_active', true)->get();
+        $data = Cache::remember('active_special_schedules_v2', 300, function () {
+            return static::where('is_active', true)->get()->toArray();
         });
+
+        return static::hydrate($data);
     }
 }

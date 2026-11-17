@@ -51,23 +51,46 @@ class Habit extends Model
         });
     }
 
+    protected static $inMemoryActive = null;
+    protected static $inMemoryById = null;
+
     public static function allActiveCached()
     {
-        return \Illuminate\Support\Facades\Cache::rememberForever('habits_active_all', function () {
-            return static::where('status_aktif', true)->orderBy('urutan')->orderBy('id')->get();
+        if (static::$inMemoryActive !== null) {
+            return static::$inMemoryActive;
+        }
+
+        $records = \Illuminate\Support\Facades\Cache::rememberForever('habits_active_all_v2', function () {
+            return static::where('status_aktif', true)
+                ->orderBy('urutan')
+                ->orderBy('id')
+                ->get()
+                ->toArray();
         });
+
+        return static::$inMemoryActive = static::hydrate($records);
     }
 
     public static function allCachedById()
     {
-        return \Illuminate\Support\Facades\Cache::rememberForever('habits_all_by_id', function () {
-            return static::all()->keyBy('id');
+        if (static::$inMemoryById !== null) {
+            return static::$inMemoryById;
+        }
+
+        $records = \Illuminate\Support\Facades\Cache::rememberForever('habits_all_by_id_v2', function () {
+            return static::all()->toArray();
         });
+
+        return static::$inMemoryById = static::hydrate($records)->keyBy('id');
     }
 
     public static function clearHabitCaches()
     {
+        static::$inMemoryActive = null;
+        static::$inMemoryById = null;
         \Illuminate\Support\Facades\Cache::forget('habits_active_all');
         \Illuminate\Support\Facades\Cache::forget('habits_all_by_id');
+        \Illuminate\Support\Facades\Cache::forget('habits_active_all_v2');
+        \Illuminate\Support\Facades\Cache::forget('habits_all_by_id_v2');
     }
 }

@@ -40,8 +40,10 @@ class Division extends Model
 
     public static function allCached()
     {
-        return Cache::rememberForever('all_divisions_list', function () {
-            return static::orderBy('name')->get();
+        $data = Cache::rememberForever('all_divisions_list_v2', function () {
+            return static::orderBy('name')->get()->toArray();
         });
+
+        return static::hydrate($data);
     }
 }
