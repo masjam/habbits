@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'fingerprint' => [
+        'strict_auth' => env('FINGERPRINT_STRICT_AUTH', false),
+    ],
+
 ];

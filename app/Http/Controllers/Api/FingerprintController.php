@@ -26,11 +26,41 @@ class FingerprintController extends Controller
             ], 403);
         }
 
+        // Shared-secret authorization via X-Device-Token header
+        $configuredToken = $settings['fingerprint_api_token'] ?? null;
+        $incomingToken = $request->header('X-Device-Token');
+        $strictAuth = (bool) config('services.fingerprint.strict_auth', false);
+
+        $isAuthorized = false;
+        if (!empty($configuredToken) && !empty($incomingToken)) {
+            $isAuthorized = hash_equals((string) $configuredToken, (string) $incomingToken);
+        }
+
+        if (!$isAuthorized) {
+            if ($strictAuth) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized device token.'
+                ], 401);
+            }
+            Log::warning('Fingerprint sync: device token missing or invalid', [
+                'ip' => $request->ip(),
+                'has_token' => !empty($incomingToken),
+            ]);
+        }
+
         $payload = $request->json()->all();
 
         // Bisa jadi single object atau array of objects
         if (!is_array($payload) || isset($payload['fingerprint_id'])) {
             $payload = [$payload];
+        }
+
+        if (count($payload) > 500) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Maksimal 500 item per request.'
+            ], 422);
         }
 
         $processed = 0;
@@ -50,6 +80,14 @@ class FingerprintController extends Controller
 
             try {
                 $datetime = Carbon::parse($data['timestamp']);
+                $now = Carbon::now();
+
+                // Tolak timestamp di luar jendela wajar (maks 30 hari ke belakang dan 1 hari ke depan)
+                if ($datetime->lessThan($now->copy()->subDays(30)) || $datetime->greaterThan($now->copy()->addDay())) {
+                    $failed++;
+                    continue;
+                }
+
                 $date = $datetime->toDateString();
                 $time = $datetime->toTimeString();
 
