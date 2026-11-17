@@ -96,7 +96,7 @@ const form = useForm({
     attendance_mode_gps: props.settings.attendance_mode_gps === '1' || props.settings.attendance_mode_gps === 'true' || props.settings.attendance_mode_gps === undefined, // default true if not set
     attendance_mode_rfid: props.settings.attendance_mode_rfid === '1' || props.settings.attendance_mode_rfid === 'true',
     attendance_mode_fingerprint: props.settings.attendance_mode_fingerprint === '1' || props.settings.attendance_mode_fingerprint === 'true',
-    kiosk_api_token: props.settings.kiosk_api_token || 'SDAM-KIOSK-SECRET',
+    kiosk_api_token: props.settings.kiosk_api_token || '',
 })
 
 // ─── MOBILE FLOATING TAB MENU ───────────────────────────────────────────────
@@ -357,7 +357,7 @@ const handleInstantToggle = () => {
 }
 
 // ─── KIOSK RFID TOKEN & GENERATOR ──────────────────────────────────────────
-const savedKioskToken = ref(props.settings.kiosk_api_token || 'SDAM-KIOSK-SECRET')
+const savedKioskToken = ref(props.settings.kiosk_api_token || '')
 const isSavingToken = ref(false)
 const tokenSaveMessage = ref('')
 const tokenSaveStatus = ref('') // 'success' | 'error' | 'pending' | 'loading'
@@ -367,22 +367,14 @@ const isTokenDirty = computed(() => {
 })
 
 const generateRandomKioskToken = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-    let part1 = ''
-    let part2 = ''
-    for (let i = 0; i < 4; i++) {
-        part1 += chars.charAt(Math.floor(Math.random() * chars.length))
-        part2 += chars.charAt(Math.floor(Math.random() * chars.length))
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let token = ''
+    for (let i = 0; i < 32; i++) {
+        token += chars.charAt(Math.floor(Math.random() * chars.length))
     }
-    form.kiosk_api_token = `KIOSK-${part1}-${part2}`
+    form.kiosk_api_token = token
     tokenSaveStatus.value = 'pending'
-    tokenSaveMessage.value = 'Token baru dibuat. Simpan sekarang atau langsung klik Buka Kiosk untuk menyimpannya.'
-}
-
-const resetKioskToken = () => {
-    form.kiosk_api_token = 'SDAM-KIOSK-SECRET'
-    tokenSaveStatus.value = 'pending'
-    tokenSaveMessage.value = 'Token dikembalikan ke default. Klik Simpan Token untuk menerapkan.'
+    tokenSaveMessage.value = 'Token acak 32 karakter baru dibuat. Simpan sekarang untuk mengaktifkan.'
 }
 
 const saveKioskTokenInstantly = async () => {
@@ -735,8 +727,8 @@ const submit = () => {
                                                         <input
                                                             type="text"
                                                             v-model="form.kiosk_api_token"
-                                                            placeholder="Contoh: SDAM-KIOSK-SECRET"
-                                                            class="w-full px-3.5 py-2 font-mono text-xs font-bold bg-white dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 tracking-wider uppercase transition-colors"
+                                                            placeholder="Minimal 32 karakter (Gunakan tombol Generate Acak)"
+                                                            class="w-full px-3.5 py-2 font-mono text-xs font-bold bg-white dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 tracking-wider transition-colors"
                                                             :class="isTokenDirty ? 'border-amber-300 dark:border-amber-700 bg-amber-50/20' : 'border-slate-300 dark:border-slate-600'"
                                                         />
                                                     </div>
@@ -763,21 +755,12 @@ const submit = () => {
                                                             type="button"
                                                             @click="generateRandomKioskToken"
                                                             class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
-                                                            title="Generate token acak baru"
+                                                            title="Generate token acak baru minimal 32 karakter"
                                                         >
                                                             <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                             </svg>
-                                                            <span>Generate Acak</span>
-                                                        </button>
-                                                        
-                                                        <button
-                                                            type="button"
-                                                            @click="resetKioskToken"
-                                                            class="inline-flex items-center gap-1 px-2.5 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-95 cursor-pointer"
-                                                            title="Kembalikan ke token default (SDAM-KIOSK-SECRET)"
-                                                        >
-                                                            <span>Default</span>
+                                                            <span>Generate Acak 32 Karakter</span>
                                                         </button>
                                                     </div>
                                                 </div>

@@ -17,7 +17,7 @@ Route::post('/login', [\App\Http\Controllers\System\AuthController::class, 'logi
 // Kiosk RFID
 Route::get('/kiosk-rfid', [\App\Http\Controllers\Corporate\AttendanceRFIDController::class, 'kiosk'])->name('attendance.rfid.kiosk');
 Route::post('/kiosk-rfid/scan', [\App\Http\Controllers\Corporate\AttendanceRFIDController::class, 'processScan'])
-    ->middleware('throttle:30,1')
+    ->middleware('throttle:kiosk-scan')
     ->name('attendance.rfid.scan');
 
 Route::middleware('auth')->group(function () {

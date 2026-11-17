@@ -24,10 +24,10 @@ class AttendanceRFIDController extends Controller
             abort(403, 'Mode Presensi RFID saat ini dinonaktifkan oleh Superadmin.');
         }
 
-        // Kiosk Security: Validate Token
-        $validToken = $settings['kiosk_api_token'] ?? 'SDAM-KIOSK-SECRET';
-        if ($request->token !== $validToken) {
-            abort(403, 'Akses Ditolak: Token Keamanan Kiosk tidak valid. Pastikan Anda membuka URL dengan ?token= yang benar.');
+        // Kiosk Security: Validate Token (Must be configured and min 32 characters, no default fallback)
+        $validToken = $settings['kiosk_api_token'] ?? null;
+        if (empty($validToken) || strlen($validToken) < 32 || !hash_equals((string) $validToken, (string) $request->token)) {
+            abort(403, 'Akses Ditolak: Token Keamanan Kiosk tidak valid atau belum dikonfigurasi (minimal 32 karakter).');
         }
 
         $now = Carbon::now();
@@ -117,11 +117,11 @@ class AttendanceRFIDController extends Controller
             ], 403);
         }
 
-        $validToken = $settings['kiosk_api_token'] ?? 'SDAM-KIOSK-SECRET';
-        if ($request->token !== $validToken) {
+        $validToken = $settings['kiosk_api_token'] ?? null;
+        if (empty($validToken) || strlen($validToken) < 32 || !hash_equals((string) $validToken, (string) $request->token)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Akses ditolak: Token Keamanan tidak valid.',
+                'message' => 'Akses ditolak: Token Keamanan tidak valid atau belum dikonfigurasi.',
             ], 403);
         }
 

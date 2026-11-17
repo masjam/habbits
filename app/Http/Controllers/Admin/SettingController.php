@@ -119,7 +119,7 @@ class SettingController extends Controller
             $rules['attendance_mode_gps'] = 'boolean';
             $rules['attendance_mode_rfid'] = 'boolean';
             $rules['attendance_mode_fingerprint'] = 'boolean';
-            $rules['kiosk_api_token'] = 'nullable|string|max:100';
+            $rules['kiosk_api_token'] = 'nullable|string|min:32|max:100';
 
             $rules['gamification_active'] = 'boolean';
             $rules['dark_mode_active'] = 'boolean';
@@ -147,9 +147,6 @@ class SettingController extends Controller
             if (is_bool($value)) {
                 $value = $value ? '1' : '0';
             }
-            if ($key === 'kiosk_api_token' && empty($value)) {
-                $value = 'SDAM-KIOSK-SECRET';
-            }
             Setting::updateOrCreate(
                 ['key' => $key],
                 ['value' => $value]
@@ -170,13 +167,10 @@ class SettingController extends Controller
         }
 
         $request->validate([
-            'token' => 'required|string|max:100',
+            'token' => 'required|string|min:32|max:100',
         ]);
 
         $token = trim($request->token);
-        if (empty($token)) {
-            $token = 'SDAM-KIOSK-SECRET';
-        }
 
         Setting::updateOrCreate(
             ['key' => 'kiosk_api_token'],
