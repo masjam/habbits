@@ -35,6 +35,7 @@ class UserImport implements ToCollection, WithHeadingRow
                 'email'    => $row['email'],
                 'password' => Hash::make(!empty($row['password']) ? $row['password'] : 'Password123!'),
                 'gender'   => strtoupper($row['jenis_kelamin'] ?? 'L') === 'P' ? 'P' : 'L',
+                'must_change_password' => true,
             ]);
 
             // Determine role
