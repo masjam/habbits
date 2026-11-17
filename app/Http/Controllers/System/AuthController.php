@@ -87,76 +87,31 @@ class AuthController extends Controller
                 $request->session()->put('multi_accounts', [$accountData]);
             }
 
-            // Record login log
-            $rawIp = $request->header('CF-Connecting-IP')
-                ?? $request->header('X-Forwarded-For')
-                ?? $request->ip();
+            // Record login log securely using trusted request IP
+            $ip = $request->ip();
 
-            if (str_contains($rawIp, ',')) {
-                $rawIp = trim(explode(',', $rawIp)[0]);
-            }
-            $ip = $rawIp;
-
-            $isPublicIp = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
-
-            $lat = $request->input('latitude');
-            $lon = $request->input('longitude');
+            $lat = $request->input('latitude') ? (float) $request->input('latitude') : null;
+            $lon = $request->input('longitude') ? (float) $request->input('longitude') : null;
             $source = ($lat && $lon) ? 'gps' : null;
 
-            $city = null;
-            $region = null;
-            $country = null;
-            $isp = null;
-
-            if ($isPublicIp) {
-                try {
-                    $response = Http::timeout(2)->get("http://ip-api.com/json/{$ip}?fields=status,message,country,countryCode,regionName,city,district,zip,lat,lon,isp,org");
-                    if ($response->successful() && $response->json('status') === 'success') {
-                        $city = $response->json('city');
-                        $region = $response->json('regionName');
-                        $country = $response->json('country');
-                        $isp = $response->json('isp') ?: $response->json('org');
-
-                        // Jika GPS tidak tersedia dari browser, gunakan estimasi koordinat dari IP
-                        if (!$lat || !$lon) {
-                            $lat = $response->json('lat');
-                            $lon = $response->json('lon');
-                            $source = 'ip';
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Ignore API error
-                }
-            } else {
-                $city = ($ip === '127.0.0.1' || $ip === '::1') ? 'Lokal (Localhost)' : 'Jaringan Lokal (LAN)';
-                if (!$source) {
-                    $source = 'local';
-                }
+            $initialLocation = null;
+            if ($lat && $lon) {
+                $initialLocation = json_encode([
+                    'lat' => round($lat, 6),
+                    'lon' => round($lon, 6),
+                    'source' => 'gps',
+                ]);
             }
 
-            // Susun data detail lokasi (format JSON ringkas agar muat di kolom location varchar 255)
-            $locationData = array_filter([
-                'city' => \Illuminate\Support\Str::limit($city, 50, ''),
-                'region' => \Illuminate\Support\Str::limit($region, 50, ''),
-                'country' => \Illuminate\Support\Str::limit($country, 40, ''),
-                'isp' => \Illuminate\Support\Str::limit($isp, 50, ''),
-                'lat' => $lat ? round((float)$lat, 6) : null,
-                'lon' => $lon ? round((float)$lon, 6) : null,
-                'source' => $source, // 'gps', 'ip', 'local'
-            ], fn($val) => !is_null($val) && $val !== '');
-
-            $location = !empty($locationData) ? json_encode($locationData, JSON_UNESCAPED_UNICODE) : null;
-            if ($location && strlen($location) > 255) {
-                $fallback = array_filter([$city, $region, $country]);
-                $location = !empty($fallback) ? \Illuminate\Support\Str::limit(implode(', ', $fallback), 250) : null;
-            }
-
-            LoginLog::create([
+            $loginLog = LoginLog::create([
                 'user_id' => Auth::id(),
                 'ip_address' => $ip,
                 'user_agent' => $request->userAgent(),
-                'location' => $location
+                'location' => $initialLocation,
             ]);
+
+            // Dispatch async location resolution in background
+            \App\Jobs\ResolveLoginLocationJob::dispatch($loginLog->id, $ip, $lat, $lon, $source);
 
             return redirect()->intended(route('dashboard'));
         }
