@@ -48,9 +48,27 @@ const userAvatarUrl = computed(() => {
     return null
 })
 
-// ─── Active Route Helper (via Ziggy) ────────────────────────────────────────
+// ─── Active Route Helper (via Ziggy dengan per-URL Cache) ───────────────────
+const page = usePage()
+const routeActiveCache = new Map()
+let lastPageUrl = ''
+
 const isActive = (routeName) => {
-    try { return route().current(routeName) } catch { return false }
+    if (page.url !== lastPageUrl) {
+        routeActiveCache.clear()
+        lastPageUrl = page.url
+    }
+    if (routeActiveCache.has(routeName)) {
+        return routeActiveCache.get(routeName)
+    }
+    let res = false
+    try {
+        res = route().current(routeName)
+    } catch {
+        res = false
+    }
+    routeActiveCache.set(routeName, res)
+    return res
 }
 
 // ─── Nav Link Class Builder ──────────────────────────────────────────────────
@@ -63,7 +81,6 @@ const navLinkClass = (routeName) => [
 ]
 
 // ─── Feature Flags (dari global_settings yang di-share via Inertia) ─────────
-const page = usePage()
 const featureEnabled = (key) => {
     const val = page.props.global_settings?.[key]
     if (['feature_presensi', 'feature_arsip', 'feature_kpi', 'feature_habit', 'feature_administrasi_guru'].includes(key)) {
@@ -129,7 +146,7 @@ const isManajemenUserOpen = ref(
             </p>
 
             <!-- A. Dashboard — Semua Role -->
-            <Link
+            <Link prefetch
                 :href="route('dashboard')"
                 :class="navLinkClass('dashboard')"
                 @click="closeSidebar"
@@ -144,7 +161,7 @@ const isManajemenUserOpen = ref(
             </Link>
 
             <!-- Al-Qur'an & Hadis — Semua Role -->
-            <Link
+            <Link prefetch
                 :href="route('quran.hadis')"
                 :class="navLinkClass('quran.hadis')"
                 @click="closeSidebar"
@@ -159,7 +176,7 @@ const isManajemenUserOpen = ref(
             </Link>
 
             <!-- Dzikir Pagi & Petang — Semua Role -->
-            <Link
+            <Link prefetch
                 :href="route('dzikir.index')"
                 :class="navLinkClass('dzikir.index')"
                 @click="closeSidebar"
@@ -173,7 +190,7 @@ const isManajemenUserOpen = ref(
                 <span>Dzikir Pagi &amp; Petang</span>
             </Link>
             <!-- HPT Online — Semua Role -->
-            <Link
+            <Link prefetch
                 :href="route('hpt.index')"
                 :class="navLinkClass('hpt.*')"
                 @click="closeSidebar"
@@ -188,7 +205,7 @@ const isManajemenUserOpen = ref(
             </Link>
 
             <!-- Pesan & Notifikasi — Semua Role -->
-            <Link
+            <Link prefetch
                 :href="route('notifications.index')"
                 :class="navLinkClass('notifications.index')"
                 @click="closeSidebar"
@@ -206,7 +223,7 @@ const isManajemenUserOpen = ref(
             </Link>
 
             <!-- Notulen Rapat — Semua Role -->
-            <Link
+            <Link prefetch
                 :href="route('notulen.index')"
                 :class="navLinkClass('notulen.*')"
                 @click="closeSidebar"
@@ -248,7 +265,7 @@ const isManajemenUserOpen = ref(
                         Catatan Ibadahku
                     </p>
                 </div>
-                 <Link
+                 <Link prefetch
                     v-if="featureEnabled('feature_presensi')"
                     :href="route('attendance.index')"
                     :class="navLinkClass('attendance.index')"
@@ -289,7 +306,7 @@ const isManajemenUserOpen = ref(
                     </button>
 
                     <div v-show="isFormHabitOpen" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5 mt-1">
-                        <Link
+                        <Link prefetch
                             :href="route('habit.form')"
                             :class="[...navLinkClass('habit.form'), 'text-xs py-2']"
                             @click="closeSidebar"
@@ -300,7 +317,7 @@ const isManajemenUserOpen = ref(
                             <span>Input Habit Harian</span>
                         </Link>
 
-                        <Link
+                        <Link prefetch
                             :href="route('quran.recap')"
                             :class="[...navLinkClass('quran.recap'), 'text-xs py-2']"
                             @click="closeSidebar"
@@ -311,7 +328,7 @@ const isManajemenUserOpen = ref(
                             <span>Rekap Al-Quran</span>
                         </Link>
 
-                        <Link
+                        <Link prefetch
                             :href="route('kajian.index')"
                             :class="[...navLinkClass('kajian.index'), 'text-xs py-2']"
                             @click="closeSidebar"
@@ -324,7 +341,7 @@ const isManajemenUserOpen = ref(
                     </div>
                 </div>
 
-                <Link
+                <Link prefetch
                     v-if="isFemale"
                     :href="route('haid.index')"
                     :class="navLinkClass('haid.index')"
@@ -344,7 +361,7 @@ const isManajemenUserOpen = ref(
                 </Link>
 
                 <!-- Jurnal Harian Guru -->
-                <Link
+                <Link prefetch
                     v-if="!hasAnyRole(['admin', 'superadmin']) && page.props.global_settings?.feature_jurnal !== 'false' && page.props.global_settings?.feature_jurnal !== '0'"
                     :href="route('teacher-journals.index')"
                     :class="navLinkClass('teacher-journals.index')"
@@ -360,7 +377,7 @@ const isManajemenUserOpen = ref(
                 </Link>
 
                 <!-- Administrasi Guru (Perangkat Pembelajaran) -->
-                <Link
+                <Link prefetch
                     v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_administrasi_guru')"
                     :href="route('teacher-administrations.index')"
                     :class="navLinkClass('teacher-administrations.*')"
@@ -376,7 +393,7 @@ const isManajemenUserOpen = ref(
                 </Link>
 
                 <!-- Arsip Saya -->
-                <Link
+                <Link prefetch
                     v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_arsip')"
                     :href="route('employee-documents.index')"
                     :class="navLinkClass('employee-documents.*')"
@@ -392,7 +409,7 @@ const isManajemenUserOpen = ref(
                 </Link>
 
                 <!-- Rapor Kinerja (KPI) -->
-                <Link
+                <Link prefetch
                     v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_kpi')"
                     :href="route('performance.index')"
                     :class="navLinkClass('performance.*')"
@@ -416,7 +433,7 @@ const isManajemenUserOpen = ref(
                     </p>
                 </div>
                 
-                <Link
+                <Link prefetch
                     :href="route('tata-usaha.surat-masuk.index')"
                     :class="navLinkClass('tata-usaha.surat-masuk.*')"
                     @click="closeSidebar"
@@ -430,7 +447,7 @@ const isManajemenUserOpen = ref(
                     <span>Surat Masuk</span>
                 </Link>
 
-                <Link
+                <Link prefetch
                     :href="route('tata-usaha.surat-keluar.index')"
                     :class="navLinkClass('tata-usaha.surat-keluar.*')"
                     @click="closeSidebar"
@@ -444,7 +461,7 @@ const isManajemenUserOpen = ref(
                     <span>Surat Keluar</span>
                 </Link>
 
-                <Link
+                <Link prefetch
                     :href="route('tata-usaha.disposisi.index')"
                     :class="navLinkClass('tata-usaha.disposisi.*')"
                     @click="closeSidebar"
@@ -458,7 +475,7 @@ const isManajemenUserOpen = ref(
                     <span>Disposisi</span>
                 </Link>
 
-                <Link
+                <Link prefetch
                     :href="route('tata-usaha.settings.index')"
                     :class="navLinkClass('tata-usaha.settings.*')"
                     @click="closeSidebar"
@@ -482,7 +499,7 @@ const isManajemenUserOpen = ref(
                     </p>
                 </div>
 
-                <Link
+                <Link prefetch
                     v-if="featureEnabled('feature_administrasi_guru')"
                     :href="route('admin.teacher-administrations.index')"
                     :class="navLinkClass('admin.teacher-administrations.*')"
@@ -497,7 +514,7 @@ const isManajemenUserOpen = ref(
                     <span>Rekap Administrasi Guru</span>
                 </Link>
 
-                <Link
+                <Link prefetch
                     v-if="hasRole('kepala_sekolah')"
                     :href="route('admin.teacher-journals.index')"
                     :class="navLinkClass('admin.teacher-journals.index')"
@@ -522,7 +539,7 @@ const isManajemenUserOpen = ref(
                 </div>
 
                 <!-- Rekap Presensi GPS -->
-                <Link
+                <Link prefetch
                     v-if="featureEnabled('feature_presensi')"
                     :href="route('admin.attendance.index')"
                     :class="navLinkClass('admin.attendance.index')"
@@ -563,7 +580,7 @@ const isManajemenUserOpen = ref(
                     </button>
 
                     <div v-show="isRekapHabitOpen" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5 mt-1">
-                        <Link
+                        <Link prefetch
                             v-if="featureEnabled('feature_habit')"
                             :href="route('admin.laporan')"
                             :class="[...navLinkClass('admin.laporan'), 'text-xs py-2']"
@@ -575,7 +592,7 @@ const isManajemenUserOpen = ref(
                             <span>Semua Laporan</span>
                         </Link>
 
-                        <Link
+                        <Link prefetch
                             v-if="hasRole('superadmin') && featureEnabled('feature_habit')"
                             :href="route('admin.laporan.unfilled')"
                             :class="[...navLinkClass('admin.laporan.unfilled'), 'text-xs py-2']"
@@ -589,7 +606,7 @@ const isManajemenUserOpen = ref(
                     </div>
                 </div>
 
-                <Link
+                <Link prefetch
                     :href="route('admin.teacher-journals.index')"
                     :class="navLinkClass('admin.teacher-journals.index')"
                     @click="closeSidebar"
@@ -603,7 +620,7 @@ const isManajemenUserOpen = ref(
                     <span>Rekap Jurnal Guru</span>
                 </Link>
 
-                <Link
+                <Link prefetch
                     v-if="featureEnabled('feature_administrasi_guru')"
                     :href="route('admin.teacher-administrations.index')"
                     :class="navLinkClass('admin.teacher-administrations.*')"
@@ -618,7 +635,7 @@ const isManajemenUserOpen = ref(
                     <span>Rekap Administrasi Guru</span>
                 </Link>
 
-                <Link
+                <Link prefetch
                     v-if="featureEnabled('feature_habit')"
                     :href="route('admin.habits.index')"
                     :class="navLinkClass('admin.habits.index')"
@@ -659,7 +676,7 @@ const isManajemenUserOpen = ref(
 
                     <div v-show="isManajemenUserOpen" class="ml-5 pl-2 border-l-2 border-subtle space-y-0.5 mt-1">
                         <!-- Submenu Daftar User -->
-                        <Link
+                        <Link prefetch
                             :href="route('admin.users.index')"
                             :class="[...navLinkClass('admin.users.index'), 'text-xs py-2']"
                             @click="closeSidebar"
@@ -671,7 +688,7 @@ const isManajemenUserOpen = ref(
                         </Link>
 
                         <!-- Submenu Verifikasi Arsip Pegawai -->
-                        <Link
+                        <Link prefetch
                             v-if="featureEnabled('feature_arsip')"
                             :href="route('admin.employee-documents.index')"
                             :class="[...navLinkClass('admin.employee-documents.index'), 'text-xs py-2']"
@@ -684,7 +701,7 @@ const isManajemenUserOpen = ref(
                         </Link>
 
                         <!-- Submenu Evaluasi Kinerja (KPI) -->
-                        <Link
+                        <Link prefetch
                             v-if="featureEnabled('feature_kpi')"
                             :href="route('admin.performance.index')"
                             :class="[...navLinkClass('admin.performance.index'), 'text-xs py-2']"
@@ -697,7 +714,7 @@ const isManajemenUserOpen = ref(
                         </Link>
 
                         <!-- Submenu Jadwal Piket -->
-                        <Link
+                        <Link prefetch
                             v-if="featureEnabled('feature_presensi')"
                             :href="route('admin.duty-schedules.index')"
                             :class="[...navLinkClass('admin.duty-schedules.index'), 'text-xs py-2']"
@@ -710,7 +727,7 @@ const isManajemenUserOpen = ref(
                         </Link>
                         
                         <!-- Submenu Jadwal Khusus -->
-                        <Link
+                        <Link prefetch
                             v-if="featureEnabled('feature_presensi')"
                             :href="route('admin.special-schedules.index')"
                             :class="[...navLinkClass('admin.special-schedules.index'), 'text-xs py-2']"
@@ -723,7 +740,7 @@ const isManajemenUserOpen = ref(
                         </Link>
 
                         <!-- Submenu Daftar Divisi — hanya jika fitur Divisi aktif -->
-                        <Link
+                        <Link prefetch
                             v-if="featureEnabled('feature_divisi')"
                             :href="route('admin.divisions.index')"
                             :class="[...navLinkClass('admin.divisions.index'), 'text-xs py-2']"
@@ -739,7 +756,7 @@ const isManajemenUserOpen = ref(
 
               
 
-                <Link
+                <Link prefetch
                     :href="route('admin.settings')"
                     :class="navLinkClass('admin.settings')"
                     @click="closeSidebar"
@@ -754,7 +771,7 @@ const isManajemenUserOpen = ref(
                     <span>Pengaturan Sistem</span>
                 </Link>
 
-                <Link
+                <Link prefetch
                     :href="route('panduan')"
                     :class="navLinkClass('panduan')"
                     @click="closeSidebar"
@@ -769,7 +786,7 @@ const isManajemenUserOpen = ref(
                 </Link>
                 
                 <template v-if="hasRole('superadmin')">
-                    <Link
+                    <Link prefetch
                         :href="route('admin.settings.hr')"
                         :class="navLinkClass('admin.settings.hr')"
                         @click="closeSidebar"
@@ -785,7 +802,7 @@ const isManajemenUserOpen = ref(
                 </template>
 
                 <template v-if="hasRole('superadmin')">
-                    <Link
+                    <Link prefetch
                         :href="route('admin.login-logs')"
                         :class="navLinkClass('admin.login-logs')"
                         @click="closeSidebar"

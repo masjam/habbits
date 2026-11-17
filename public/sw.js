@@ -3,7 +3,7 @@
 //  Strategi: Cache-first (aset), Network-first (halaman)
 // ============================================================
 
-const CACHE_VERSION   = 'v4';
+const CACHE_VERSION   = 'v5';
 const STATIC_CACHE    = `habit-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE   = `habit-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL     = '/offline.html';
@@ -50,6 +50,9 @@ self.addEventListener('fetch', (e) => {
 
     // Hanya handle GET dan origin yang sama
     if (request.method !== 'GET' || url.origin !== location.origin) return;
+
+    // Lewatkan request Inertia SPA & API langsung ke browser native tanpa overhead SW
+    if (request.headers.get('X-Inertia') || url.pathname.startsWith('/api/')) return;
 
     // Aset statis (JS, CSS, Font, Gambar) → Cache-first
     if (

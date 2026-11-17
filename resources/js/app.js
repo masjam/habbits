@@ -21,7 +21,7 @@ createInertiaApp({
             Sentry.init({
                 app,
                 dsn: import.meta.env.VITE_SENTRY_DSN_PUBLIC,
-                trackComponents: true,
+                trackComponents: false,
             });
         }
 

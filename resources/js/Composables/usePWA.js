@@ -33,6 +33,9 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray
 }
 
+let isInstallPromptListened = false
+let isNetworkStatusListened = false
+
 export function usePWA() {
     /**
      * Register Service Worker
@@ -56,6 +59,9 @@ export function usePWA() {
      * Dengarkan event beforeinstallprompt (Add to Home Screen)
      */
     function listenInstallPrompt() {
+        if (typeof window === 'undefined' || isInstallPromptListened) return
+        isInstallPromptListened = true
+
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault()
             deferredInstallPrompt.value = e
@@ -74,6 +80,9 @@ export function usePWA() {
      * Dengarkan status koneksi online/offline
      */
     function listenNetworkStatus() {
+        if (typeof window === 'undefined' || isNetworkStatusListened) return
+        isNetworkStatusListened = true
+
         window.addEventListener('online',  () => { isOffline.value = false })
         window.addEventListener('offline', () => { isOffline.value = true })
     }
