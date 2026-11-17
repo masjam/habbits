@@ -1,10 +1,7 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { Head, useForm, router, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import axios from 'axios'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 
 const props = defineProps({
     settings: {
@@ -54,12 +51,8 @@ const handleCleanPhotos = () => {
     })
 }
 
-// Tab yang sedang aktif: 'presensi' | 'hr' | 'lanjutan' | 'maintenance'
-const activeTab = ref('presensi')
-
-// State fullscreen peta penitikan koordinat
-const isFullscreenMap = ref(false)
-
+// Tab yang sedang aktif: 'hr' | 'lanjutan' | 'maintenance'
+const activeTab = ref('hr')
 const isTogglingInstant = ref(false)
 
 const form = useForm({
@@ -81,22 +74,6 @@ const form = useForm({
     maintenance_title: props.settings.maintenance_title || 'Sistem Sedang Dalam Pemeliharaan',
     maintenance_message: props.settings.maintenance_message || 'Kami sedang melakukan pemeliharaan rutin dan peningkatan performa sistem habit tracker. Mohon maaf atas ketidaknyamanan Anda. Sistem akan segera kembali normal.',
     maintenance_end_time: props.settings.maintenance_end_time || '',
-
-    // Pengaturan Presensi GPS & Jam Kerja
-    feature_presensi: props.settings.feature_presensi === '1' || props.settings.feature_presensi === true || props.settings.feature_presensi === 'true',
-    presensi_latitude: props.settings.presensi_latitude || '-7.7956',
-    presensi_longitude: props.settings.presensi_longitude || '110.3695',
-    presensi_radius_meters: Number(props.settings.presensi_radius_meters) || 100,
-    presensi_work_start: props.settings.presensi_work_start || '07:00',
-    presensi_late_tolerance: props.settings.presensi_late_tolerance || 15,
-    presensi_work_end: props.settings.presensi_work_end || '15:00',
-    presensi_whatsapp_target: props.settings.presensi_whatsapp_target || '',
-    
-    // Multi-Mode Presensi
-    attendance_mode_gps: props.settings.attendance_mode_gps === '1' || props.settings.attendance_mode_gps === 'true' || props.settings.attendance_mode_gps === undefined, // default true if not set
-    attendance_mode_rfid: props.settings.attendance_mode_rfid === '1' || props.settings.attendance_mode_rfid === 'true',
-    attendance_mode_fingerprint: props.settings.attendance_mode_fingerprint === '1' || props.settings.attendance_mode_fingerprint === 'true',
-    kiosk_api_token: props.settings.kiosk_api_token || '',
 })
 
 // ─── MOBILE FLOATING TAB MENU ───────────────────────────────────────────────
@@ -104,25 +81,11 @@ const showMobileTabMenu = ref(false)
 
 const tabOptions = computed(() => [
     {
-        id: 'presensi',
-        title: 'Presensi GPS & Jam Kerja',
-        shortTitle: 'Presensi GPS',
-        description: 'Pusat koordinat, radius geofencing & jam kerja',
-        badge: form.feature_presensi ? '● Aktif' : '○ Nonaktif',
-        badgeClass: form.feature_presensi 
-            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' 
-            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400',
-        activeRing: 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/20',
-        iconBg: 'bg-emerald-600 text-white',
-        iconInactiveBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400',
-        iconPath: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z'
-    },
-    {
         id: 'hr',
         title: 'Fitur HR (Pegawai)',
         shortTitle: 'Fitur HR',
         description: 'Badge, divisi, pengajuan cuti, ID card & catatan',
-        badge: '6 Fitur',
+        badge: '10 Fitur',
         badgeClass: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/80 dark:text-fuchsia-300',
         activeRing: 'border-fuchsia-500 bg-fuchsia-50/80 dark:bg-fuchsia-950/50 text-fuchsia-900 dark:text-fuchsia-200 ring-2 ring-fuchsia-500/20',
         iconBg: 'bg-fuchsia-600 text-white',
@@ -134,7 +97,7 @@ const tabOptions = computed(() => [
         title: 'Fitur Lanjutan',
         shortTitle: 'Fitur Lanjutan',
         description: 'Gamifikasi, dark mode & kebiasaan',
-        badge: '5 Opsi',
+        badge: '4 Opsi',
         badgeClass: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300',
         activeRing: 'border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-200 ring-2 ring-indigo-500/20',
         iconBg: 'bg-indigo-600 text-white',
@@ -167,180 +130,6 @@ const selectMobileTab = (tabId) => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// ─── LEAFLET MINI MAP PRESENSI ──────────────────────────────────────────────
-let hrMapInstance = null
-let hrMapMarker = null
-let hrMapCircle = null
-
-const initHrMap = () => {
-    const mapEl = document.getElementById('hr-presensi-map')
-    if (!mapEl) return
-
-    if (hrMapInstance) {
-        hrMapInstance.remove()
-        hrMapInstance = null
-    }
-
-    const initialLat = Number(form.presensi_latitude) || -7.7956
-    const initialLng = Number(form.presensi_longitude) || 110.3695
-    const initialRadius = Number(form.presensi_radius_meters) || 100
-
-    hrMapInstance = L.map('hr-presensi-map', {
-        center: [initialLat, initialLng],
-        zoom: 17,
-        scrollWheelZoom: true,
-    })
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(hrMapInstance)
-
-    const markerIcon = L.divIcon({
-        className: 'school-pin-marker',
-        html: `
-            <div style="background-color: #059669; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(5,150,105,0.65); border: 3px solid white; transform: translate(-50%, -50%); cursor: grab;">
-                <svg style="width: 22px; height: 22px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-            </div>
-        `,
-        iconSize: [40, 40],
-        iconAnchor: [0, 0]
-    })
-
-    hrMapMarker = L.marker([initialLat, initialLng], {
-        icon: markerIcon,
-        draggable: true
-    }).addTo(hrMapInstance)
-
-    hrMapCircle = L.circle([initialLat, initialLng], {
-        radius: initialRadius,
-        color: '#059669',
-        fillColor: '#10B981',
-        fillOpacity: 0.25,
-        weight: 2
-    }).addTo(hrMapInstance)
-
-    hrMapInstance.on('click', (e) => {
-        const { lat, lng } = e.latlng
-        updateHrCoordinates(lat, lng)
-    })
-
-    hrMapMarker.on('dragend', (e) => {
-        const pos = e.target.getLatLng()
-        updateHrCoordinates(pos.lat, pos.lng)
-    })
-
-    setTimeout(() => {
-        hrMapInstance?.invalidateSize()
-    }, 300)
-}
-
-const updateHrCoordinates = (lat, lng) => {
-    form.presensi_latitude = parseFloat(lat).toFixed(7)
-    form.presensi_longitude = parseFloat(lng).toFixed(7)
-
-    if (hrMapMarker) hrMapMarker.setLatLng([lat, lng])
-    if (hrMapCircle) hrMapCircle.setLatLng([lat, lng])
-}
-
-const handleManualCoords = () => {
-    const lat = Number(form.presensi_latitude)
-    const lng = Number(form.presensi_longitude)
-    if (!isNaN(lat) && !isNaN(lng)) {
-        if (hrMapMarker) hrMapMarker.setLatLng([lat, lng])
-        if (hrMapCircle) hrMapCircle.setLatLng([lat, lng])
-        if (hrMapInstance) hrMapInstance.panTo([lat, lng])
-    }
-}
-
-const toggleFullscreenMap = () => {
-    isFullscreenMap.value = !isFullscreenMap.value
-    nextTick(() => {
-        setTimeout(() => {
-            hrMapInstance?.invalidateSize()
-            if (hrMapMarker) {
-                hrMapInstance?.panTo(hrMapMarker.getLatLng())
-            }
-        }, 150)
-    })
-}
-
-const handleKeyDown = (e) => {
-    if (e.key === 'Escape' && isFullscreenMap.value) {
-        toggleFullscreenMap()
-    }
-}
-
-watch(() => form.presensi_radius_meters, (newR) => {
-    const r = Number(newR) || 100
-    if (hrMapCircle) {
-        hrMapCircle.setRadius(r)
-    }
-})
-
-watch(() => form.feature_presensi, (val) => {
-    if (val && activeTab.value === 'presensi') {
-        nextTick(() => initHrMap())
-    }
-})
-
-// Ketika tab berganti ke presensi, refresh ukuran peta agar tidak blank
-watch(activeTab, (newTab) => {
-    if (newTab === 'presensi') {
-        nextTick(() => {
-            if (!hrMapInstance && form.feature_presensi) {
-                initHrMap()
-            } else if (hrMapInstance) {
-                setTimeout(() => {
-                    hrMapInstance?.invalidateSize()
-                }, 150)
-            }
-        })
-    }
-})
-
-onMounted(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    if (activeTab.value === 'presensi' && form.feature_presensi) {
-        nextTick(() => initHrMap())
-    }
-})
-
-onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeyDown)
-    if (hrMapInstance) {
-        hrMapInstance.remove()
-        hrMapInstance = null
-    }
-})
-
-const isDetectingLocation = ref(false)
-const getCurrentCoordinates = () => {
-    if (!navigator.geolocation) {
-        alert('Browser Anda tidak mendukung deteksi lokasi.')
-        return
-    }
-    isDetectingLocation.value = true
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude
-            const lng = pos.coords.longitude
-            updateHrCoordinates(lat, lng)
-            if (hrMapInstance) {
-                hrMapInstance.setView([lat, lng], 18)
-            }
-            isDetectingLocation.value = false
-        },
-        (err) => {
-            alert('Gagal mengambil lokasi GPS: ' + err.message)
-            isDetectingLocation.value = false
-        },
-        { enableHighAccuracy: true }
-    )
-}
-
 const handleInstantToggle = () => {
     isTogglingInstant.value = true
     router.post(route('admin.maintenance.toggle'), {
@@ -356,95 +145,9 @@ const handleInstantToggle = () => {
     })
 }
 
-// ─── KIOSK RFID TOKEN & GENERATOR ──────────────────────────────────────────
-const savedKioskToken = ref(props.settings.kiosk_api_token || '')
-const isSavingToken = ref(false)
-const tokenSaveMessage = ref('')
-const tokenSaveStatus = ref('') // 'success' | 'error' | 'pending' | 'loading'
-
-const isTokenDirty = computed(() => {
-    return (form.kiosk_api_token || '').trim() !== (savedKioskToken.value || '').trim()
-})
-
-const generateRandomKioskToken = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let token = ''
-    for (let i = 0; i < 32; i++) {
-        token += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    form.kiosk_api_token = token
-    tokenSaveStatus.value = 'pending'
-    tokenSaveMessage.value = 'Token acak 32 karakter baru dibuat. Simpan sekarang untuk mengaktifkan.'
-}
-
-const saveKioskTokenInstantly = async () => {
-    if (isSavingToken.value) return false
-    isSavingToken.value = true
-    tokenSaveStatus.value = 'loading'
-    tokenSaveMessage.value = 'Menyimpan token ke server...'
-
-    try {
-        const res = await axios.post(route('admin.settings.kiosk-token'), {
-            token: form.kiosk_api_token
-        })
-        if (res.data.success) {
-            savedKioskToken.value = res.data.token
-            form.kiosk_api_token = res.data.token
-            tokenSaveStatus.value = 'success'
-            tokenSaveMessage.value = '✓ Token berhasil disimpan ke database & langsung aktif!'
-            setTimeout(() => {
-                if (tokenSaveStatus.value === 'success') {
-                    tokenSaveMessage.value = ''
-                }
-            }, 5000)
-            return true
-        }
-    } catch (err) {
-        tokenSaveStatus.value = 'error'
-        tokenSaveMessage.value = 'Gagal menyimpan token: ' + (err.response?.data?.message || err.message)
-        return false
-    } finally {
-        isSavingToken.value = false
-    }
-    return false
-}
-
-const kioskFullUrl = computed(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const token = form.kiosk_api_token?.trim() || 'SDAM-KIOSK-SECRET'
-    return `${origin}/kiosk-rfid?token=${encodeURIComponent(token)}`
-})
-
-const isCopiedKioskUrl = ref(false)
-const copyKioskUrl = async () => {
-    if (isTokenDirty.value) {
-        await saveKioskTokenInstantly()
-    }
-    try {
-        await navigator.clipboard.writeText(kioskFullUrl.value)
-        isCopiedKioskUrl.value = true
-        setTimeout(() => {
-            isCopiedKioskUrl.value = false
-        }, 2500)
-    } catch (err) {
-        console.error('Gagal menyalin:', err)
-    }
-}
-
-const openKiosk = async () => {
-    if (isTokenDirty.value) {
-        const ok = await saveKioskTokenInstantly()
-        if (!ok) return
-    }
-    window.open(kioskFullUrl.value, '_blank')
-}
-
 const submit = () => {
     form.post(route('admin.settings.update'), {
         preserveScroll: true,
-        onSuccess: () => {
-            // Success notification
-        }
     })
 }
 </script>
@@ -457,15 +160,22 @@ const submit = () => {
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h2 class="font-black text-2xl text-slate-800 dark:text-slate-100 leading-tight">Pengaturan HR &amp; Fitur Lanjutan</h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pusat kontrol fitur presensi GPS, manajemen pegawai, gamifikasi, dan pemeliharaan sistem.</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pusat kontrol modul kepegawaian, gamifikasi, dan pemeliharaan sistem.</p>
                 </div>
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800 self-start sm:self-center shadow-2xs">
-                    👑 Khusus Superadmin
-                </span>
+                <div class="flex items-center gap-2 self-start sm:self-center">
+                    <Link
+                        :href="route('admin.settings', { tab: 'presensi' })"
+                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors"
+                    >
+                        <span>📍 Pengaturan Presensi GPS &rarr;</span>
+                    </Link>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs">
+                        👑 Khusus Superadmin
+                    </span>
+                </div>
             </div>
         </template>
 
-        <!-- Container Lebar Penuh (W-Full) untuk Memaksimalkan Penggunaan Halaman Layar Lebar -->
         <div class="w-full py-6 px-4 sm:px-6 lg:px-8 space-y-6">
             
             <!-- Alert Flash Success -->
@@ -476,10 +186,8 @@ const submit = () => {
                 <span class="font-bold text-sm">{{ $page.props.flash.success }}</span>
             </div>
 
-            <!-- ══════════════════════════════════════════════════════════════════
-                 TAB NAVIGATION BAR (Desktop & Mobile)
-            ══════════════════════════════════════════════════════════════════ -->
-            <!-- Mobile Active Tab Quick Banner (Hidden on Desktop) -->
+            <!-- TAB NAVIGATION BAR (Desktop & Mobile) -->
+            <!-- Mobile Active Tab Quick Banner -->
             <div class="md:hidden flex items-center justify-between p-3 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <div :class="['w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs', currentTabInfo.iconBg]">
@@ -504,7 +212,7 @@ const submit = () => {
                 <button
                     type="button"
                     @click="showMobileTabMenu = true"
-                    class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200/80 dark:border-emerald-800/80 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 dark:bg-fuchsia-950/60 dark:hover:bg-fuchsia-900/60 text-fuchsia-700 dark:text-fuchsia-300 font-bold text-xs border border-fuchsia-200/80 dark:border-fuchsia-800/80 transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
                     <span>Ganti Tab</span>
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -513,662 +221,37 @@ const submit = () => {
                 </button>
             </div>
 
-            <!-- Desktop Tab Bar (Hidden on Mobile) -->
+            <!-- Desktop Tab Bar -->
             <div class="hidden md:flex items-center gap-2 p-1.5 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs overflow-x-auto">
-                <!-- Tab 1: Presensi GPS & Jam Kerja -->
                 <button
+                    v-for="tab in tabOptions"
+                    :key="tab.id"
                     type="button"
-                    @click="activeTab = 'presensi'"
+                    @click="activeTab = tab.id"
                     :class="[
                         'flex items-center gap-2.5 px-5 py-3 rounded-xl font-bold text-xs transition-all duration-200 shrink-0 cursor-pointer',
-                        activeTab === 'presensi'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-300 dark:ring-emerald-700'
+                        activeTab === tab.id
+                            ? tab.activeRing + ' shadow-xs'
                             : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                     ]"
                 >
-                    <div :class="['w-7 h-7 rounded-lg flex items-center justify-center transition-colors', activeTab === 'presensi' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-700 text-slate-500']">
+                    <div :class="['w-7 h-7 rounded-lg flex items-center justify-center transition-colors', activeTab === tab.id ? tab.iconBg : 'bg-slate-100 dark:bg-slate-700 text-slate-500']">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" :d="tab.iconPath" />
                         </svg>
                     </div>
-                    <span class="text-sm">Presensi GPS &amp; Jam Kerja</span>
-                    <span
-                        :class="[
-                            'text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors',
-                            form.feature_presensi
-                                ? 'bg-emerald-200/70 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200'
-                                : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
-                        ]"
-                    >
-                        {{ form.feature_presensi ? '● Aktif' : '○ Nonaktif' }}
-                    </span>
-                </button>
-
-                <!-- Tab 2: Fitur HR (Manajemen Pegawai) -->
-                <button
-                    type="button"
-                    @click="activeTab = 'hr'"
-                    :class="[
-                        'flex items-center gap-2.5 px-5 py-3 rounded-xl font-bold text-xs transition-all duration-200 shrink-0 cursor-pointer',
-                        activeTab === 'hr'
-                            ? 'bg-fuchsia-50 dark:bg-fuchsia-950/60 text-fuchsia-800 dark:text-fuchsia-300 shadow-xs ring-1 ring-fuchsia-300 dark:ring-fuchsia-700'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                    ]"
-                >
-                    <div :class="['w-7 h-7 rounded-lg flex items-center justify-center transition-colors', activeTab === 'hr' ? 'bg-fuchsia-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-700 text-slate-500']">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                    </div>
-                    <span class="text-sm">Fitur HR (Pegawai)</span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950/80 dark:text-fuchsia-300">
-                        5 Fitur
-                    </span>
-                </button>
-
-                <!-- Tab 3: Fitur Lanjutan -->
-                <button
-                    type="button"
-                    @click="activeTab = 'lanjutan'"
-                    :class="[
-                        'flex items-center gap-2.5 px-5 py-3 rounded-xl font-bold text-xs transition-all duration-200 shrink-0 cursor-pointer',
-                        activeTab === 'lanjutan'
-                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 shadow-xs ring-1 ring-indigo-300 dark:ring-indigo-700'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                    ]"
-                >
-                    <div :class="['w-7 h-7 rounded-lg flex items-center justify-center transition-colors', activeTab === 'lanjutan' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-700 text-slate-500']">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                        </svg>
-                    </div>
-                    <span class="text-sm">Fitur Lanjutan</span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300">
-                        5 Opsi
-                    </span>
-                </button>
-
-                <!-- Tab 4: Mode Pemeliharaan -->
-                <button
-                    type="button"
-                    @click="activeTab = 'maintenance'"
-                    :class="[
-                        'flex items-center gap-2.5 px-5 py-3 rounded-xl font-bold text-xs transition-all duration-200 shrink-0 cursor-pointer',
-                        activeTab === 'maintenance'
-                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 shadow-xs ring-1 ring-amber-300 dark:ring-amber-700'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                    ]"
-                >
-                    <div :class="['w-7 h-7 rounded-lg flex items-center justify-center transition-colors', activeTab === 'maintenance' ? 'bg-amber-500 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-700 text-slate-500']">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </div>
-                    <span class="text-sm">Pemeliharaan Sistem</span>
-                    <span
-                        :class="[
-                            'text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors',
-                            form.maintenance_mode
-                                ? 'bg-amber-200/80 text-amber-900 dark:bg-amber-900 dark:text-amber-200'
-                                : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
-                        ]"
-                    >
-                        {{ form.maintenance_mode ? '● Aktif' : '○ Nonaktif' }}
+                    <span class="text-sm">{{ tab.title }}</span>
+                    <span :class="['text-[10px] px-2 py-0.5 rounded-full font-bold', tab.badgeClass]">
+                        {{ tab.badge }}
                     </span>
                 </button>
             </div>
 
-            <!-- ══════════════════════════════════════════════════════════════════
-                 FORM INDUK: SELURUH TAB BERADA DI DALAM SATU FORM
-            ══════════════════════════════════════════════════════════════════ -->
+            <!-- FORM INDUK -->
             <form @submit.prevent="submit">
 
                 <!-- ──────────────────────────────────────────────────────────────
-                     TAB 1: PRESENSI GPS & JAM KERJA
-                ────────────────────────────────────────────────────────────── -->
-                <div v-show="activeTab === 'presensi'" class="space-y-6">
-                    <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-6 sm:p-8 shadow-xs">
-                        
-                        <!-- Header Tab Presensi -->
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-700">
-                            <div>
-                                <h3 class="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2.5">
-                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-600">
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                    </div>
-                                    <span>Pengaturan Presensi GPS &amp; Jam Kerja</span>
-                                </h3>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    Atur titik koordinat sekolah, radius geofencing presensi HP, dan jam kerja masuk/pulang harian.
-                                </p>
-                            </div>
-
-                            <!-- Switch Aktifkan Presensi -->
-                            <div class="flex items-center gap-3 self-start sm:self-center bg-emerald-50/60 dark:bg-emerald-950/30 px-4 py-2 rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40">
-                                <span class="text-xs font-bold text-slate-700 dark:text-slate-200">
-                                    {{ form.feature_presensi ? 'Fitur Presensi Aktif' : 'Fitur Presensi Nonaktif' }}
-                                </span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        v-model="form.feature_presensi"
-                                        class="sr-only peer"
-                                    />
-                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Body Presensi (Jika Aktif) -->
-                        <div v-if="form.feature_presensi" class="mt-6 space-y-6">
-                            
-                            <!-- Pilih Metode Presensi Yang Aktif -->
-                            <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
-                                <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200 mb-3 uppercase">Pilih Metode Presensi Yang Aktif:</h5>
-                                <div class="space-y-2.5">
-                                    <label class="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
-                                        <div>
-                                            <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi GPS (Selfie & Lokasi)</span>
-                                            <span class="block text-xs text-slate-500 mt-0.5">Pegawai dapat absen melalui smartphone mereka sendiri.</span>
-                                        </div>
-                                        <input type="checkbox" v-model="form.attendance_mode_gps" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
-                                    </label>
-                                    
-                                    <!-- Presensi RFID & Kiosk Token Panel -->
-                                    <div class="rounded-xl border border-slate-100 dark:border-slate-800 transition-all overflow-hidden"
-                                         :class="{ 'bg-emerald-50/20 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60': form.attendance_mode_rfid }">
-                                        <label class="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
-                                            <div>
-                                                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi RFID (Mesin Scanner)</span>
-                                                <span class="block text-xs text-slate-500 mt-0.5">Menggunakan kartu RFID yang ditempel pada Kiosk.</span>
-                                            </div>
-                                            <input type="checkbox" v-model="form.attendance_mode_rfid" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
-                                        </label>
-
-                                        <!-- Panel Pengaturan Token & Link Kiosk RFID -->
-                                        <div v-if="form.attendance_mode_rfid" class="p-4 pt-3 border-t border-emerald-100 dark:border-emerald-900/40 bg-white/70 dark:bg-slate-900/70 space-y-4">
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="relative flex h-2.5 w-2.5">
-                                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                                                    </span>
-                                                    <span class="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-                                                        Token Keamanan &amp; Link Akses Kiosk RFID
-                                                    </span>
-                                                </div>
-                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
-                                                    Kiosk Security
-                                                </span>
-                                            </div>
-
-                                            <!-- Token Input & Generator Actions -->
-                                            <div class="space-y-2">
-                                                <div class="flex items-center justify-between">
-                                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                                        Token Keamanan Kiosk:
-                                                    </label>
-                                                    <span v-if="!isTokenDirty" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                                        Aktif di Server
-                                                    </span>
-                                                    <span v-else class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 animate-pulse">
-                                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                                        Belum Disimpan
-                                                    </span>
-                                                </div>
-                                                <div class="flex flex-col sm:flex-row gap-2">
-                                                    <div class="relative flex-1">
-                                                        <input
-                                                            type="text"
-                                                            v-model="form.kiosk_api_token"
-                                                            placeholder="Minimal 32 karakter (Gunakan tombol Generate Acak)"
-                                                            class="w-full px-3.5 py-2 font-mono text-xs font-bold bg-white dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 tracking-wider transition-colors"
-                                                            :class="isTokenDirty ? 'border-amber-300 dark:border-amber-700 bg-amber-50/20' : 'border-slate-300 dark:border-slate-600'"
-                                                        />
-                                                    </div>
-                                                    <div class="flex items-center flex-wrap gap-2">
-                                                        <!-- Tombol Simpan Instan -->
-                                                        <button
-                                                            type="button"
-                                                            @click="saveKioskTokenInstantly"
-                                                            :disabled="isSavingToken"
-                                                            :class="[
-                                                                'inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer shadow-xs',
-                                                                isTokenDirty
-                                                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/30'
-                                                                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
-                                                            ]"
-                                                            title="Simpan token ini ke server sekarang"
-                                                        >
-                                                            <svg v-if="isSavingToken" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                            <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
-                                                            <span>{{ isSavingToken ? 'Menyimpan...' : 'Simpan Token' }}</span>
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            @click="generateRandomKioskToken"
-                                                            class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl transition-all active:scale-95 cursor-pointer shadow-2xs"
-                                                            title="Generate token acak baru minimal 32 karakter"
-                                                        >
-                                                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                            </svg>
-                                                            <span>Generate Acak 32 Karakter</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Status / Notification Message -->
-                                                <div v-if="tokenSaveMessage" :class="[
-                                                    'p-2.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all',
-                                                    tokenSaveStatus === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : '',
-                                                    tokenSaveStatus === 'error' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800' : '',
-                                                    tokenSaveStatus === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800' : '',
-                                                    tokenSaveStatus === 'loading' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' : ''
-                                                ]">
-                                                    <span>{{ tokenSaveMessage }}</span>
-                                                </div>
-                                            </div>
-
-                                            <!-- Live URL & Shortcut Buttons -->
-                                            <div class="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-                                                <div class="flex items-center justify-between">
-                                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">URL Kiosk Presensi Sekolah:</span>
-                                                    <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Otomatis Terisi Token</span>
-                                                </div>
-                                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                                    <input
-                                                        type="text"
-                                                        readonly
-                                                        :value="kioskFullUrl"
-                                                        class="flex-1 px-3 py-1.5 text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 select-all cursor-text"
-                                                    />
-                                                    <div class="flex items-center gap-2">
-                                                        <button
-                                                            type="button"
-                                                            @click="copyKioskUrl"
-                                                            :class="[
-                                                                'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer shadow-2xs flex-1 sm:flex-initial',
-                                                                isCopiedKioskUrl
-                                                                    ? 'bg-emerald-600 text-white'
-                                                                    : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                                            ]"
-                                                        >
-                                                            <svg v-if="!isCopiedKioskUrl" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                                            </svg>
-                                                            <svg v-else class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                            <span>{{ isCopiedKioskUrl ? 'Tersalin! ✓' : 'Salin URL' }}</span>
-                                                        </button>
-
-                                                        <!-- Tombol Buka Kiosk dengan Auto-Save -->
-                                                        <button
-                                                            type="button"
-                                                            @click="openKiosk"
-                                                            class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all cursor-pointer shadow-2xs flex-1 sm:flex-initial"
-                                                            title="Buka tampilan Kiosk di tab baru (otomatis menyimpan token)"
-                                                        >
-                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                            </svg>
-                                                            <span>Buka Kiosk</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300">
-                                                <svg class="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <span>
-                                                    <strong>Otomatis Tersimpan:</strong> Tombol <em>Buka Kiosk</em> dan <em>Salin URL</em> di atas sudah otomatis menyimpan token ke database sebelum membuka halaman.
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <label class="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
-                                        <div>
-                                            <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Presensi Sidik Jari / Fingerprint</span>
-                                            <span class="block text-xs text-slate-500 mt-0.5">Menggunakan mesin Fingerprint ZKTeco / API Tarik Data.</span>
-                                        </div>
-                                        <input type="checkbox" v-model="form.attendance_mode_fingerprint" class="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5 bg-card-subtle border-slate-300">
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
-                            
-                            <!-- ═══ KOLOM KIRI: PETA LEAFLET & KOORDINAT (XL: 8 COLS) ═══ -->
-                            <div class="xl:col-span-8 space-y-4">
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300">
-                                            Peta Titik Pusat Lokasi Sekolah
-                                        </label>
-                                        <p class="text-xs text-slate-400 mt-0.5">Klik peta atau seret pin hijau untuk memindahkan titik pusat sekolah.</p>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <!-- Tombol GPS -->
-                                        <button
-                                            type="button"
-                                            @click="getCurrentCoordinates"
-                                            :disabled="isDetectingLocation"
-                                            class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 px-3.5 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
-                                        >
-                                            <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': isDetectingLocation }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span>{{ isDetectingLocation ? 'Mendeteksi...' : 'GPS Saat Ini' }}</span>
-                                        </button>
-
-                                        <!-- Tombol Fullscreen Peta -->
-                                        <button
-                                            type="button"
-                                            @click="toggleFullscreenMap"
-                                            class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-600 transition-all shadow-2xs cursor-pointer"
-                                            title="Buka peta ukuran layar penuh (Fullscreen)"
-                                        >
-                                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-                                            </svg>
-                                            <span>Layar Penuh (Fullscreen)</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- ─── CONTAINER PETA & FULLSCREEN OVERLAY ─── -->
-                                <div
-                                    :class="[
-                                        'transition-all duration-300',
-                                        isFullscreenMap
-                                            ? 'fixed inset-0 z-[99999] w-screen h-screen bg-slate-950/95 backdrop-blur-md flex flex-col p-4 sm:p-6'
-                                            : 'relative'
-                                    ]"
-                                >
-                                    <!-- Header Khusus Mode Fullscreen -->
-                                    <div v-if="isFullscreenMap" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-800">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/30 shrink-0">
-                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h4 class="text-base font-black text-white flex items-center gap-2">
-                                                    <span>Mode Layar Penuh: Penitikan Titik Koordinat Presensi</span>
-                                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">Fullscreen</span>
-                                                </h4>
-                                                <p class="text-xs text-slate-400">
-                                                    Geser pin hijau atau klik di peta untuk menentukan koordinat sekolah secara leluasa.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div class="flex items-center gap-2 self-end sm:self-center">
-                                            <!-- Tombol Deteksi GPS Fullscreen -->
-                                            <button
-                                                type="button"
-                                                @click="getCurrentCoordinates"
-                                                :disabled="isDetectingLocation"
-                                                class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-300 bg-emerald-950 hover:bg-emerald-900 px-3.5 py-2 rounded-xl border border-emerald-800 transition-colors cursor-pointer"
-                                            >
-                                                <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': isDetectingLocation }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <span>{{ isDetectingLocation ? 'Mendeteksi...' : 'GPS Saat Ini' }}</span>
-                                            </button>
-
-                                            <!-- Tombol Keluar Fullscreen -->
-                                            <button
-                                                type="button"
-                                                @click="toggleFullscreenMap"
-                                                class="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer"
-                                            >
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                                <span>Tutup Layar Penuh (Esc)</span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Canvas Peta Leaflet -->
-                                    <div
-                                        :class="[
-                                            'rounded-2xl overflow-hidden border relative shadow-inner bg-slate-100 dark:bg-slate-900',
-                                            isFullscreenMap
-                                                ? 'flex-1 w-full border-slate-700/80'
-                                                : 'h-80 sm:h-96 lg:h-[460px] w-full border-slate-200 dark:border-slate-700'
-                                        ]"
-                                    >
-                                        <div id="hr-presensi-map" class="w-full h-full z-10" />
-
-                                        <!-- Floating Badge Koordinat Aktif di Pojok Peta -->
-                                        <div class="absolute bottom-3 left-3 z-[1000] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-[11px] font-mono font-bold text-slate-700 dark:text-slate-200 pointer-events-none flex items-center gap-2">
-                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                            <span>Lat: {{ form.presensi_latitude }}</span>
-                                            <span class="text-slate-300 dark:text-slate-600">|</span>
-                                            <span>Lng: {{ form.presensi_longitude }}</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Floating Toolbar Bawah Mode Fullscreen -->
-                                    <div v-if="isFullscreenMap" class="mt-3 p-3.5 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div class="flex items-center gap-4 flex-1">
-                                            <div class="flex items-center gap-2 shrink-0">
-                                                <span class="text-xs font-bold text-slate-300">Radius:</span>
-                                                <span class="text-xs font-black text-emerald-400 font-mono bg-emerald-950/80 px-2 py-0.5 rounded-lg border border-emerald-800">
-                                                    {{ form.presensi_radius_meters }} meter
-                                                </span>
-                                            </div>
-                                            <input 
-                                                type="range" 
-                                                v-model="form.presensi_radius_meters" 
-                                                min="10" 
-                                                max="1000" 
-                                                step="10" 
-                                                class="w-full max-w-md accent-emerald-500 cursor-pointer"
-                                            />
-                                        </div>
-                                        <button
-                                            type="button"
-                                            @click="toggleFullscreenMap"
-                                            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all self-end sm:self-center cursor-pointer"
-                                        >
-                                            Selesai Penitikan &rarr;
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Input Latitude, Longitude & Radius -->
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Latitude</label>
-                                        <input 
-                                            type="text" 
-                                            v-model="form.presensi_latitude" 
-                                            @change="handleManualCoords"
-                                            placeholder="-7.7956" 
-                                            class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 font-mono shadow-xs"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Longitude</label>
-                                        <input 
-                                            type="text" 
-                                            v-model="form.presensi_longitude" 
-                                            @change="handleManualCoords"
-                                            placeholder="110.3695" 
-                                            class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 font-mono shadow-xs"
-                                        />
-                                    </div>
-                                </div>
-
-                                <!-- Radius Geofence Slider & Number Input -->
-                                <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/60 space-y-2.5">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Radius Toleransi Geofencing Presensi</label>
-                                            <p class="text-[11px] text-slate-400">Jarak lingkaran maksimal dari titik pusat sekolah agar presensi HP diterima.</p>
-                                        </div>
-                                        <span class="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                                            {{ form.presensi_radius_meters }} meter
-                                        </span>
-                                    </div>
-                                    <input 
-                                        type="range" 
-                                        v-model="form.presensi_radius_meters" 
-                                        min="10" 
-                                        max="1000" 
-                                        step="10" 
-                                        class="w-full accent-emerald-600 cursor-pointer"
-                                    />
-                                    <div class="flex items-center justify-between text-[11px] text-slate-400">
-                                        <span>10 m (Sangat Ketat)</span>
-                                        <span>250 m</span>
-                                        <span>500 m</span>
-                                        <span>1.000 m (Lebar)</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- ═══ KOLOM KANAN: JAM KERJA & SHORTCUT PIKET (XL: 4 COLS) ═══ -->
-                            <div class="xl:col-span-4 space-y-5">
-                                <!-- Jam Kerja Card -->
-                                <div class="p-6 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/60 space-y-4">
-                                    <h4 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                        <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span>Jam Kerja Default Sekolah</span>
-                                    </h4>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        Jam kerja standar yang berlaku untuk seluruh pegawai jika tidak memiliki jadwal piket harian khusus.
-                                    </p>
-
-                                    <div class="space-y-3.5 pt-1">
-                                        <div>
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Jam Masuk (Check-In)</label>
-                                            <input 
-                                                type="time" 
-                                                v-model="form.presensi_work_start" 
-                                                class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 font-mono shadow-xs"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Toleransi Keterlambatan</label>
-                                            <div class="relative">
-                                                <input 
-                                                    type="number" 
-                                                    v-model="form.presensi_late_tolerance" 
-                                                    min="0" 
-                                                    max="120" 
-                                                    class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 pr-8 text-slate-800 dark:text-slate-200 font-mono shadow-xs"
-                                                />
-                                                <span class="absolute inset-y-0 right-3 flex items-center text-xs font-bold text-slate-400">menit</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Jam Pulang (Check-Out)</label>
-                                            <input 
-                                                type="time" 
-                                                v-model="form.presensi_work_end" 
-                                                class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 font-mono shadow-xs"
-                                            />
-                                        </div>
-                                        <div class="pt-2 border-t border-slate-200/70 dark:border-slate-700/70">
-                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">No. WhatsApp Admin / SDM (Opsional)</label>
-                                            <input 
-                                                type="text" 
-                                                v-model="form.presensi_whatsapp_target" 
-                                                placeholder="081234567890"
-                                                class="w-full text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 font-mono shadow-xs"
-                                            />
-                                            <p class="text-[10px] text-slate-400 mt-1 leading-snug">
-                                                Tujuan langsung kirim WA saat pegawai mengajukan Izin / Sakit / Dinas Luar.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Shortcut Jadwal Piket & Harian -->
-                                <div class="p-6 rounded-3xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 space-y-3.5 shadow-2xs">
-                                    <div class="flex items-start gap-3.5">
-                                        <div class="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h5 class="text-sm font-bold text-slate-800 dark:text-slate-100">Jadwal Khusus &amp; Piket Harian</h5>
-                                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                                Ingin membedakan jam kerja hari Jumat (misal pulang 11:30) atau memetakan giliran guru/pegawai piket harian?
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Link
-                                        :href="route('admin.duty-schedules.index')"
-                                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md hover:shadow-lg cursor-pointer"
-                                    >
-                                        <span>Kelola Jadwal Harian &amp; Piket Pegawai</span>
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-
-                        </div>
-
-                        <!-- Jika Fitur Presensi Nonaktif -->
-                        <div v-else class="mt-8 text-center py-16 px-4 rounded-3xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-700">
-                            <div class="w-14 h-14 mx-auto rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-3.5 shadow-inner">
-                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                </svg>
-                            </div>
-                            <h4 class="text-base font-bold text-slate-700 dark:text-slate-200">Fitur Presensi GPS Sedang Dinonaktifkan</h4>
-                            <p class="text-xs text-slate-400 mt-1.5 max-w-md mx-auto">
-                                Aktifkan sakelar di atas untuk mengaktifkan validasi lokasi GPS mobile bagi pegawai dan memunculkan menu presensi di sidebar.
-                            </p>
-                        </div>
-
-                        <!-- Tombol Simpan Tab Presensi -->
-                        <div class="mt-8 pt-5 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <span class="text-xs text-slate-400">Pastikan koordinat dan jam kerja telah sesuai sebelum menyimpan.</span>
-                            <button
-                                type="submit"
-                                :disabled="form.processing"
-                                class="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-2xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                                <svg v-if="form.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span>SIMPAN PENGATURAN PRESENSI</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ──────────────────────────────────────────────────────────────
-                     TAB 2: FITUR HR (MANAJEMEN PEGAWAI)
+                     TAB 1: FITUR HR (MANAJEMEN PEGAWAI)
                 ────────────────────────────────────────────────────────────── -->
                 <div v-show="activeTab === 'hr'" class="space-y-6">
                     <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-6 sm:p-8 shadow-xs">
@@ -1187,7 +270,6 @@ const submit = () => {
                             </p>
                         </div>
 
-                        <!-- 5 Kartu Modul HR (Grid 3 Kolom Responsif) -->
                         <div class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                             <!-- 1. Lencana Khusus (Manual Badge) -->
                             <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
@@ -1362,7 +444,7 @@ const submit = () => {
                                 </label>
                             </div>
 
-                            <!-- Administrasi Guru (Perangkat Pembelajaran) -->
+                            <!-- 9. Administrasi Guru -->
                             <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
                                 <div class="flex items-start gap-3.5">
                                     <div class="w-10 h-10 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-950/60 flex items-center justify-center text-fuchsia-600 shrink-0 shadow-xs mt-0.5">
@@ -1383,7 +465,7 @@ const submit = () => {
                                 </label>
                             </div>
 
-                            <!-- 9. Habit Tracker -->
+                            <!-- 10. Habit Tracker -->
                             <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-fuchsia-200 dark:hover:border-fuchsia-800 transition-all shadow-2xs">
                                 <div class="flex items-start gap-3.5">
                                     <div class="w-10 h-10 rounded-2xl bg-fuchsia-100 dark:bg-fuchsia-950/60 flex items-center justify-center text-fuchsia-600 shrink-0 shadow-xs mt-0.5">
@@ -1394,7 +476,7 @@ const submit = () => {
                                     <div>
                                         <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">Modul Habit Tracker (Ibadah)</h4>
                                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                            Jika dinonaktifkan, seluruh menu Pengisian Form Habit & Rekap Ibadah akan disembunyikan.
+                                            Jika dinonaktifkan, seluruh menu Pengisian Form Habit &amp; Rekap Ibadah akan disembunyikan.
                                         </p>
                                     </div>
                                 </div>
@@ -1427,7 +509,7 @@ const submit = () => {
                 </div>
 
                 <!-- ──────────────────────────────────────────────────────────────
-                     TAB 3: FITUR LANJUTAN
+                     TAB 2: FITUR LANJUTAN
                 ────────────────────────────────────────────────────────────── -->
                 <div v-show="activeTab === 'lanjutan'" class="space-y-6">
                     <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-6 sm:p-8 shadow-xs">
@@ -1442,12 +524,11 @@ const submit = () => {
                                 <span>Fitur Lanjutan &amp; Eksperimental</span>
                             </h3>
                             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                Aktifkan kemampuan gamifikasi, notifikasi push PWA, dan penyesuaian tema sistem.
+                                Aktifkan kemampuan gamifikasi, custom pembiasaan per divisi, dan penyesuaian tema sistem.
                             </p>
                         </div>
 
-                        <!-- 5 Kartu Fitur Lanjutan (Grid 3 Kolom Responsif) -->
-                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-5">
                             <!-- 1. Gamifikasi -->
                             <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-2xs">
                                 <div class="flex items-start gap-3.5">
@@ -1490,7 +571,7 @@ const submit = () => {
                                 </label>
                             </div>
 
-                            <!-- 4. Auto-Warning System -->
+                            <!-- 3. Auto-Warning System -->
                             <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-2xs">
                                 <div class="flex items-start gap-3.5">
                                     <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 shrink-0 shadow-xs mt-0.5">
@@ -1511,7 +592,7 @@ const submit = () => {
                                 </label>
                             </div>
 
-                            <!-- 5. Dark Mode Toggle -->
+                            <!-- 4. Dark Mode Toggle -->
                             <div class="flex items-start justify-between p-5 rounded-2xl border border-slate-100 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-900/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-2xs">
                                 <div class="flex items-start gap-3.5">
                                     <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 shrink-0 shadow-xs mt-0.5">
@@ -1555,7 +636,7 @@ const submit = () => {
                 </div>
 
                 <!-- ──────────────────────────────────────────────────────────────
-                     TAB 4: MODE PEMELIHARAAN (MAINTENANCE)
+                     TAB 3: MODE PEMELIHARAAN (MAINTENANCE) & STORAGE CLEANSING
                 ────────────────────────────────────────────────────────────── -->
                 <div v-show="activeTab === 'maintenance'" class="space-y-6">
                     <div
@@ -1625,7 +706,6 @@ const submit = () => {
 
                         <!-- Body Setting Maintenance -->
                         <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <!-- Judul Pemeliharaan -->
                             <div>
                                 <label for="maintenance_title" class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                     Judul Halaman Pemeliharaan
@@ -1640,7 +720,6 @@ const submit = () => {
                                 <div v-if="form.errors.maintenance_title" class="text-xs text-red-500 mt-1">{{ form.errors.maintenance_title }}</div>
                             </div>
 
-                            <!-- Estimasi Waktu Selesai -->
                             <div>
                                 <label for="maintenance_end_time" class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                     Estimasi Selesai (Countdown / Keterangan Waktu)
@@ -1656,7 +735,6 @@ const submit = () => {
                                 <div v-if="form.errors.maintenance_end_time" class="text-xs text-red-500 mt-1">{{ form.errors.maintenance_end_time }}</div>
                             </div>
 
-                            <!-- Pesan / Deskripsi -->
                             <div class="col-span-1 md:col-span-2">
                                 <label for="maintenance_message" class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                     Pesan / Penjelasan Pemeliharaan
@@ -1671,7 +749,6 @@ const submit = () => {
                                 <div v-if="form.errors.maintenance_message" class="text-xs text-red-500 mt-1">{{ form.errors.maintenance_message }}</div>
                             </div>
 
-                            <!-- Footer Aksi Cepat Kartu Maintenance -->
                             <div class="col-span-1 md:col-span-2 pt-4 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <p class="text-xs text-slate-500 dark:text-slate-400">
                                     💡 <em>Sakelar di atas menyimpan status pemeliharaan secara instan. Klik tombol di samping untuk menyimpan perubahan teks judul &amp; pesan.</em>
@@ -1695,7 +772,7 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- ─── CARD 2: PEMBERSIHAN FILE FOTO STORAGE (STORAGE CLEANSING) ─── -->
+                    <!-- CARD 2: PEMBERSIHAN FILE FOTO STORAGE (STORAGE CLEANSING) -->
                     <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-6 sm:p-8 shadow-xs">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700 pb-5 mb-6">
                             <div>
@@ -1734,7 +811,6 @@ const submit = () => {
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                            <!-- Penjelasan & Dropdown Pilihan Bulan -->
                             <div class="lg:col-span-8 space-y-3">
                                 <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                                     Pilih Batas Waktu Pembersihan (1 s/d 6 Bulan Lalu):
@@ -1751,7 +827,6 @@ const submit = () => {
                                         </select>
                                     </div>
 
-                                    <!-- Kartu Preview Rincian -->
                                     <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200">
                                         <div class="flex items-center justify-between">
                                             <span class="font-bold">Batas Tanggal:</span>
@@ -1769,7 +844,6 @@ const submit = () => {
                                 </p>
                             </div>
 
-                            <!-- Tombol Aksi Cleansing -->
                             <div class="lg:col-span-4 flex flex-col items-stretch sm:items-end justify-center">
                                 <button 
                                     type="button"
@@ -1797,8 +871,7 @@ const submit = () => {
             </form>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════ -->
-        <!-- Floating Action Button for Mobile Tab Menu (Islamic Widget Style) -->
+        <!-- MOBILE FLOATING ACTION BUTTON (FAB) -->
         <Transition
             enter-active-class="transition-all duration-300 ease-out"
             enter-from-class="opacity-0 scale-75 translate-y-4"
@@ -1808,10 +881,9 @@ const submit = () => {
             leave-to-class="opacity-0 scale-75 translate-y-4"
         >
             <button
-                v-if="!isFullscreenMap"
                 @click="showMobileTabMenu = true"
                 type="button"
-                class="md:hidden fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 active:scale-90 text-white p-3.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.22)] hover:shadow-[0_8px_30px_rgba(52,211,153,0.35)] transition-all hover:-translate-y-1 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-emerald-400/40 cursor-pointer"
+                class="md:hidden fixed bottom-6 right-6 z-40 bg-fuchsia-600 hover:bg-fuchsia-700 active:scale-90 text-white p-3.5 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.22)] hover:shadow-[0_8px_30px_rgba(217,70,239,0.35)] transition-all hover:-translate-y-1 flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-fuchsia-400/40 cursor-pointer"
                 title="Pilih Menu Pengaturan"
                 aria-label="Pilih Menu Pengaturan"
             >
@@ -1821,8 +893,7 @@ const submit = () => {
             </button>
         </Transition>
 
-        <!-- ══════════════════════════════════════════════════════ -->
-        <!-- Mobile Tab Switcher Bottom Sheet Modal -->
+        <!-- MOBILE TAB SWITCHER BOTTOM SHEET MODAL -->
         <Transition
             enter-active-class="transition-opacity ease-out duration-300"
             enter-from-class="opacity-0"
@@ -1832,35 +903,31 @@ const submit = () => {
             leave-to-class="opacity-0"
         >
             <div 
-                v-if="showMobileTabMenu && !isFullscreenMap" 
+                v-if="showMobileTabMenu" 
                 class="fixed inset-0 z-50 flex items-end md:hidden justify-center p-0"
             >
-                <!-- Backdrop -->
                 <div 
                     class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
                     @click="showMobileTabMenu = false"
                 />
 
-                <!-- Panel Bottom Sheet -->
                 <div 
                     class="relative z-10 w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[85vh] transition-all transform animate-in slide-in-from-bottom duration-300"
                 >
-                    <!-- Drag handle indicator for mobile bottom sheet -->
                     <div class="pt-3 pb-1 flex justify-center">
                         <div class="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
                     </div>
 
-                    <!-- Header Modal -->
                     <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/80">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                            <div class="w-8 h-8 rounded-xl bg-fuchsia-600 text-white flex items-center justify-center shadow-xs">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">Menu Pengaturan</h3>
-                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Pilih tab pengaturan sistem yang ingin diubah</p>
+                                <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100">Menu Fitur HR &amp; Lanjutan</h3>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Pilih tab pengaturan yang ingin diubah</p>
                             </div>
                         </div>
                         <button 
@@ -1874,7 +941,6 @@ const submit = () => {
                         </button>
                     </div>
 
-                    <!-- Tab Options List -->
                     <div class="p-4 space-y-2.5 overflow-y-auto max-h-[calc(85vh-100px)]">
                         <button
                             v-for="tab in tabOptions"
@@ -1909,9 +975,8 @@ const submit = () => {
                                 </div>
                             </div>
 
-                            <!-- Right Indicator -->
                             <div class="shrink-0 flex items-center">
-                                <div v-if="activeTab === tab.id" class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                                <div v-if="activeTab === tab.id" class="w-6 h-6 rounded-full bg-fuchsia-600 text-white flex items-center justify-center shadow-xs">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                     </svg>
@@ -1923,12 +988,12 @@ const submit = () => {
                         </button>
                     </div>
 
-                    <!-- Footer Note -->
                     <div class="p-3 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 text-center text-[11px] text-slate-400">
                         Klik salah satu menu untuk berpindah tab pengaturan
                     </div>
                 </div>
             </div>
         </Transition>
+
     </AuthenticatedLayout>
 </template>

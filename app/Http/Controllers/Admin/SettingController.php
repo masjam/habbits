@@ -23,26 +23,33 @@ class SettingController extends Controller
             ->get();
         $academicYearSummary = $academicYearService->getAdminSummary();
 
-        [$photoStats, $cleaningOptions] = $this->getPhotoCleansingData();
-        $user = auth()->user();
-        $isSuperAdmin = $user && ($user->isActualSuperadmin() || $user->hasRole('superadmin'));
-
         return Inertia::render('Admin/Settings/Index', [
             'settings'            => $settings,
             'divisions'           => $divisions,
             'employees'           => $employees,
             'academicYearSummary' => $academicYearSummary,
-            'photoStats'          => $photoStats,
-            'cleaningOptions'     => $cleaningOptions,
-            'isSuperAdmin'        => (bool) $isSuperAdmin,
             'initialTab'          => $request->query('tab', 'presensi'),
         ]);
     }
 
-    public function hrIndex(Request $request)
+    public function hrIndex()
     {
-        $tab = $request->query('tab', 'presensi');
-        return redirect()->route('admin.settings', ['tab' => $tab]);
+        $user = auth()->user();
+        $isSuperAdmin = $user && ($user->isActualSuperadmin() || $user->hasRole('superadmin'));
+
+        if (!$isSuperAdmin) {
+            abort(403, 'Hanya Superadmin yang dapat mengakses halaman Pengaturan HR & Fitur Lanjutan.');
+        }
+
+        $settings = Setting::allCached();
+        [$photoStats, $cleaningOptions] = $this->getPhotoCleansingData();
+
+        return Inertia::render('Admin/Settings/Hr', [
+            'settings'        => $settings,
+            'photoStats'      => $photoStats,
+            'cleaningOptions' => $cleaningOptions,
+            'isSuperAdmin'    => $isSuperAdmin,
+        ]);
     }
 
     private function getPhotoCleansingData()

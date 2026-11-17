@@ -31,7 +31,7 @@ class AdminSettingsTabTest extends TestCase
         Setting::updateOrCreate(['key' => 'attendance_mode_gps'], ['value' => '1']);
     }
 
-    public function test_superadmin_can_access_unified_settings_page_with_all_props()
+    public function test_superadmin_can_access_settings_page_with_presensi_and_tabs()
     {
         $response = $this->actingAs($this->superadmin)->get(route('admin.settings'));
 
@@ -42,29 +42,40 @@ class AdminSettingsTabTest extends TestCase
             ->has('divisions')
             ->has('employees')
             ->has('academicYearSummary')
-            ->has('photoStats')
-            ->has('cleaningOptions')
-            ->where('isSuperAdmin', true)
             ->where('initialTab', 'presensi')
         );
     }
 
     public function test_settings_page_respects_tab_query_parameter()
     {
-        $response = $this->actingAs($this->superadmin)->get(route('admin.settings', ['tab' => 'pemeliharaan']));
+        $response = $this->actingAs($this->superadmin)->get(route('admin.settings', ['tab' => 'akademik']));
 
         $response->assertStatus(200);
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Admin/Settings/Index')
-            ->where('initialTab', 'pemeliharaan')
+            ->where('initialTab', 'akademik')
         );
     }
 
-    public function test_hr_settings_route_redirects_to_unified_settings_page()
+    public function test_superadmin_can_access_hr_settings_page()
     {
         $response = $this->actingAs($this->superadmin)->get(route('admin.settings.hr'));
 
-        $response->assertRedirect(route('admin.settings', ['tab' => 'presensi']));
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Settings/Hr')
+            ->has('settings')
+            ->has('photoStats')
+            ->has('cleaningOptions')
+            ->where('isSuperAdmin', true)
+        );
+    }
+
+    public function test_admin_without_superadmin_cannot_access_hr_settings_page()
+    {
+        $response = $this->actingAs($this->admin)->get(route('admin.settings.hr'));
+
+        $response->assertStatus(403);
     }
 
     public function test_superadmin_can_update_settings_successfully()

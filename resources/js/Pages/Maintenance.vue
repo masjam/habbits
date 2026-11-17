@@ -276,7 +276,7 @@ const toggleMaintenance = () => {
                                 </Link>
                                 <Link
                                     v-if="simulatedRole !== 'user'"
-                                    :href="route('admin.settings', { tab: 'pemeliharaan' })"
+                                    :href="route('admin.settings.hr')"
                                     class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-colors border border-slate-700"
                                 >
                                     Pengaturan HR &amp; Maintenance
