@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ProfileController extends Controller
@@ -37,6 +39,22 @@ class ProfileController extends Controller
     }
 
     /**
+     * Hapus file avatar lama secara aman (hanya jika berada di direktori avatars/).
+     */
+    private function deleteOldAvatarFile(?string $path): void
+    {
+        if (empty($path)) {
+            return;
+        }
+
+        if (str_starts_with($path, 'avatars/') && !str_contains($path, '..')) {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+    }
+
+    /**
      * Update profil pengguna.
      */
     public function updateProfile(Request $request)
@@ -57,22 +75,30 @@ class ProfileController extends Controller
 
         if ($request->hasFile('avatar')) {
             $request->validate([
-                'avatar' => ['image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+                'avatar' => ['image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             ]);
             
-            // Delete old avatar if it's a local file
-            if ($user->avatar && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->avatar)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
-            }
+            // Delete old avatar if it's a local avatar file
+            $this->deleteOldAvatarFile($user->avatar);
 
             $path = $request->file('avatar')->store('avatars', 'public');
             $user->avatar = $path;
         } elseif ($request->filled('avatar') && is_string($validated['avatar'])) {
-            // Predefined avatar selected
-            if ($user->avatar && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->avatar) && $user->avatar !== $validated['avatar']) {
-                 \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            $avatarStr = (string) $validated['avatar'];
+            $isDicebear = (bool) preg_match('/^https:\/\/api\.dicebear\.com\/[a-zA-Z0-9\.\/\?=&,_\-]+$/', $avatarStr);
+            $isLocalPreset = (bool) preg_match('/^\/?img\/[a-zA-Z0-9_\-\/]+\.(png|jpg|jpeg|webp)$/i', $avatarStr);
+
+            if (!$isDicebear && !$isLocalPreset) {
+                throw ValidationException::withMessages([
+                    'avatar' => ['Avatar bawaan yang dipilih tidak valid atau tidak diizinkan.']
+                ]);
             }
-            $user->avatar = $validated['avatar'];
+
+            // Predefined avatar selected
+            if ($user->avatar && $user->avatar !== $avatarStr) {
+                $this->deleteOldAvatarFile($user->avatar);
+            }
+            $user->avatar = $avatarStr;
         }
 
         $user->save();
