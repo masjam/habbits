@@ -142,11 +142,6 @@ class AttendanceController extends Controller
             } else {
                 $status = 'hadir';
             }
-
-            // Jika user opsional melampirkan foto selfie masuk
-            if ($request->photo) {
-                $photoPath = $this->storeBase64Photo($request->photo, 'checkin');
-            }
         }
 
         Attendance::updateOrCreate(
@@ -496,25 +491,10 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Simpan foto selfie base64 ke disk public storage.
+     * Simpan foto selfie base64 ke disk public storage secara aman.
      */
     private function storeBase64Photo(string $base64Data, string $prefix): string
     {
-        if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
-            $data = substr($base64Data, strpos($base64Data, ',') + 1);
-            $type = strtolower($type[1]);
-            $data = base64_decode($data);
-
-            if ($data === false) {
-                throw new \Exception('Gagal memproses gambar base64.');
-            }
-
-            $fileName = 'attendances/' . $prefix . '_' . Auth::id() . '_' . time() . '.' . $type;
-            Storage::disk('public')->put($fileName, $data);
-
-            return $fileName;
-        }
-
-        throw new \Exception('Format gambar tidak valid.');
+        return \App\Services\Base64ImageService::store($base64Data, 'attendances', $prefix, 'photo');
     }
 }

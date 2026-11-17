@@ -14,17 +14,9 @@ use Illuminate\Support\Str;
 
 class NotulenController extends Controller
 {
-    private function storeBase64Signature($base64String, $prefix = 'signature')
+    private function storeBase64Signature($base64String, $prefix = 'signature', $field = 'ttd')
     {
-        if (preg_match('/^data:image\/(\w+);base64,/', $base64String, $type)) {
-            $data = substr($base64String, strpos($base64String, ',') + 1);
-            $type = strtolower($type[1]);
-            $data = base64_decode($data);
-            $fileName = 'signatures/' . $prefix . '_' . time() . '_' . Str::random(5) . '.' . $type;
-            Storage::disk('public')->put($fileName, $data);
-            return $fileName;
-        }
-        return $base64String;
+        return \App\Services\Base64ImageService::store($base64String, 'signatures', $prefix, $field);
     }
 
     public function index(Request $request)
@@ -74,7 +66,7 @@ class NotulenController extends Controller
         $pimpinan = $validated['pimpinan_rapat'];
 
         // Siapkan array daftar hadir dan peserta rapat
-        $pesertaList = $validated['peserta_rapat'] ? explode(', ', $validated['peserta_rapat']) : [];
+        $pesertaList = !empty($validated['peserta_rapat']) ? explode(', ', $validated['peserta_rapat']) : [];
         $hadirList = [];
 
         // Masukkan Notulis ke daftar peserta dan hadir (jika belum ada)
@@ -106,9 +98,7 @@ class NotulenController extends Controller
         }
         $validated['dokumentasi'] = count($dokPaths) > 0 ? $dokPaths : null;
 
-        if (isset($validated['ttd_notulis']) && str_starts_with($validated['ttd_notulis'], 'data:image')) {
-            $validated['ttd_notulis'] = $this->storeBase64Signature($validated['ttd_notulis'], 'notulis');
-        }
+        $validated['ttd_notulis'] = $this->storeBase64Signature($validated['ttd_notulis'], 'notulis', 'ttd_notulis');
 
         $validated['user_id'] = auth()->id();
         
@@ -240,8 +230,10 @@ class NotulenController extends Controller
         }
         $validated['dokumentasi'] = count($dokPaths) > 0 ? $dokPaths : null;
 
-        if (isset($validated['ttd_notulis']) && str_starts_with($validated['ttd_notulis'], 'data:image')) {
-            $validated['ttd_notulis'] = $this->storeBase64Signature($validated['ttd_notulis'], 'notulis');
+        if (!empty($validated['ttd_notulis']) && str_starts_with($validated['ttd_notulis'], 'data:image')) {
+            $validated['ttd_notulis'] = $this->storeBase64Signature($validated['ttd_notulis'], 'notulis', 'ttd_notulis');
+        } else {
+            unset($validated['ttd_notulis']);
         }
 
         $notulen->update($validated);
@@ -262,10 +254,7 @@ class NotulenController extends Controller
             'ttd_pimpinan' => 'required|string'
         ]);
 
-        $ttdPimpinan = $request->ttd_pimpinan;
-        if (str_starts_with($ttdPimpinan, 'data:image')) {
-            $ttdPimpinan = $this->storeBase64Signature($ttdPimpinan, 'pimpinan');
-        }
+        $ttdPimpinan = $this->storeBase64Signature($request->ttd_pimpinan, 'pimpinan', 'ttd_pimpinan');
 
         $notulen->update([
             'is_approved' => true,
