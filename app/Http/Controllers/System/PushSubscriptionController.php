@@ -132,10 +132,52 @@ class PushSubscriptionController extends Controller
     }
 
     /**
+     * Validasi URL notifikasi agar hanya mengizinkan path relatif internal atau same-origin.
+     */
+    private function validateSafeNotificationUrl(?string $url): void
+    {
+        if (empty($url)) {
+            return;
+        }
+
+        // Relative internal path (harus diawali '/' tunggal, bukan '//')
+        if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+            return;
+        }
+
+        // Absolute URL
+        $parsed = parse_url($url);
+        if (!isset($parsed['scheme']) || !in_array(strtolower($parsed['scheme']), ['http', 'https'])) {
+            throw ValidationException::withMessages([
+                'url' => ['URL notifikasi tidak valid atau protokol tidak didukung.']
+            ]);
+        }
+
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+        $urlHost = $parsed['host'] ?? '';
+
+        if (empty($appHost) || strtolower($appHost) !== strtolower($urlHost)) {
+            throw ValidationException::withMessages([
+                'url' => ['URL notifikasi hanya boleh mengarah ke domain aplikasi ini atau berupa path relatif.']
+            ]);
+        }
+    }
+
+    /**
      * Kirim tes notifikasi ke perangkat user yang sedang login.
      */
     public function sendTest(Request $request)
     {
+        $request->validate([
+            'url' => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:100',
+            'body' => 'nullable|string|max:255',
+        ]);
+
+        if ($request->filled('url')) {
+            $this->validateSafeNotificationUrl($request->input('url'));
+        }
+
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
@@ -195,6 +237,10 @@ class PushSubscriptionController extends Controller
             'body.required'   => 'Isi pesan notifikasi wajib diisi.',
             'target.required' => 'Pilih target penerima notifikasi.',
         ]);
+
+        if (!empty($validated['url'])) {
+            $this->validateSafeNotificationUrl($validated['url']);
+        }
 
         $query = User::query();
 

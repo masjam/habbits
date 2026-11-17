@@ -39,12 +39,30 @@ const toggleNotification = () => {
     if(isNotificationOpen.value) isDropdownOpen.value = false;
 }
 
+const safeNavigate = (url) => {
+    if (!url) return
+    const trimmed = String(url).trim()
+    if (/^(javascript|data|vbscript):/i.test(trimmed)) return
+    if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+        window.location.href = trimmed
+        return
+    }
+    try {
+        const parsed = new URL(trimmed, window.location.origin)
+        if (parsed.origin === window.location.origin) {
+            window.location.href = parsed.href
+        }
+    } catch (e) {
+        // Invalid URL, do nothing
+    }
+}
+
 const markAsRead = (id, url) => {
     router.post(route('notifications.mark-as-read', id), {}, {
         preserveScroll: true,
         onSuccess: () => {
             if (url) {
-                window.location.href = url
+                safeNavigate(url)
             }
         }
     })
