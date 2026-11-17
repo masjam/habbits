@@ -456,7 +456,7 @@ const submitLeaveForm = () => {
                     <!-- Link Cepat ke Layar Kiosk RFID (Jika aktif) -->
                     <a
                         v-if="($page.props.global_settings?.attendance_mode_rfid === '1' || $page.props.global_settings?.attendance_mode_rfid === 'true')"
-                        :href="'/kiosk-rfid?token=' + ($page.props.global_settings?.kiosk_api_token || 'SDAM-KIOSK-SECRET')"
+                        :href="'/kiosk-rfid?token=' + ($page.props.kiosk_token || '')"
                         target="_blank"
                         class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
                         title="Buka Layar Kiosk Presensi RFID di tab baru"

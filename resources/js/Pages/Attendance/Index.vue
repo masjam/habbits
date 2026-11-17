@@ -579,7 +579,7 @@ const waCopied = ref(false)
 const waModalSubtitle = ref('')
 
 const waTargetPhone = computed(() => {
-    const raw = page.props.global_settings?.presensi_whatsapp_target || ''
+    const raw = page.props.whatsapp_target || page.props.global_settings?.presensi_whatsapp_target || ''
     let cleaned = String(raw).replace(/[^0-9]/g, '')
     if (!cleaned) return ''
     if (cleaned.startsWith('0')) {

@@ -36,6 +36,39 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $settings = \App\Models\Setting::allCached();
+        $allowedSettingKeys = [
+            'maintenance_mode',
+            'maintenance_title',
+            'maintenance_message',
+            'maintenance_end_time',
+            'dark_mode_active',
+            'app_name',
+            'feature_presensi',
+            'feature_habit',
+            'feature_jurnal',
+            'feature_administrasi_guru',
+            'feature_arsip',
+            'feature_kpi',
+            'feature_divisi',
+            'feature_badges',
+            'feature_cuti',
+            'feature_idcard',
+            'feature_notes',
+            'attendance_mode_gps',
+            'attendance_mode_rfid',
+            'attendance_mode_fingerprint',
+            'gamification_active',
+            'monthly_target_score',
+            'presensi_work_start',
+            'presensi_work_end',
+            'announcement_text',
+            'popup_active',
+            'popup_text',
+            'youtube_link',
+            'running_text',
+        ];
+        $publicSettings = array_intersect_key($settings, array_flip($allowedSettingKeys));
+
         $user = $request->user();
         if ($user) {
             $user->loadMissing('roles');
@@ -51,7 +84,7 @@ class HandleInertiaRequests extends Middleware
                 'multi_accounts' => $request->session()->get('multi_accounts', []),
                 'is_adding_account' => $request->session()->get('is_adding_account', false),
             ],
-            'global_settings' => $settings,
+            'global_settings' => $publicSettings,
             'webpush' => [
                 'vapid_public_key' => config('webpush.vapid.public_key'),
                 'is_active' => ($settings['push_notifications_active'] ?? '0') === '1' || ($settings['push_notifications_active'] ?? 'false') === 'true',

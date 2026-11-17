@@ -430,6 +430,7 @@ class AttendanceReportController extends Controller
             'formattedDate'     => Carbon::parse($selectedDate)->locale('id')->isoFormat('dddd, D MMMM Y'),
             'divisions'         => $divisions,
             'allUsers'          => $allUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'nip' => $u->nip, 'divisi' => $u->divisi]),
+            'kiosk_token'       => Setting::get('kiosk_api_token'),
             'isSuperadmin'      => (bool) (auth()->user()?->isActualSuperadmin() || auth()->user()?->hasRole('superadmin')),
             'isAdmin'           => (bool) (auth()->user()?->hasRole('admin') || auth()->user()?->hasRole('superadmin') || auth()->user()?->isActualSuperadmin()),
         ]);

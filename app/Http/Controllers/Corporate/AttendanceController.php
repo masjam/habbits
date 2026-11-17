@@ -67,6 +67,7 @@ class AttendanceController extends Controller
             ],
             'serverTime'         => Carbon::now()->format('H:i:s'),
             'serverDate'         => Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y'),
+            'whatsapp_target'    => Setting::get('presensi_whatsapp_target'),
         ]);
     }
 
