@@ -23,10 +23,19 @@ class EnsureValidApiToken
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $user = User::where('api_token', $token)->first();
+        $hashedToken = hash('sha256', $token);
+        $user = User::where('api_token', $hashedToken)
+            ->orWhere('api_token', $token)
+            ->first();
 
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        // Auto-upgrade legacy token if it was plaintext
+        if ($user->api_token === $token) {
+            $user->api_token = $hashedToken;
+            $user->save();
         }
 
         // Log the user in for this request

@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\DashboardController as ApiDashboardController;
 use App\Http\Controllers\Api\FormHabitController as ApiFormHabitController;
 
-Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
+Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login'])
+    ->middleware('throttle:api-login');
 
 // Endpoint Push Absensi Fingerprint (ADMS / Script Sync)
 Route::post('/fingerprint/sync', [\App\Http\Controllers\Api\FingerprintController::class, 'sync'])
@@ -13,7 +14,7 @@ Route::post('/fingerprint/sync', [\App\Http\Controllers\Api\FingerprintControlle
 
 Route::middleware('api.token')->group(function () {
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        return new \App\Http\Resources\UserResource($request->user());
     });
     Route::get('/dashboard', [ApiDashboardController::class, 'index']);
     Route::get('/history', [\App\Http\Controllers\Api\HistoryController::class, 'index']);

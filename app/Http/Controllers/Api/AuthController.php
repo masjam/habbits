@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -20,16 +21,16 @@ class AuthController extends Controller
         if (Auth::attempt($request->only('email', 'password'))) {
             $user = Auth::user();
             
-            // Generate custom api token
+            // Generate custom api token (stored hashed with sha256)
             $token = Str::random(60);
-            $user->api_token = $token;
+            $user->api_token = hash('sha256', $token);
             $user->save();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Login successful',
                 'data' => [
-                    'user' => $user,
+                    'user' => new UserResource($user),
                     'token' => $token
                 ]
             ]);

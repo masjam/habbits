@@ -48,5 +48,14 @@ class AppServiceProvider extends ServiceProvider
                 \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($tokenHash),
             ];
         });
+
+        \Illuminate\Support\Facades\RateLimiter::for('api-login', function (\Illuminate\Http\Request $request) {
+            $email = (string) $request->input('email', '');
+            $emailKey = !empty($email) ? 'api-login:' . \Illuminate\Support\Str::lower($email) : 'api-login:empty';
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($request->ip()),
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($emailKey),
+            ];
+        });
     }
 }
