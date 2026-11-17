@@ -184,22 +184,19 @@ class DashboardController extends Controller
         
         rsort($missedDates);
 
-        $announcement = \App\Models\Setting::where('key', 'announcement_text')->value('value');
+        $announcement = \App\Models\Setting::get('announcement_text');
 
-        $skorMaksimalHariIni = Habit::where('status_aktif', true)
-            ->when($isSedangHaid, function ($query) {
-                $query->where('hide_saat_haid', false);
-            }, function ($query) {
-                $query->where('is_pengganti_haid', false);
-            })
-            ->sum('skor_maksimal');
+        $activeHabits = Habit::allActiveCached();
+        $skorMaksimalHariIni = (int) ($isSedangHaid
+            ? $activeHabits->where('hide_saat_haid', false)->sum('skor_maksimal')
+            : $activeHabits->where('is_pengganti_haid', false)->sum('skor_maksimal'));
 
         $daysInMonth = Carbon::now()->daysInMonth;
         $skorMaksimalBulanIni = $skorMaksimalHariIni * $daysInMonth;
         $skorMaksimalBulanDipilih = $skorMaksimalHariIni * $daysInSelectedMonth;
 
-        $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
-        $adminTargetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $settingTargetValue = \App\Models\Setting::get('monthly_target_score');
+        $adminTargetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
         $adminTargetSkorMinimal = (int) round($skorMaksimalBulanIni * ($adminTargetBulanan / 100));
         
         $targetBulanan = $adminTargetBulanan;
@@ -323,7 +320,7 @@ class DashboardController extends Controller
             ->where('date', $todayStr)
             ->exists();
             
-        $featurePresensiActive = \App\Models\Setting::where('key', 'feature_presensi')->value('value') === '1' || \App\Models\Setting::where('key', 'feature_presensi')->value('value') === 'true';
+        $featurePresensiActive = \App\Models\Setting::getBoolean('feature_presensi');
 
         $shouldShowPresensiNotif = false;
         if ($featurePresensiActive && !$hasClockedInToday) {
@@ -425,7 +422,7 @@ class DashboardController extends Controller
         if ($totalPegawai === 0) $totalPegawai = 1; // Prevent div by 0 just in case
 
         // Hitung Maksimal Skor (sehari) dinamis berdasarkan jumlah skor maksimal semua habit aktif (standar non-haid)
-        $skorMaksimalHarianPerUser = Habit::where('status_aktif', true)
+        $skorMaksimalHarianPerUser = Habit::allActiveCached()
             ->where('is_pengganti_haid', false)
             ->sum('skor_maksimal');
         if ($skorMaksimalHarianPerUser == 0) $skorMaksimalHarianPerUser = 100; // Fallback
@@ -504,8 +501,8 @@ class DashboardController extends Controller
         $skorHariIni = $dailyRaw[$today->format('Y-m-d')]->total_skor ?? 0;
 
         // ─── TARGET RATIO BULAN INI ─────────────────────────────────────────
-        $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
-        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $settingTargetValue = \App\Models\Setting::get('monthly_target_score');
+        $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
         
         $usersSkor = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
             ->withSum(

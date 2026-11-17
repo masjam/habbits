@@ -17,7 +17,7 @@ class AttendanceRFIDController extends Controller
      */
     public function kiosk(Request $request)
     {
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = \App\Models\Setting::allCached();
         
         // Pastikan fitur RFID aktif
         if (($settings['attendance_mode_rfid'] ?? 'false') !== '1' && ($settings['attendance_mode_rfid'] ?? 'false') !== 'true') {
@@ -111,7 +111,7 @@ class AttendanceRFIDController extends Controller
             'token' => 'required|string',
         ]);
 
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = \App\Models\Setting::allCached();
         if (($settings['attendance_mode_rfid'] ?? 'false') !== '1' && ($settings['attendance_mode_rfid'] ?? 'false') !== 'true') {
             return response()->json([
                 'success' => false,

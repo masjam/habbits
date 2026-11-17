@@ -15,7 +15,7 @@ class TeacherJournalController extends Controller
 {
     public function index()
     {
-        $featureJurnal = Setting::where('key', 'feature_jurnal')->value('value') ?? 'true';
+        $featureJurnal = Setting::get('feature_jurnal', 'true');
         if ($featureJurnal === 'false' || $featureJurnal === '0') {
             abort(403, 'Fitur Jurnal Harian dinonaktifkan.');
         }
@@ -46,7 +46,7 @@ class TeacherJournalController extends Controller
 
     public function store(Request $request)
     {
-        $featureJurnal = Setting::where('key', 'feature_jurnal')->value('value') ?? 'true';
+        $featureJurnal = Setting::get('feature_jurnal', 'true');
         if ($featureJurnal === 'false' || $featureJurnal === '0') {
             abort(403, 'Fitur Jurnal Harian dinonaktifkan.');
         }

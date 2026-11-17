@@ -19,7 +19,7 @@ class AcademicYearService
      */
     public function getAcademicYears(): array
     {
-        $settingValue = Setting::where('key', 'academic_years')->value('value');
+        $settingValue = Setting::get('academic_years');
         $years = [];
 
         if ($settingValue) {
@@ -78,7 +78,7 @@ class AcademicYearService
      */
     public function getActiveYear(): string
     {
-        $active = Setting::where('key', 'active_academic_year')->value('value');
+        $active = Setting::get('active_academic_year');
         if (!empty($active)) {
             return $active;
         }
@@ -92,7 +92,7 @@ class AcademicYearService
      */
     public function getActiveSemester(): string
     {
-        $active = Setting::where('key', 'active_semester')->value('value');
+        $active = Setting::get('active_semester');
         if (!empty($active) && in_array($active, ['ganjil', 'genap'])) {
             return $active;
         }
@@ -106,7 +106,7 @@ class AcademicYearService
      */
     public function getArchivedYears(): array
     {
-        $settingValue = Setting::where('key', 'archived_academic_years')->value('value');
+        $settingValue = Setting::get('archived_academic_years');
         if ($settingValue) {
             $decoded = json_decode($settingValue, true);
             if (is_array($decoded)) {

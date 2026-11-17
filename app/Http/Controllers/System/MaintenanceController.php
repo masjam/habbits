@@ -15,12 +15,13 @@ class MaintenanceController extends Controller
      */
     public function index(Request $request)
     {
-        $settings = Setting::whereIn('key', [
-            'maintenance_mode',
-            'maintenance_title',
-            'maintenance_message',
-            'maintenance_end_time',
-        ])->pluck('value', 'key')->toArray();
+        $all = Setting::allCached();
+        $settings = [
+            'maintenance_mode' => $all['maintenance_mode'] ?? '0',
+            'maintenance_title' => $all['maintenance_title'] ?? null,
+            'maintenance_message' => $all['maintenance_message'] ?? null,
+            'maintenance_end_time' => $all['maintenance_end_time'] ?? null,
+        ];
 
         $isActive = ($settings['maintenance_mode'] ?? '0') === '1' || ($settings['maintenance_mode'] ?? '0') === 'true';
 
@@ -96,7 +97,7 @@ class MaintenanceController extends Controller
             abort(403, 'Hanya Super Admin yang dapat mengubah status pemeliharaan.');
         }
 
-        $current = Setting::where('key', 'maintenance_mode')->value('value');
+        $current = Setting::get('maintenance_mode');
         $targetMode = $request->has('target_mode') 
             ? ($request->boolean('target_mode') ? '1' : '0')
             : (($current === '1' || $current === 'true') ? '0' : '1');

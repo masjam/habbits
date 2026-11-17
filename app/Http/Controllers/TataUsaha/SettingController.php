@@ -12,7 +12,8 @@ class SettingController extends Controller
 {
     public function index()
     {
-        $settings = Setting::whereIn('key', [
+        $all = Setting::allCached();
+        $keys = [
             'kop_logo_kiri',
             'kop_logo_kanan',
             'kop_baris_1',
@@ -23,7 +24,11 @@ class SettingController extends Controller
             'kepsek_nama',
             'kepsek_nbm',
             'kepsek_phone',
-        ])->pluck('value', 'key')->toArray();
+        ];
+        $settings = [];
+        foreach ($keys as $k) {
+            $settings[$k] = $all[$k] ?? null;
+        }
 
         // set defaults if empty
         $settings['kop_baris_1'] = $settings['kop_baris_1'] ?? 'MUHAMMADIYAH MAJELIS PENDIDIKAN DASAR MENENGAH DAN PNF';
@@ -82,10 +87,10 @@ class SettingController extends Controller
         }
 
         if ($request->boolean('remove_logo_kiri')) {
-            Setting::where('key', 'kop_logo_kiri')->delete();
+            Setting::remove('kop_logo_kiri');
         }
         if ($request->boolean('remove_logo_kanan')) {
-            Setting::where('key', 'kop_logo_kanan')->delete();
+            Setting::remove('kop_logo_kanan');
         }
 
         return redirect()->back()->with('success', 'Pengaturan Kop Surat berhasil diperbarui.');

@@ -53,8 +53,8 @@ class ProcessLaporanExport implements ShouldQueue
             ->sum('skor_maksimal') ?: 100;
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
 
-        $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
-        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $settingTargetVal = \App\Models\Setting::get('monthly_target_score');
+        $targetBulanan = $settingTargetVal !== null ? (float) $settingTargetVal : 80.0;
 
         $users = \App\Models\User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
             ->when($search, function ($query, $search) {

@@ -401,7 +401,7 @@ class AttendanceReportController extends Controller
 
         $divisions = Division::orderBy('name')->get();
 
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         $officeLocation = [
             'latitude'       => (float) ($settings['presensi_latitude'] ?? -7.7956),
             'longitude'      => (float) ($settings['presensi_longitude'] ?? 110.3695),

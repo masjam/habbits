@@ -194,7 +194,7 @@ class UserController extends Controller
         }
 
         // Admin & Superadmin sama-sama bisa isi catatan jika fitur Notes aktif
-        $featureNotes = \App\Models\Setting::where('key', 'feature_notes')->value('value');
+        $featureNotes = \App\Models\Setting::get('feature_notes');
         $notesEnabled = $featureNotes === '1' || $featureNotes === 'true';
         if ($notesEnabled) {
             $rules['catatan_pimpinan'] = 'nullable|string';

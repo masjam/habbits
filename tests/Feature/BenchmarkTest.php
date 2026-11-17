@@ -208,10 +208,12 @@ class BenchmarkTest extends TestCase
         $markdown .= "## 3. Render-blocking Resource Baseline\n";
         $markdown .= "- `resources/views/app.blade.php`: Google Fonts stylesheet (`family=Amiri...&family=Amiri+Quran&family=Scheherazade+New`) dimuat di `<head>` untuk seluruh halaman aplikasi.\n";
 
-        if (!file_exists(base_path('docs'))) {
-            mkdir(base_path('docs'), 0755, true);
+        if (env('GENERATE_PERF_BASELINE') === 'true') {
+            if (!file_exists(base_path('docs'))) {
+                mkdir(base_path('docs'), 0755, true);
+            }
+            file_put_contents(base_path('docs/perf-baseline.md'), $markdown);
         }
-        file_put_contents(base_path('docs/perf-baseline.md'), $markdown);
 
         $this->assertTrue(true);
     }

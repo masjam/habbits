@@ -27,5 +27,14 @@ class AppServiceProvider extends ServiceProvider
                            ->numbers()
                            ->symbols();
         });
+
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Notifications\Events\NotificationSent::class,
+            function ($event) {
+                if ($event->notifiable instanceof \App\Models\User) {
+                    $event->notifiable->clearNotificationCache();
+                }
+            }
+        );
     }
 }

@@ -15,7 +15,7 @@ class WelcomeController extends Controller
 {
     public function index()
     {
-        $settings = Setting::pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         
         // Live Stats
         $currentMonth = Carbon::now()->startOfMonth();

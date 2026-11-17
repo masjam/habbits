@@ -63,20 +63,18 @@ class FormHabitController extends Controller
             }
         }
 
-        $habitsQuery = \App\Models\Habit::where('status_aktif', true);
+        $activeHabits = \App\Models\Habit::allActiveCached();
 
         if ($isTransisiSelesaiHaid) {
             // Buka seluruh habit (normal dan pengganti) pada hari transisi selesai haid
+            $habits = $activeHabits;
         } elseif (!$isSedangHaid) {
-            $habitsQuery->where('is_pengganti_haid', false);
+            $habits = $activeHabits->where('is_pengganti_haid', false);
         } else {
-            $habitsQuery->where(function ($q) {
-                $q->where('hide_saat_haid', false)
-                  ->orWhere('is_pengganti_haid', true);
+            $habits = $activeHabits->filter(function ($q) {
+                return !$q->hide_saat_haid || $q->is_pengganti_haid;
             });
         }
-
-        $habits = $habitsQuery->orderBy('urutan')->orderBy('id')->get();
 
         // Ambil log pada tanggal yang dipilih
         $logsSelected = HabitLog::where('user_id', $user->id)
@@ -309,8 +307,8 @@ class FormHabitController extends Controller
         $currentStreak = 0;
         $checkDate = Carbon::today();
         
-        $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
-        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $settingTargetValue = \App\Models\Setting::get('monthly_target_score');
+        $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
         
         $isSedangHaid = false;
         if ($user->gender === 'P') {

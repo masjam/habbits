@@ -18,7 +18,7 @@ class FingerprintController extends Controller
     public function sync(Request $request)
     {
         // Pastikan fitur Fingerprint aktif
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = \App\Models\Setting::allCached();
         if (($settings['attendance_mode_fingerprint'] ?? 'false') !== '1' && ($settings['attendance_mode_fingerprint'] ?? 'false') !== 'true') {
             return response()->json([
                 'success' => false,

@@ -16,8 +16,7 @@ class CheckMaintenanceMode
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $maintenanceMode = Setting::where('key', 'maintenance_mode')->value('value');
-        $isMaintenanceActive = ($maintenanceMode === '1' || $maintenanceMode === 'true');
+        $isMaintenanceActive = Setting::getBoolean('maintenance_mode');
 
         // Jika user adalah Super Admin asli di database, selalu izinkan akses penuh
         $user = $request->user();

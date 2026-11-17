@@ -155,7 +155,7 @@ class SuratKeluarController extends Controller
             $validated['lampiran'] = '-';
         }
 
-        $settings = \App\Models\Setting::whereIn('key', ['kepsek_nama', 'kepsek_nbm'])->pluck('value', 'key');
+        $settings = \App\Models\Setting::allCached();
         $validated['nama_kepsek'] = $settings['kepsek_nama'] ?? 'Joko Kiswanto, S.Pd.I, M.Pd';
         $validated['nbm_kepsek'] = $settings['kepsek_nbm'] ?? '1.032.440';
 
@@ -232,7 +232,7 @@ if ($validated['nomor_mode'] === 'manual') {
             $validated['lampiran'] = '-';
         }
 
-        $settings = \App\Models\Setting::whereIn('key', ['kepsek_nama', 'kepsek_nbm'])->pluck('value', 'key');
+        $settings = \App\Models\Setting::allCached();
         $validated['nama_kepsek'] = $settings['kepsek_nama'] ?? 'Joko Kiswanto, S.Pd.I, M.Pd';
         $validated['nbm_kepsek'] = $settings['kepsek_nbm'] ?? '1.032.440';
 
@@ -363,7 +363,7 @@ if ($validated['nomor_mode'] === 'manual') {
             $validated['lampiran'] = '-';
         }
 
-        $settings = \App\Models\Setting::whereIn('key', ['kepsek_nama', 'kepsek_nbm'])->pluck('value', 'key');
+        $settings = \App\Models\Setting::allCached();
         $validated['nama_kepsek'] = $settings['kepsek_nama'] ?? 'Joko Kiswanto, S.Pd.I, M.Pd';
         $validated['nbm_kepsek'] = $settings['kepsek_nbm'] ?? '1.032.440';
 

@@ -30,6 +30,7 @@ class NotificationController extends Controller
         if ($notification) {
             $notification->markAsRead();
         }
+        $request->user()->clearNotificationCache();
 
         return back();
     }
@@ -40,6 +41,7 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request)
     {
         $request->user()->unreadNotifications->markAsRead();
+        $request->user()->clearNotificationCache();
         return back();
     }
 }

@@ -15,7 +15,7 @@ class SettingController extends Controller
 {
     public function index(AcademicYearService $academicYearService)
     {
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         $divisions = \App\Models\Division::orderBy('name')->pluck('name');
         $employees = \App\Models\User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
             ->select('id', 'name', 'divisi')
@@ -40,7 +40,7 @@ class SettingController extends Controller
             abort(403, 'Hanya Superadmin yang dapat mengakses halaman Pengaturan HR & Fitur Lanjutan.');
         }
 
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         [$photoStats, $cleaningOptions] = $this->getPhotoCleansingData();
 
         return Inertia::render('Admin/Settings/Hr', [

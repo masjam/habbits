@@ -54,8 +54,8 @@ class DashboardController extends Controller
         // 4. Target Bulanan
         $targetBulanan = $user->personal_target;
         if (is_null($targetBulanan)) {
-            $settingTarget = \App\Models\Setting::where('key', 'monthly_target_score')->first();
-            $adminTargetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+            $settingTargetVal = \App\Models\Setting::get('monthly_target_score');
+            $adminTargetBulanan = $settingTargetVal !== null ? (float) $settingTargetVal : 80.0;
             $targetBulanan = $adminTargetBulanan;
         }
         $targetSkorMinimal = (int) round($skorMaksimalBulanIni * ($targetBulanan / 100));

@@ -35,8 +35,11 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = \App\Models\Setting::allCached();
         $user = $request->user();
+        if ($user) {
+            $user->loadMissing('roles');
+        }
 
         return [
             ...parent::share($request),
@@ -58,8 +61,8 @@ class HandleInertiaRequests extends Middleware
                 'error'   => $request->session()->get('error'),
             ],
             'notifications' => [
-                'unread_count' => $user ? $user->unreadNotifications()->count() : 0,
-                'latest' => $user ? $user->notifications()->take(5)->get() : [],
+                'unread_count' => $user ? $user->getCachedUnreadNotificationsCount() : 0,
+                'latest' => $user ? $user->getCachedLatestNotifications() : [],
             ],
         ];
     }

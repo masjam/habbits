@@ -51,10 +51,15 @@ class Habit extends Model
         });
     }
 
+    public static function allActiveCached()
+    {
+        return \Illuminate\Support\Facades\Cache::rememberForever('habits_active_all', function () {
+            return static::where('status_aktif', true)->orderBy('urutan')->orderBy('id')->get();
+        });
+    }
+
     public static function clearHabitCaches()
     {
-        \Illuminate\Support\Facades\Cache::forget("habits_active_1_1");
-        \Illuminate\Support\Facades\Cache::forget("habits_active_0_1");
-        \Illuminate\Support\Facades\Cache::forget("habits_active_0_0");
+        \Illuminate\Support\Facades\Cache::forget('habits_active_all');
     }
 }

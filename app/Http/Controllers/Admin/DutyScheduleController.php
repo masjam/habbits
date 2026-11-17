@@ -53,10 +53,10 @@ class DutyScheduleController extends Controller
         }
 
         // Pengaturan jam kerja harian default sekolah
-        $dailySchedulesRaw = Setting::where('key', 'presensi_daily_schedules')->value('value');
-        $defaultStart = Setting::where('key', 'presensi_work_start')->value('value') ?: '07:00';
-        $defaultEnd   = Setting::where('key', 'presensi_work_end')->value('value') ?: '15:00';
-        $defaultTolSetting = Setting::where('key', 'presensi_late_tolerance')->value('value');
+        $dailySchedulesRaw = Setting::get('presensi_daily_schedules');
+        $defaultStart = Setting::get('presensi_work_start') ?: '07:00';
+        $defaultEnd   = Setting::get('presensi_work_end') ?: '15:00';
+        $defaultTolSetting = Setting::get('presensi_late_tolerance');
         $defaultTol = ($defaultTolSetting !== null && $defaultTolSetting !== '') ? (int)$defaultTolSetting : 15;
 
         $dailyWorkSchedules = [];

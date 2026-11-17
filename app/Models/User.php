@@ -87,6 +87,30 @@ class User extends Authenticatable
         return $this->hasMany(PerformanceEvaluation::class, 'user_id');
     }
 
+    public function clearNotificationCache(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget("user_{$this->id}_notifications_unread_count");
+        \Illuminate\Support\Facades\Cache::forget("user_{$this->id}_notifications_latest");
+    }
+
+    public function getCachedUnreadNotificationsCount(): int
+    {
+        return (int) \Illuminate\Support\Facades\Cache::remember(
+            "user_{$this->id}_notifications_unread_count",
+            60,
+            fn () => $this->unreadNotifications()->count()
+        );
+    }
+
+    public function getCachedLatestNotifications()
+    {
+        return \Illuminate\Support\Facades\Cache::remember(
+            "user_{$this->id}_notifications_latest",
+            60,
+            fn () => $this->notifications()->take(5)->get()
+        );
+    }
+
     /**
      * Relasi ke jadwal piket yang ditugaskan ke user ini.
      */
@@ -109,7 +133,7 @@ class User extends Authenticatable
             ->where('is_active', true)
             ->first();
 
-        $globalTolSetting = Setting::where('key', 'presensi_late_tolerance')->value('value');
+        $globalTolSetting = Setting::get('presensi_late_tolerance');
         $globalTol = ($globalTolSetting !== null && $globalTolSetting !== '') ? (int)$globalTolSetting : 15;
 
         // 0. Cek apakah ada jadwal khusus (Special Schedule)
@@ -151,7 +175,7 @@ class User extends Authenticatable
         $hasUserCustom = $this->work_start !== null || $this->work_end !== null || $this->late_tolerance !== null;
 
         // 3. Cek pengaturan jadwal harian sekolah (presensi_daily_schedules JSON)
-        $dailySchedulesJson = Setting::where('key', 'presensi_daily_schedules')->value('value');
+        $dailySchedulesJson = Setting::get('presensi_daily_schedules');
         $daySchedule = null;
         if ($dailySchedulesJson) {
             $decoded = json_decode($dailySchedulesJson, true);
@@ -161,8 +185,8 @@ class User extends Authenticatable
         }
 
         // 4. Default global fallback
-        $globalStart = Setting::where('key', 'presensi_work_start')->value('value') ?: '07:00';
-        $globalEnd   = Setting::where('key', 'presensi_work_end')->value('value') ?: '15:00';
+        $globalStart = Setting::get('presensi_work_start') ?: '07:00';
+        $globalEnd   = Setting::get('presensi_work_end') ?: '15:00';
 
         $defaultDayStart = ($daySchedule && !empty($daySchedule['start'])) ? $daySchedule['start'] : $globalStart;
         $defaultDayEnd   = ($daySchedule && !empty($daySchedule['end'])) ? $daySchedule['end'] : $globalEnd;

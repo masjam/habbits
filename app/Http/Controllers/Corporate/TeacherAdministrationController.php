@@ -23,7 +23,7 @@ class TeacherAdministrationController extends Controller
      */
     public function index(Request $request)
     {
-        $featureEnabled = Setting::where('key', 'feature_administrasi_guru')->value('value') ?? '1';
+        $featureEnabled = Setting::get('feature_administrasi_guru', '1');
         if ($featureEnabled === '0' || $featureEnabled === 'false') {
             abort(403, 'Fitur Administrasi Guru saat ini sedang dinonaktifkan oleh administrator.');
         }
@@ -118,7 +118,7 @@ class TeacherAdministrationController extends Controller
      */
     public function store(Request $request)
     {
-        $featureEnabled = Setting::where('key', 'feature_administrasi_guru')->value('value') ?? '1';
+        $featureEnabled = Setting::get('feature_administrasi_guru', '1');
         if ($featureEnabled === '0' || $featureEnabled === 'false') {
             abort(403, 'Fitur Administrasi Guru dinonaktifkan.');
         }

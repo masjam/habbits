@@ -47,7 +47,7 @@ class AttendanceController extends Controller
         ];
 
         // Konfigurasi Lokasi Sekolah & Jadwal
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         $schedule = $user->getEffectiveWorkSchedule($today);
 
         $officeLat = (float) (isset($schedule['latitude']) && $schedule['latitude'] ? $schedule['latitude'] : ($settings['presensi_latitude'] ?? -7.7956));
@@ -93,7 +93,7 @@ class AttendanceController extends Controller
             'late_photo'  => 'nullable|string',
         ]);
 
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         $schedule = $user->getEffectiveWorkSchedule($today);
         $officeLat = (float) (isset($schedule['latitude']) && $schedule['latitude'] ? $schedule['latitude'] : ($settings['presensi_latitude'] ?? -7.7956));
         $officeLng = (float) (isset($schedule['longitude']) && $schedule['longitude'] ? $schedule['longitude'] : ($settings['presensi_longitude'] ?? 110.3695));
@@ -199,7 +199,7 @@ class AttendanceController extends Controller
             'dinas_luar_notes'       => 'nullable|string|max:1000',
         ]);
 
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         $schedule = $user->getEffectiveWorkSchedule($today);
         $officeLat = (float) (isset($schedule['latitude']) && $schedule['latitude'] ? $schedule['latitude'] : ($settings['presensi_latitude'] ?? -7.7956));
         $officeLng = (float) (isset($schedule['longitude']) && $schedule['longitude'] ? $schedule['longitude'] : ($settings['presensi_longitude'] ?? 110.3695));
@@ -310,7 +310,7 @@ class AttendanceController extends Controller
             'attachment' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
         ]);
 
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        $settings = Setting::allCached();
         $schedule = $user->getEffectiveWorkSchedule($request->date);
         $workStart = !empty($schedule['work_start']) ? $schedule['work_start'] : ($settings['presensi_work_start'] ?? '07:00');
         $workEnd = !empty($schedule['work_end']) ? $schedule['work_end'] : ($settings['presensi_work_end'] ?? '15:00');

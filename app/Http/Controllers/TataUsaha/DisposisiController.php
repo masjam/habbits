@@ -46,8 +46,8 @@ class DisposisiController extends Controller
         } catch (\Throwable $e) {
             // Fallback if role is not configured
         }
-        $ksNamaSetting = Setting::where('key', 'kepsek_nama')->value('value');
-        $ksPhoneSetting = Setting::where('key', 'kepsek_phone')->value('value');
+        $ksNamaSetting = Setting::get('kepsek_nama');
+        $ksPhoneSetting = Setting::get('kepsek_phone');
         $kepalaSekolah = [
             'name' => $ksUser?->name ?? $ksNamaSetting ?? 'Kepala Sekolah',
             'phone' => $ksUser?->phone ?: ($ksPhoneSetting ?: '6282223527261'),

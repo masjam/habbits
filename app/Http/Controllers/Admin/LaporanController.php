@@ -32,11 +32,11 @@ class LaporanController extends Controller
         $daysInMonth  = $date->daysInMonth;
 
         // Ambil target skor bulanan dari pengaturan, default 80
-        $settingTarget = Setting::where('key', 'monthly_target_score')->first();
-        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $settingTargetValue = Setting::get('monthly_target_score');
+        $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
 
         // Skor maksimal harian berdasarkan database
-        $dailyMaxScore = \App\Models\Habit::where('status_aktif', true)
+        $dailyMaxScore = \App\Models\Habit::allActiveCached()
             ->where('is_pengganti_haid', false)
             ->sum('skor_maksimal') ?: 100;
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
@@ -269,8 +269,8 @@ class LaporanController extends Controller
         }
 
         // Ambil target skor dari pengaturan atau divisi
-        $settingTarget = Setting::where('key', 'monthly_target_score')->first();
-        $targetBulanan = $settingTarget ? (float) $settingTarget->value : 80.0;
+        $settingTargetValue = Setting::get('monthly_target_score');
+        $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
         
         $userTarget = $targetBulanan;
         if ($user->status_kehadiran !== 'Aktif' && $user->target_tidak_aktif) {

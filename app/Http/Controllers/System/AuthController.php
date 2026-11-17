@@ -19,8 +19,7 @@ class AuthController extends Controller
     {
         if (Auth::check() && !$request->session()->get('is_adding_account')) {
             $user = Auth::user();
-            $maintenanceMode = \App\Models\Setting::where('key', 'maintenance_mode')->value('value');
-            $isMaintenanceActive = ($maintenanceMode === '1' || $maintenanceMode === 'true');
+            $isMaintenanceActive = \App\Models\Setting::getBoolean('maintenance_mode');
 
             if ($isMaintenanceActive && !$user->isActualSuperadmin()) {
                 return redirect()->route('maintenance');
@@ -48,8 +47,7 @@ class AuthController extends Controller
             $user = Auth::user();
 
             // Pengecekan status mode pemeliharaan
-            $maintenanceMode = \App\Models\Setting::where('key', 'maintenance_mode')->value('value');
-            $isMaintenanceActive = ($maintenanceMode === '1' || $maintenanceMode === 'true');
+            $isMaintenanceActive = \App\Models\Setting::getBoolean('maintenance_mode');
 
             if ($isMaintenanceActive && !$user->isActualSuperadmin()) {
                 Auth::logout();
