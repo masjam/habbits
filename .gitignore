@@ -26,5 +26,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 *.md
+!docs/*.md
 
 
