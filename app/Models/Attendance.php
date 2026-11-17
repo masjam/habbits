@@ -55,6 +55,19 @@ class Attendance extends Model
         'approved_at' => 'datetime',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($attendance) {
+            HabitLog::clearUserDashboardCache($attendance->user_id);
+        });
+
+        static::deleted(function ($attendance) {
+            HabitLog::clearUserDashboardCache($attendance->user_id);
+        });
+    }
+
     public function getDateStringAttribute(): string
     {
         if ($this->date instanceof \Carbon\Carbon) {

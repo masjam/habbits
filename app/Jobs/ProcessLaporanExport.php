@@ -48,7 +48,7 @@ class ProcessLaporanExport implements ShouldQueue
         $endOfMonth   = $date->copy()->endOfMonth();
         $daysInMonth  = $date->daysInMonth;
         
-        $dailyMaxScore = \App\Models\Habit::where('status_aktif', true)
+        $dailyMaxScore = \App\Models\Habit::allActiveCached()
             ->where('is_pengganti_haid', false)
             ->sum('skor_maksimal') ?: 100;
         $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;

@@ -34,122 +34,135 @@ class DashboardController extends Controller
     private function userDashboard(Request $request, User $user)
     {
         $targetUserId  = $user->id;
+        $selectedMonth = (int) $request->query('month', date('n'));
+        $selectedYear  = (int) $request->query('year', date('Y'));
 
-        // ─── 1. Identifikasi Mode Haid ─────────────────────────────────────────
-        $isSedangHaid = false;
-        if ($user->gender === 'P') {
-            $isSedangHaid = MenstruationLog::where('user_id', $targetUserId)
-                ->whereNull('waktu_selesai')
-                ->exists();
-        }
+        $version = HabitLog::getUserDashboardVersion($targetUserId);
+        $cacheKey = "user_dashboard_{$targetUserId}_{$version}_{$selectedMonth}_{$selectedYear}";
 
-        // ─── 2. Statistik Skor ──────────────────────────────────────────────────
-        $today        = Carbon::today();
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth   = Carbon::now()->endOfMonth();
+        $dashboardData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($user, $targetUserId, $selectedMonth, $selectedYear) {
+            $allHabits = Habit::allCachedById();
 
-        $skorHariIni = HabitLog::where('user_id', $targetUserId)
-            ->where('tanggal', $today->format('Y-m-d'))
-            ->sum('skor_diperoleh');
+            // ─── 1. Identifikasi Mode Haid ─────────────────────────────────────────
+            $isSedangHaid = false;
+            if ($user->gender === 'P') {
+                $isSedangHaid = MenstruationLog::where('user_id', $targetUserId)
+                    ->whereNull('waktu_selesai')
+                    ->exists();
+            }
 
-        $skorBulanIni = HabitLog::where('user_id', $targetUserId)
-            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
-            ->sum('skor_diperoleh');
+            // ─── 2. Rekap Harian (Bulan Pilihan) & Statistik Skor ──────────────────
+            $today        = Carbon::today();
+            $startOfMonth = Carbon::now()->startOfMonth();
+            $endOfMonth   = Carbon::now()->endOfMonth();
 
-        // ─── 3. Rekap Harian (Bulan Pilihan) ───────────────────────────────
-        $selectedMonth = $request->query('month', date('n'));
-        $selectedYear = $request->query('year', date('Y'));
-        
-        $targetDate = Carbon::createFromDate($selectedYear, $selectedMonth, 1);
-        $startOfSelectedMonth = $targetDate->copy()->startOfMonth();
-        $endOfSelectedMonth = $targetDate->copy()->endOfMonth();
+            $targetDate = Carbon::createFromDate($selectedYear, $selectedMonth, 1);
+            $startOfSelectedMonth = $targetDate->copy()->startOfMonth();
+            $endOfSelectedMonth = $targetDate->copy()->endOfMonth();
+            $startOfSelectedMonthStr = $startOfSelectedMonth->format('Y-m-d');
+            $endOfSelectedMonthStr = $endOfSelectedMonth->format('Y-m-d');
 
-        $dailyRaw = HabitLog::where('user_id', $targetUserId)
-            ->whereBetween('tanggal', [$startOfSelectedMonth, $endOfSelectedMonth])
-            ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total_skor'))
-            ->groupBy('tanggal')
-            ->orderBy('tanggal', 'asc')
-            ->get()
-            ->keyBy(fn($row) => Carbon::parse($row->tanggal)->format('Y-m-d'));
+            $dailyRaw = HabitLog::where('user_id', $targetUserId)
+                ->whereBetween('tanggal', [$startOfSelectedMonthStr, $endOfSelectedMonthStr])
+                ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total_skor'))
+                ->groupBy('tanggal')
+                ->orderBy('tanggal', 'asc')
+                ->get()
+                ->keyBy(fn($row) => Carbon::parse($row->tanggal)->format('Y-m-d'));
 
-        $dailyChartData = collect();
-        $daysInSelectedMonth = $targetDate->daysInMonth;
-        for ($i = 1; $i <= $daysInSelectedMonth; $i++) {
-            $date = $targetDate->copy()->day($i)->format('Y-m-d');
-            $dailyChartData->push([
-                'tanggal' => $date,
-                'skor'    => isset($dailyRaw[$date]) ? (int) $dailyRaw[$date]->total_skor : 0,
-            ]);
-        }
+            $dailyChartData = collect();
+            $daysInSelectedMonth = $targetDate->daysInMonth;
+            for ($i = 1; $i <= $daysInSelectedMonth; $i++) {
+                $date = $targetDate->copy()->day($i)->format('Y-m-d');
+                $dailyChartData->push([
+                    'tanggal' => $date,
+                    'skor'    => isset($dailyRaw[$date]) ? (int) $dailyRaw[$date]->total_skor : 0,
+                ]);
+            }
 
-        $skorBulanDipilih = HabitLog::where('user_id', $targetUserId)
-            ->whereBetween('tanggal', [$startOfSelectedMonth, $endOfSelectedMonth])
-            ->sum('skor_diperoleh');
+            $skorBulanDipilih = (int) $dailyRaw->sum('total_skor');
 
-        // ─── 4. Grafik 6 Bulanan (Semester) ────────────────────────────────────
-        $currentMonth = Carbon::now()->month;
-        $currentYear  = Carbon::now()->year;
-        $isSemester1  = $currentMonth <= 6;
-        $startMonth   = $isSemester1 ? 1 : 7;
-        $endMonth     = $isSemester1 ? 6 : 12;
+            $todayStr = $today->format('Y-m-d');
+            $startOfMonthStr = $startOfMonth->format('Y-m-d');
+            $endOfMonthStr = $endOfMonth->format('Y-m-d');
 
-        $namaBulanId = [
-            1  => 'Januari',   2  => 'Februari',  3  => 'Maret',
-            4  => 'April',     5  => 'Mei',        6  => 'Juni',
-            7  => 'Juli',      8  => 'Agustus',    9  => 'September',
-            10 => 'Oktober',   11 => 'November',   12 => 'Desember',
-        ];
+            if ($selectedMonth === (int)$today->month && $selectedYear === (int)$today->year) {
+                $skorBulanIni = $skorBulanDipilih;
+                $skorHariIni  = isset($dailyRaw[$todayStr]) ? (int) $dailyRaw[$todayStr]->total_skor : 0;
+            } else {
+                $currentScores = HabitLog::where('user_id', $targetUserId)
+                    ->whereBetween('tanggal', [$startOfMonthStr, $endOfMonthStr])
+                    ->selectRaw("
+                        SUM(CASE WHEN tanggal = ? THEN skor_diperoleh ELSE 0 END) as skor_hari_ini,
+                        SUM(skor_diperoleh) as skor_bulan_ini
+                    ", [$todayStr])
+                    ->first();
 
-        $startSemesterDate = Carbon::createFromDate($currentYear, $startMonth, 1)->startOfMonth()->format('Y-m-d');
-        $endSemesterDate = Carbon::createFromDate($currentYear, $endMonth, 1)->endOfMonth()->format('Y-m-d');
+                $skorHariIni  = (int) ($currentScores->skor_hari_ini ?? 0);
+                $skorBulanIni = (int) ($currentScores->skor_bulan_ini ?? 0);
+            }
 
-        $monthlyRaw = HabitLog::where('user_id', $targetUserId)
-            ->whereBetween('tanggal', [$startSemesterDate, $endSemesterDate])
-            ->select(
-                DB::raw('MONTH(tanggal) as bulan'),
-                DB::raw('SUM(skor_diperoleh) as total_skor')
-            )
-            ->groupBy('bulan')
-            ->get()
-            ->keyBy('bulan');
+            // ─── 4. Grafik 6 Bulanan (Semester) ────────────────────────────────────
+            $currentMonth = Carbon::now()->month;
+            $currentYear  = Carbon::now()->year;
+            $isSemester1  = $currentMonth <= 6;
+            $startMonth   = $isSemester1 ? 1 : 7;
+            $endMonth     = $isSemester1 ? 6 : 12;
 
-        $monthlyChartData = collect();
-        for ($m = $startMonth; $m <= $endMonth; $m++) {
-            $monthlyChartData->push([
-                'bulan' => $namaBulanId[$m],
-                'skor'  => isset($monthlyRaw[$m]) ? (int) $monthlyRaw[$m]->total_skor : 0,
-            ]);
-        }
+            $namaBulanId = [
+                1  => 'Januari',   2  => 'Februari',  3  => 'Maret',
+                4  => 'April',     5  => 'Mei',        6  => 'Juni',
+                7  => 'Juli',      8  => 'Agustus',    9  => 'September',
+                10 => 'Oktober',   11 => 'November',   12 => 'Desember',
+            ];
 
+            $startSemesterDate = Carbon::createFromDate($currentYear, $startMonth, 1)->startOfMonth()->format('Y-m-d');
+            $endSemesterDate = Carbon::createFromDate($currentYear, $endMonth, 1)->endOfMonth()->format('Y-m-d');
 
+            $monthlyRaw = HabitLog::where('user_id', $targetUserId)
+                ->whereBetween('tanggal', [$startSemesterDate, $endSemesterDate])
+                ->select(
+                    DB::raw('MONTH(tanggal) as bulan'),
+                    DB::raw('SUM(skor_diperoleh) as total_skor')
+                )
+                ->groupBy('bulan')
+                ->get()
+                ->keyBy('bulan');
 
-        // ─── 5. Gamification (Badges & Streak) ───────────────────────────────────
-        $userBadges = \Illuminate\Support\Facades\DB::table('user_badges')
-            ->join('badges', 'user_badges.badge_id', '=', 'badges.id')
-            ->where('user_badges.user_id', $targetUserId)
-            ->select('badges.*', 'user_badges.unlocked_at')
-            ->orderBy('user_badges.unlocked_at', 'desc')
-            ->get();
-            
-        // ─── 6. Analytical Insight (Habit Paling Sering Kosong Bulan Ini) ──────
-        // Cari habit mana (yang non-haid) yang sering 0 di bulan ini
-        $insightMessage = null;
-        if ($endOfMonth->isFuture() || $endOfMonth->isToday()) {
-            $worstHabit = HabitLog::where('user_id', $targetUserId)
-                ->whereBetween('tanggal', [$startOfMonth, Carbon::today()])
-                ->where('skor_diperoleh', 0)
-                ->selectRaw('habit_id, count(*) as missed_count')
-                ->groupBy('habit_id')
-                ->orderBy('missed_count', 'desc')
-                ->first();
+            $monthlyChartData = collect();
+            for ($m = $startMonth; $m <= $endMonth; $m++) {
+                $monthlyChartData->push([
+                    'bulan' => $namaBulanId[$m],
+                    'skor'  => isset($monthlyRaw[$m]) ? (int) $monthlyRaw[$m]->total_skor : 0,
+                ]);
+            }
 
-            if ($worstHabit && $worstHabit->missed_count >= 3) {
-                $h = Habit::find($worstHabit->habit_id);
-                if ($h && !$h->is_pengganti_haid) {
-                    $insightMessage = "Anda telah melewatkan '{$h->nama_habit}' sebanyak {$worstHabit->missed_count} kali bulan ini. Yuk, tingkatkan lagi besok!";
+            // ─── 5. Gamification (Badges & Streak) ───────────────────────────────────
+            $userBadges = \Illuminate\Support\Facades\DB::table('user_badges')
+                ->join('badges', 'user_badges.badge_id', '=', 'badges.id')
+                ->where('user_badges.user_id', $targetUserId)
+                ->select('badges.*', 'user_badges.unlocked_at')
+                ->orderBy('user_badges.unlocked_at', 'desc')
+                ->get();
+                
+            // ─── 6. Analytical Insight (Habit Paling Sering Kosong Bulan Ini) ──────
+            $insightMessage = null;
+            if ($endOfMonth->isFuture() || $endOfMonth->isToday()) {
+                $worstHabit = HabitLog::where('user_id', $targetUserId)
+                    ->whereBetween('tanggal', [$startOfMonthStr, $todayStr])
+                    ->where('skor_diperoleh', 0)
+                    ->selectRaw('habit_id, count(*) as missed_count')
+                    ->groupBy('habit_id')
+                    ->orderBy('missed_count', 'desc')
+                    ->first();
+
+                if ($worstHabit && $worstHabit->missed_count >= 3) {
+                    $h = $allHabits->get($worstHabit->habit_id);
+                    if ($h && !$h->is_pengganti_haid) {
+                        $insightMessage = "Anda telah melewatkan '{$h->nama_habit}' sebanyak {$worstHabit->missed_count} kali bulan ini. Yuk, tingkatkan lagi besok!";
+                    }
                 }
             }
-        }
 
         // ─── 7. Cek Tanggal Kosong / Terlewat ────────────────────────────────────
         $todayStr = Carbon::today()->format('Y-m-d');
@@ -203,7 +216,8 @@ class DashboardController extends Controller
         $targetBulanan = $adminTargetBulanan;
         $divisionTarget = null;
         if (!empty($user->divisi)) {
-            $divisionTarget = \App\Models\Division::where('name', $user->divisi)->value('target_divisi');
+            $divisionTargets = \App\Models\Division::getTargetsMap();
+            $divisionTarget = $divisionTargets[$user->divisi] ?? null;
         }
 
         if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
@@ -224,9 +238,9 @@ class DashboardController extends Controller
             'others' => []
         ];
 
-        $monthlyLogs = HabitLog::with('habit')
+        $monthlyLogs = HabitLog::select('id', 'user_id', 'habit_id', 'tanggal', 'nilai_input', 'details')
             ->where('user_id', $targetUserId)
-            ->whereBetween('tanggal', [$startOfMonth, Carbon::today()])
+            ->whereBetween('tanggal', [$startOfMonthStr, $todayStr])
             ->get();
         
         foreach ($monthlyLogs as $log) {
@@ -235,7 +249,8 @@ class DashboardController extends Controller
                 $details = [];
             }
 
-            if ($log->habit && $log->habit->template === 'sholat_wajib') {
+            $habit = $allHabits->get($log->habit_id);
+            if ($habit && $habit->template === 'sholat_wajib') {
                 if (!empty($details)) {
                     $waktus = ['subuh', 'dhuhur', 'asar', 'maghrib', 'isya'];
                     foreach ($waktus as $w) {
@@ -249,7 +264,7 @@ class DashboardController extends Controller
                         }
                     }
                 }
-            } elseif ($log->habit && $log->habit->template === 'sholat_rawatib') {
+            } elseif ($habit && $habit->template === 'sholat_rawatib') {
                 if (!empty($details)) {
                     $qKeys = ['subuh_q', 'dhuhur_q', 'asar_q', 'maghrib_q', 'isya_q'];
                     $bKeys = ['dhuhur_b', 'maghrib_b', 'isya_b'];
@@ -266,16 +281,16 @@ class DashboardController extends Controller
                         }
                     }
                 }
-            } elseif ($log->habit && $log->habit->template === 'quran') {
+            } elseif ($habit && $habit->template === 'quran') {
                 if ($log->nilai_input > 0) {
                     $habitAnalytics['quran']['frekuensi']++;
                 }
                 if (!empty($details) && isset($details['durasi']) && is_numeric($details['durasi'])) {
                     $habitAnalytics['quran']['durasi'] += (int) $details['durasi'];
                 }
-            } elseif ($log->habit) {
+            } elseif ($habit) {
                 if ($log->nilai_input > 0) {
-                    $namaHabit = $log->habit->nama_habit;
+                    $namaHabit = $habit->nama_habit;
                     if (!isset($habitAnalytics['others'][$namaHabit])) {
                         $habitAnalytics['others'][$namaHabit] = 0;
                     }
@@ -288,7 +303,8 @@ class DashboardController extends Controller
         $radarChartDataBackend = [];
         $dailySums = [];
         foreach ($monthlyLogs as $log) {
-            if ($log->habit) {
+            $habit = $allHabits->get($log->habit_id);
+            if ($habit) {
                 $dateKey = Carbon::parse($log->tanggal)->format('Y-m-d');
                 $hid = $log->habit_id;
                 
@@ -299,12 +315,12 @@ class DashboardController extends Controller
             }
         }
 
-        $allHabits = \App\Models\Habit::all()->keyBy('id');
         foreach ($dailySums as $date => $habitsLog) {
             foreach ($habitsLog as $hid => $sum) {
-                if (!isset($allHabits[$hid])) continue;
-                $target = (float) $allHabits[$hid]->target_pencapaian;
-                $habitName = $allHabits[$hid]->nama_habit;
+                $habit = $allHabits->get($hid);
+                if (!$habit) continue;
+                $target = (float) $habit->target_pencapaian;
+                $habitName = $habit->nama_habit;
                 
                 if (!isset($radarChartDataBackend[$habitName])) {
                     $radarChartDataBackend[$habitName] = 0;
@@ -365,7 +381,7 @@ class DashboardController extends Controller
             'izin'        => $semesterAttendances->whereIn('status', ['izin', 'sakit', 'dinas_luar'])->count(),
         ];
 
-        return Inertia::render('Dashboard', [
+        return [
             'skorHariIni'      => (int) $skorHariIni,
             'skorMaksimalHariIni'=> (int) $skorMaksimalHariIni,
             'skorBulanIni'     => (int) $skorBulanIni,
@@ -405,7 +421,10 @@ class DashboardController extends Controller
             'selectedYear'     => (int) $selectedYear,
             'presensiBulanIni' => $presensiBulanIni,
             'semesterPresensiSummary' => $semesterPresensiSummary,
-        ]);
+        ];
+        });
+
+        return Inertia::render('Dashboard', $dashboardData);
     }
 
     /**
@@ -413,128 +432,137 @@ class DashboardController extends Controller
      */
     private function adminDashboard(Request $request)
     {
-        $today = Carbon::today();
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth   = Carbon::now()->endOfMonth();
-        
-        $nonAdminIds = User::getNonAdminUserIds();
-        $totalPegawai = count($nonAdminIds);
-        if ($totalPegawai === 0) $totalPegawai = 1; // Prevent div by 0 just in case
+        $version = HabitLog::getAdminDashboardVersion();
+        $cacheKey = "admin_dashboard_{$version}";
 
-        // Hitung Maksimal Skor (sehari) dinamis berdasarkan jumlah skor maksimal semua habit aktif (standar non-haid)
-        $skorMaksimalHarianPerUser = Habit::allActiveCached()
-            ->where('is_pengganti_haid', false)
-            ->sum('skor_maksimal');
-        if ($skorMaksimalHarianPerUser == 0) $skorMaksimalHarianPerUser = 100; // Fallback
-
-        $skorMaksimalHarianSeluruhPegawai = $totalPegawai * $skorMaksimalHarianPerUser;
-
-        // ─── GRAFIK HARIAN (Bulan Berjalan) ───────────────────────────────
-        $dailyRaw = HabitLog::whereIn('user_id', $nonAdminIds)
-            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
-            ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total_skor'))
-            ->groupBy('tanggal')
-            ->orderBy('tanggal', 'asc')
-            ->get()
-            ->keyBy(fn($row) => Carbon::parse($row->tanggal)->format('Y-m-d'));
-
-        $dailyChartData = collect();
-        $daysInMonth = $today->daysInMonth;
-        for ($i = 0; $i < $daysInMonth; $i++) {
-            $date = $startOfMonth->copy()->addDays($i)->format('Y-m-d');
-            $rawSkor = isset($dailyRaw[$date]) ? (float) $dailyRaw[$date]->total_skor : 0;
-            $persentase = ($skorMaksimalHarianSeluruhPegawai > 0) ? ($rawSkor / $skorMaksimalHarianSeluruhPegawai) * 100 : 0;
-
-            $dailyChartData->push([
-                'tanggal' => $date,
-                'skor'    => round($persentase, 1),
-                'maks'    => 100
-            ]);
-        }
-
-        // ─── GRAFIK 6 BULANAN (Semester) ────────────────────────────────────
-        $currentMonth = Carbon::now()->month;
-        $currentYear  = Carbon::now()->year;
-        $isSemester1  = $currentMonth <= 6;
-        $startMonth   = $isSemester1 ? 1 : 7;
-        $endMonth     = $isSemester1 ? 6 : 12;
-
-        $namaBulanId = [
-            1  => 'Jan.', 2  => 'Feb.', 3  => 'Mar.',
-            4  => 'Apr.', 5  => 'Mei',   6  => 'Jun.',
-            7  => 'Jul.', 8  => 'Ags.', 9  => 'Sep.',
-            10 => 'Okt.', 11 => 'Nov.', 12 => 'Des.',
-        ];
-
-        $startSemesterDate = Carbon::createFromDate($currentYear, $startMonth, 1)->startOfMonth()->format('Y-m-d');
-        $endSemesterDate = Carbon::createFromDate($currentYear, $endMonth, 1)->endOfMonth()->format('Y-m-d');
-
-        $monthlyRaw = HabitLog::whereIn('user_id', $nonAdminIds)
-            ->whereBetween('tanggal', [$startSemesterDate, $endSemesterDate])
-            ->select(
-                DB::raw('MONTH(tanggal) as bulan'),
-                DB::raw('SUM(skor_diperoleh) as total_skor')
-            )
-            ->groupBy('bulan')
-            ->get()
-            ->keyBy('bulan');
-
-        $monthlyChartData = collect();
-        for ($m = $startMonth; $m <= $endMonth; $m++) {
-            // Hari dalam bulan M
-            $daysInThisMonth = Carbon::createFromDate($currentYear, $m, 1)->daysInMonth;
-            $skorMaksBulanIni = $totalPegawai * $skorMaksimalHarianPerUser * $daysInThisMonth;
+        $dashboardData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () {
+            $today = Carbon::today();
+            $startOfMonth = Carbon::now()->startOfMonth()->format('Y-m-d');
+            $endOfMonth   = Carbon::now()->endOfMonth()->format('Y-m-d');
             
-            $rawSkor = isset($monthlyRaw[$m]) ? (float) $monthlyRaw[$m]->total_skor : 0;
-            $persentase = ($skorMaksBulanIni > 0) ? ($rawSkor / $skorMaksBulanIni) * 100 : 0;
+            $nonAdminIds = User::getNonAdminUserIds();
+            $totalPegawai = count($nonAdminIds);
+            if ($totalPegawai === 0) $totalPegawai = 1; // Prevent div by 0 just in case
 
-            $monthlyChartData->push([
-                'bulan' => $namaBulanId[$m],
-                'skor'  => round($persentase, 1),
-                'maks'  => 100
-            ]);
-        }
+            // Hitung Maksimal Skor (sehari) dinamis berdasarkan jumlah skor maksimal semua habit aktif (standar non-haid)
+            $skorMaksimalHarianPerUser = Habit::allActiveCached()
+                ->where('is_pengganti_haid', false)
+                ->sum('skor_maksimal');
+            if ($skorMaksimalHarianPerUser == 0) $skorMaksimalHarianPerUser = 100; // Fallback
 
-        $skorHariIni = $dailyRaw[$today->format('Y-m-d')]->total_skor ?? 0;
+            $skorMaksimalHarianSeluruhPegawai = $totalPegawai * $skorMaksimalHarianPerUser;
 
-        // ─── TARGET RATIO BULAN INI ─────────────────────────────────────────
-        $settingTargetValue = \App\Models\Setting::get('monthly_target_score');
-        $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
-        
-        $usersSkor = User::whereIn('id', $nonAdminIds)
-            ->withSum(
-                ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
-                'skor_diperoleh'
-            )
-            ->get();
-            
-        $skorMaksimalSebulanUser = $skorMaksimalHarianPerUser * $daysInMonth;
-        $targetHitCount = 0;
-        $targetMissCount = 0;
-        
-        foreach($usersSkor as $u) {
-            $skorUser = (float) $u->habit_logs_sum_skor_diperoleh;
-            $persentase = ($skorMaksimalSebulanUser > 0) ? ($skorUser / $skorMaksimalSebulanUser) * 100 : 0;
-            if ($persentase >= $targetBulanan) {
-                $targetHitCount++;
-            } else {
-                $targetMissCount++;
+            // ─── GRAFIK HARIAN (Bulan Berjalan) ───────────────────────────────
+            $dailyRaw = HabitLog::whereIn('user_id', $nonAdminIds)
+                ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total_skor'))
+                ->groupBy('tanggal')
+                ->orderBy('tanggal', 'asc')
+                ->get()
+                ->keyBy(fn($row) => Carbon::parse($row->tanggal)->format('Y-m-d'));
+
+            $dailyChartData = collect();
+            $daysInMonth = $today->daysInMonth;
+            $startOfMonthCarbon = Carbon::now()->startOfMonth();
+            for ($i = 0; $i < $daysInMonth; $i++) {
+                $date = $startOfMonthCarbon->copy()->addDays($i)->format('Y-m-d');
+                $rawSkor = isset($dailyRaw[$date]) ? (float) $dailyRaw[$date]->total_skor : 0;
+                $persentase = ($skorMaksimalHarianSeluruhPegawai > 0) ? ($rawSkor / $skorMaksimalHarianSeluruhPegawai) * 100 : 0;
+
+                $dailyChartData->push([
+                    'tanggal' => $date,
+                    'skor'    => round($persentase, 1),
+                    'maks'    => 100
+                ]);
             }
-        }
 
-        return Inertia::render('Admin/Dashboard', [
-            'skorHariIni'          => (int) $skorHariIni,
-            'skorMaksimalHariIni'  => $skorMaksimalHarianSeluruhPegawai,
-            'totalPegawai'         => $totalPegawai,
-            'dailyChartData'       => $dailyChartData,
-            'monthlyChartData'     => $monthlyChartData,
-            'semester'             => $isSemester1 ? 'Semester 1' : 'Semester 2',
-            'tahun'                => $currentYear,
-            'targetRatio'          => [
-                'hit' => $targetHitCount,
-                'miss' => $targetMissCount,
-                'target' => $targetBulanan
-            ]
-        ]);
+            // ─── GRAFIK 6 BULANAN (Semester) ────────────────────────────────────
+            $currentMonth = Carbon::now()->month;
+            $currentYear  = Carbon::now()->year;
+            $isSemester1  = $currentMonth <= 6;
+            $startMonth   = $isSemester1 ? 1 : 7;
+            $endMonth     = $isSemester1 ? 6 : 12;
+
+            $namaBulanId = [
+                1  => 'Jan.', 2  => 'Feb.', 3  => 'Mar.',
+                4  => 'Apr.', 5  => 'Mei',   6  => 'Jun.',
+                7  => 'Jul.', 8  => 'Ags.', 9  => 'Sep.',
+                10 => 'Okt.', 11 => 'Nov.', 12 => 'Des.',
+            ];
+
+            $startSemesterDate = Carbon::createFromDate($currentYear, $startMonth, 1)->startOfMonth()->format('Y-m-d');
+            $endSemesterDate = Carbon::createFromDate($currentYear, $endMonth, 1)->endOfMonth()->format('Y-m-d');
+
+            $monthlyRaw = HabitLog::whereIn('user_id', $nonAdminIds)
+                ->whereBetween('tanggal', [$startSemesterDate, $endSemesterDate])
+                ->select(
+                    DB::raw('MONTH(tanggal) as bulan'),
+                    DB::raw('SUM(skor_diperoleh) as total_skor')
+                )
+                ->groupBy('bulan')
+                ->get()
+                ->keyBy('bulan');
+
+            $monthlyChartData = collect();
+            for ($m = $startMonth; $m <= $endMonth; $m++) {
+                // Hari dalam bulan M
+                $daysInThisMonth = Carbon::createFromDate($currentYear, $m, 1)->daysInMonth;
+                $skorMaksBulanIni = $totalPegawai * $skorMaksimalHarianPerUser * $daysInThisMonth;
+                
+                $rawSkor = isset($monthlyRaw[$m]) ? (float) $monthlyRaw[$m]->total_skor : 0;
+                $persentase = ($skorMaksBulanIni > 0) ? ($rawSkor / $skorMaksBulanIni) * 100 : 0;
+
+                $monthlyChartData->push([
+                    'bulan' => $namaBulanId[$m],
+                    'skor'  => round($persentase, 1),
+                    'maks'  => 100
+                ]);
+            }
+
+            $skorHariIni = $dailyRaw[$today->format('Y-m-d')]->total_skor ?? 0;
+
+            // ─── TARGET RATIO BULAN INI ─────────────────────────────────────────
+            $settingTargetValue = \App\Models\Setting::get('monthly_target_score');
+            $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
+            
+            $usersSkor = User::whereIn('id', $nonAdminIds)
+                ->select('id')
+                ->withSum(
+                    ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
+                    'skor_diperoleh'
+                )
+                ->get();
+                
+            $skorMaksimalSebulanUser = $skorMaksimalHarianPerUser * $daysInMonth;
+            $targetHitCount = 0;
+            $targetMissCount = 0;
+            
+            foreach($usersSkor as $u) {
+                $skorUser = (float) $u->habit_logs_sum_skor_diperoleh;
+                $persentase = ($skorMaksimalSebulanUser > 0) ? ($skorUser / $skorMaksimalSebulanUser) * 100 : 0;
+                if ($persentase >= $targetBulanan) {
+                    $targetHitCount++;
+                } else {
+                    $targetMissCount++;
+                }
+            }
+
+            return [
+                'skorHariIni'          => (int) $skorHariIni,
+                'skorMaksimalHariIni'  => $skorMaksimalHarianSeluruhPegawai,
+                'totalPegawai'         => $totalPegawai,
+                'dailyChartData'       => $dailyChartData,
+                'monthlyChartData'     => $monthlyChartData,
+                'semester'             => $isSemester1 ? 'Semester 1' : 'Semester 2',
+                'tahun'                => $currentYear,
+                'targetRatio'          => [
+                    'hit' => $targetHitCount,
+                    'miss' => $targetMissCount,
+                    'target' => $targetBulanan
+                ]
+            ];
+        });
+
+        return Inertia::render('Admin/Dashboard', $dashboardData);
     }
 }

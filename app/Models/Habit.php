@@ -58,8 +58,16 @@ class Habit extends Model
         });
     }
 
+    public static function allCachedById()
+    {
+        return \Illuminate\Support\Facades\Cache::rememberForever('habits_all_by_id', function () {
+            return static::all()->keyBy('id');
+        });
+    }
+
     public static function clearHabitCaches()
     {
         \Illuminate\Support\Facades\Cache::forget('habits_active_all');
+        \Illuminate\Support\Facades\Cache::forget('habits_all_by_id');
     }
 }

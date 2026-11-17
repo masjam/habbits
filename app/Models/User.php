@@ -160,19 +160,27 @@ class User extends Authenticatable
         $dayOfWeek = (int) $targetDate->dayOfWeekIso; // 1 = Senin, ..., 7 = Minggu
 
         // 1. Cek apakah user sedang bertugas Piket aktif di hari ini
-        $piket = $this->dutySchedules()
-            ->where('day_of_week', $dayOfWeek)
-            ->where('is_active', true)
-            ->first();
+        if ($this->relationLoaded('dutySchedules')) {
+            $piket = $this->dutySchedules
+                ->first(fn ($s) => (int)$s->day_of_week === $dayOfWeek && $s->is_active);
+        } else {
+            $piket = $this->dutySchedules()
+                ->where('day_of_week', $dayOfWeek)
+                ->where('is_active', true)
+                ->first();
+        }
 
         $globalTolSetting = Setting::get('presensi_late_tolerance');
         $globalTol = ($globalTolSetting !== null && $globalTolSetting !== '') ? (int)$globalTolSetting : 15;
 
         // 0. Cek apakah ada jadwal khusus (Special Schedule)
-        $specialSchedule = \App\Models\SpecialSchedule::where('is_active', true)
-            ->where('start_date', '<=', $targetDate->format('Y-m-d'))
-            ->where('end_date', '>=', $targetDate->format('Y-m-d'))
-            ->first();
+        $targetDateStr = $targetDate->format('Y-m-d');
+        $specialSchedule = SpecialSchedule::getActiveCached()
+            ->first(function ($s) use ($targetDateStr) {
+                $start = is_string($s->start_date) ? substr($s->start_date, 0, 10) : $s->start_date->format('Y-m-d');
+                $end = is_string($s->end_date) ? substr($s->end_date, 0, 10) : $s->end_date->format('Y-m-d');
+                return $start <= $targetDateStr && $end >= $targetDateStr;
+            });
 
         if ($specialSchedule) {
             return [

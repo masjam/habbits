@@ -64,7 +64,7 @@ class AttendanceReportController extends Controller
             $userQuery->where('name', 'like', "%{$search}%");
         }
 
-        $allUsers = $userQuery->orderBy('name')->get();
+        $allUsers = $userQuery->with('dutySchedules')->orderBy('name')->get();
 
         // Ambil semua data presensi di bulan ini
         $monthlyAttendances = Attendance::with('approver')->whereBetween('date', [$startOfMonth, $endOfMonth])

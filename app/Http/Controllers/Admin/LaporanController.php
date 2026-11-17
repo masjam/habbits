@@ -90,7 +90,7 @@ class LaporanController extends Controller
 
         $paginatedUsers = $usersQuery->paginate($perPage)->withQueryString();
 
-        $divisionsLookup = \App\Models\Division::pluck('target_divisi', 'name')->toArray();
+        $divisionsLookup = \App\Models\Division::getTargetsMap();
 
         $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan, $targetBulanan, $divisionsLookup) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
@@ -202,7 +202,7 @@ class LaporanController extends Controller
             ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
             ->sum('skor_diperoleh');
             
-        $dailyMaxScore = \App\Models\Habit::where('status_aktif', true)
+        $dailyMaxScore = \App\Models\Habit::allActiveCached()
             ->where('is_pengganti_haid', false)
             ->sum('skor_maksimal') ?: 100;
             
@@ -276,9 +276,9 @@ class LaporanController extends Controller
         if ($user->status_kehadiran !== 'Aktif' && $user->target_tidak_aktif) {
             $userTarget = $user->target_tidak_aktif;
         } else {
-            $div = \App\Models\Division::where('name', $user->divisi)->first();
-            if ($div && $div->target_divisi) {
-                $userTarget = $div->target_divisi;
+            $targetsMap = \App\Models\Division::getTargetsMap();
+            if (!empty($user->divisi) && isset($targetsMap[$user->divisi])) {
+                $userTarget = $targetsMap[$user->divisi];
             }
         }
 

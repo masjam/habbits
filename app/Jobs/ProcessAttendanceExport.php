@@ -43,7 +43,7 @@ class ProcessAttendanceExport implements ShouldQueue
             $userQuery->where('divisi', $divisionFilter);
         }
 
-        $allUsers = $userQuery->orderBy('name')->get();
+        $allUsers = $userQuery->with('dutySchedules')->orderBy('name')->get();
 
         if ($type === 'daily') {
             $attendances = \App\Models\Attendance::where('date', $date)
