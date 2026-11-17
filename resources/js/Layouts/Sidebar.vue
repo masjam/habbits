@@ -818,7 +818,19 @@ const isManajemenUserOpen = ref(
                         <span>Log Akses Login</span>
                     </Link>
 
-
+                    <Link
+                        :href="route('admin.system.monitor')"
+                        :class="navLinkClass('admin.system.monitor')"
+                        @click="closeSidebar"
+                    >
+                        <svg
+                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.system.monitor') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M3 9h2m-2 6h2m14-6h2m-2 6h2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
+                        <span>Pemantauan Sistem</span>
+                    </Link>
                 </template>
             </template>
         </nav>

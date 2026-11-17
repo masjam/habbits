@@ -213,6 +213,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:superadmin')->prefix('admin')->group(function () {
         Route::get('/login-logs', [\App\Http\Controllers\Admin\LoginLogController::class, 'index'])->name('admin.login-logs');
         Route::post('/settings/clean-photos', [\App\Http\Controllers\Admin\SettingController::class, 'cleanPhotos'])->name('admin.settings.clean-photos');
+        Route::get('/system-monitor', [\App\Http\Controllers\Admin\SystemMonitorController::class, 'index'])->name('admin.system.monitor');
+        Route::get('/system-monitor/api', [\App\Http\Controllers\Admin\SystemMonitorController::class, 'metrics'])->name('admin.system.monitor.api');
     });
 
     // ─── Maintenance Mode Controls (Khusus Super Admin) ─────────────────────
