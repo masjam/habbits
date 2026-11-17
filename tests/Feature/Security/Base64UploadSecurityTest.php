@@ -18,6 +18,7 @@ class Base64UploadSecurityTest extends TestCase
         parent::setUp();
         $this->seed(RoleSeeder::class);
         Storage::fake('public');
+        Storage::fake('private');
 
         // Set attendance location so check-in passes geofence
         Setting::updateOrCreate(['key' => 'presensi_latitude'], ['value' => '-6.200000']);
@@ -82,7 +83,10 @@ class Base64UploadSecurityTest extends TestCase
         $response->assertRedirect();
 
         // Verify stored file has .png extension derived from verified MIME, not .fake
-        $files = Storage::disk('public')->files('attendances');
+        $files = array_merge(
+            Storage::disk('private')->files('attendances'),
+            Storage::disk('public')->files('attendances')
+        );
         $this->assertNotEmpty($files);
         $this->assertStringEndsWith('.png', $files[0]);
         // Filename should be random and not predictable
