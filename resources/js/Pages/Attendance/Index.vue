@@ -641,7 +641,7 @@ const buildWaMessage = ({ status, date, time_out, notes, hasAttachment }) => {
         `Mohon maaf, Pak Joko, bu Nofi serta teman-teman semua menginformasikan pengajuan ijin tidak masuk berikut:\n\n` +
         `👤 *Nama:* ${userName}\n` +
         userDivisi +
-        `📋 *Jenis:* ${statusLabel}\n` +
+        `📋 *Alasan tidak masuk:* ${statusLabel}\n` +
         `📅 *Tanggal:* ${formattedDate}\n` +
         timeLine +
         `📝 *Keterangan:* ${cleanNotes}\n` +
