@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import IslamicWidget from '@/Components/IslamicWidget.vue'
 import { Head } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Line, Doughnut } from 'vue-chartjs'
 import { useTheme } from '@/Composables/useTheme'
 import {
@@ -21,6 +21,17 @@ import {
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement)
 
 const { activeTheme } = useTheme()
+
+const isLgScreen = ref(typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true)
+
+onMounted(() => {
+    if (typeof window !== 'undefined') {
+        const mq = window.matchMedia('(min-width: 1024px)')
+        const updateScreen = (e) => { isLgScreen.value = e.matches }
+        mq.addEventListener('change', updateScreen)
+        onUnmounted(() => mq.removeEventListener('change', updateScreen))
+    }
+})
 
 const props = defineProps({
     skorHariIni: Number,
@@ -265,7 +276,7 @@ const ratioChartConfig = computed(() => ({
                     </div>
 
                     <!-- Islamic Widget — hanya tampil di desktop (lg ke atas) -->
-                    <div class="hidden lg:block">
+                    <div v-if="isLgScreen" class="hidden lg:block">
                         <IslamicWidget class="h-full" />
                     </div>
                 </div>

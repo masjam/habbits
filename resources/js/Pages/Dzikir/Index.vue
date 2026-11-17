@@ -1077,6 +1077,8 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Amiri+Quran&family=Scheherazade+New:wght@400;700&display=swap');
+
 .font-arabic {
     font-family: 'Scheherazade New', 'Amiri Quran', 'Amiri', 'Traditional Arabic', serif;
     line-height: 2.2;

@@ -3,10 +3,11 @@
 //  Strategi: Cache-first (aset), Network-first (halaman)
 // ============================================================
 
-const CACHE_VERSION   = 'v3';
+const CACHE_VERSION   = 'v4';
 const STATIC_CACHE    = `habit-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE   = `habit-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL     = '/offline.html';
+const MAX_DYNAMIC_ITEMS = 50;
 
 // Aset statis yang di-precache saat install
 const PRECACHE_ASSETS = [
@@ -64,13 +65,50 @@ self.addEventListener('fetch', (e) => {
 
     // Halaman navigasi → Network-first, fallback ke offline.html
     if (request.mode === 'navigate') {
-        e.respondWith(networkFirstWithOfflineFallback(request));
+        e.respondWith(networkFirstWithOfflineFallback(request, url));
         return;
     }
 
     // Lainnya → Network-first, simpan ke dynamic cache
-    e.respondWith(networkFirst(request));
+    e.respondWith(networkFirst(request, url));
 });
+
+// ─── Helper: Trim Cache FIFO ─────────────────────────────────
+async function trimCache(cacheName, maxItems) {
+    try {
+        const cache = await caches.open(cacheName);
+        const keys = await cache.keys();
+        if (keys.length > maxItems) {
+            await cache.delete(keys[0]);
+            return trimCache(cacheName, maxItems);
+        }
+    } catch (e) {
+        // Abaikan error saat trim cache
+    }
+}
+
+// ─── Helper: Check Private Data & Inertia ────────────────────
+function isPrivateOrInertia(request, url) {
+    if (request.headers.get('X-Inertia')) return true;
+
+    const privatePrefixes = [
+        '/dashboard',
+        '/habits',
+        '/presensi',
+        '/attendance',
+        '/admin',
+        '/notifications',
+        '/profile',
+        '/login-logs',
+        '/laporan',
+        '/users',
+        '/settings',
+        '/sanctum',
+        '/api/'
+    ];
+
+    return privatePrefixes.some(prefix => url.pathname.startsWith(prefix));
+}
 
 // ─── Helper: Cache-first ──────────────────────────────────────
 async function cacheFirst(request) {
@@ -90,12 +128,13 @@ async function cacheFirst(request) {
 }
 
 // ─── Helper: Network-first ───────────────────────────────────
-async function networkFirst(request) {
+async function networkFirst(request, url) {
     try {
         const response = await fetch(request);
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && !isPrivateOrInertia(request, url)) {
             const cache = await caches.open(DYNAMIC_CACHE);
             cache.put(request, response.clone());
+            trimCache(DYNAMIC_CACHE, MAX_DYNAMIC_ITEMS);
         }
         return response;
     } catch (err) {
@@ -105,12 +144,13 @@ async function networkFirst(request) {
 }
 
 // ─── Helper: Network-first + Offline Fallback Page ───────────
-async function networkFirstWithOfflineFallback(request) {
+async function networkFirstWithOfflineFallback(request, url) {
     try {
         const response = await fetch(request);
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && !isPrivateOrInertia(request, url)) {
             const cache = await caches.open(DYNAMIC_CACHE);
             cache.put(request, response.clone());
+            trimCache(DYNAMIC_CACHE, MAX_DYNAMIC_ITEMS);
         }
         return response;
     } catch (err) {

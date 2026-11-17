@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import IslamicWidget from '@/Components/IslamicWidget.vue'
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 // Import Chart.js components
 import {
@@ -137,7 +137,16 @@ const yearOptions = computed(() => {
 import { useIslamicData } from '@/Composables/useIslamicData'
 const { dailyHadith } = useIslamicData()
 
+const isXlScreen = ref(typeof window !== 'undefined' ? window.matchMedia('(min-width: 1280px)').matches : true)
+
 onMounted(() => {
+    if (typeof window !== 'undefined') {
+        const mq = window.matchMedia('(min-width: 1280px)')
+        const updateScreen = (e) => { isXlScreen.value = e.matches }
+        mq.addEventListener('change', updateScreen)
+        onUnmounted(() => mq.removeEventListener('change', updateScreen))
+    }
+
     // Tampilkan modal jika ada tanggal terlewat dan sedang melihat data sendiri
     if (!props.isTrackingOther) {
         const todayDay = new Date().getDay();
@@ -789,7 +798,7 @@ const formatTanggal = (dateStr) => {
                 <div class="xl:col-span-1">
                     <div class="space-y-6 xl:sticky xl:top-6">
                         <!-- Islamic Widget (Hidden on Mobile) -->
-                        <div class="hidden xl:block bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
+                        <div v-if="isXlScreen" class="hidden xl:block bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
                             <IslamicWidget class="h-full border-none shadow-none" />
                         </div>
                         
