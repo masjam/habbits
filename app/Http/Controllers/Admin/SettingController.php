@@ -13,7 +13,7 @@ use Inertia\Inertia;
 
 class SettingController extends Controller
 {
-    public function index(AcademicYearService $academicYearService)
+    public function index(Request $request, AcademicYearService $academicYearService)
     {
         $settings = Setting::allCached();
         $divisions = \App\Models\Division::orderBy('name')->pluck('name');
@@ -23,32 +23,26 @@ class SettingController extends Controller
             ->get();
         $academicYearSummary = $academicYearService->getAdminSummary();
 
+        [$photoStats, $cleaningOptions] = $this->getPhotoCleansingData();
+        $user = auth()->user();
+        $isSuperAdmin = $user && ($user->isActualSuperadmin() || $user->hasRole('superadmin'));
+
         return Inertia::render('Admin/Settings/Index', [
             'settings'            => $settings,
             'divisions'           => $divisions,
             'employees'           => $employees,
             'academicYearSummary' => $academicYearSummary,
+            'photoStats'          => $photoStats,
+            'cleaningOptions'     => $cleaningOptions,
+            'isSuperAdmin'        => (bool) $isSuperAdmin,
+            'initialTab'          => $request->query('tab', 'presensi'),
         ]);
     }
 
-    public function hrIndex()
+    public function hrIndex(Request $request)
     {
-        $user = auth()->user();
-        $isSuperAdmin = $user && ($user->isActualSuperadmin() || $user->hasRole('superadmin'));
-
-        if (!$isSuperAdmin) {
-            abort(403, 'Hanya Superadmin yang dapat mengakses halaman Pengaturan HR & Fitur Lanjutan.');
-        }
-
-        $settings = Setting::allCached();
-        [$photoStats, $cleaningOptions] = $this->getPhotoCleansingData();
-
-        return Inertia::render('Admin/Settings/Hr', [
-            'settings'        => $settings,
-            'photoStats'      => $photoStats,
-            'cleaningOptions' => $cleaningOptions,
-            'isSuperAdmin'    => $isSuperAdmin,
-        ]);
+        $tab = $request->query('tab', 'presensi');
+        return redirect()->route('admin.settings', ['tab' => $tab]);
     }
 
     private function getPhotoCleansingData()

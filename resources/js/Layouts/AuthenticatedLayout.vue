@@ -231,7 +231,7 @@ onMounted(() => {
                     </a>
                     <Link
                         v-if="page.props.auth?.simulated_role !== 'user'"
-                        :href="route('admin.settings.hr')"
+                        :href="route('admin.settings', { tab: 'pemeliharaan' })"
                         class="px-2.5 py-1 bg-amber-800/90 hover:bg-amber-900 rounded-lg text-xs font-black text-white transition-colors"
                     >
                         Kelola
