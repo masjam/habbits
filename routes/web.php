@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/storage/attendance/attachments/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'serveAttendanceAttachment'])->where('filename', '[a-zA-Z0-9_\-\.]+');
     Route::get('/storage/attachments/permits/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'servePermitAttachment'])->where('filename', '[a-zA-Z0-9_\-\.]+');
     Route::get('/storage/attendances/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'serveAttendancePhoto'])->where('filename', '[a-zA-Z0-9_\-\.]+');
+    Route::get('/storage/exports/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'serveExport'])->where('filename', '[a-zA-Z0-9_\-\.]+');
     Route::get('/storage/journals/{filename}', [\App\Http\Controllers\System\PrivateMediaController::class, 'serveJournalPhoto'])->where('filename', '[a-zA-Z0-9_\-\.]+');
     
     // Multi Account Routes

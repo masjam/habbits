@@ -95,7 +95,7 @@ class ProcessAttendanceExport implements ShouldQueue
             \Maatwebsite\Excel\Facades\Excel::store(
                 new \App\Exports\AttendanceDailyExport($dailyReportData, $formattedDate),
                 $filePath,
-                'public'
+                'private'
             );
             
             $fileUrl = asset("storage/" . $filePath);
@@ -139,7 +139,7 @@ class ProcessAttendanceExport implements ShouldQueue
             \Maatwebsite\Excel\Facades\Excel::store(
                 new \App\Exports\AttendanceTugasLuarExport($reportData, $formattedMonth),
                 $filePath,
-                'public'
+                'private'
             );
 
             $fileUrl = asset("storage/" . $filePath);
@@ -256,7 +256,7 @@ class ProcessAttendanceExport implements ShouldQueue
         \Maatwebsite\Excel\Facades\Excel::store(
             new \App\Exports\AttendanceMonthlyExport($monthlyReportData, $formattedMonth, $daysInMonth, $currentMonth),
             $filePath,
-            'public'
+            'private'
         );
 
         $fileUrl = asset("storage/" . $filePath);

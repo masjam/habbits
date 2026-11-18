@@ -144,7 +144,7 @@ class ProcessLaporanExport implements ShouldQueue
                 'targetBulanan' => $targetBulanan
             ]);
             
-            \Illuminate\Support\Facades\Storage::disk('public')->put($filePath, $pdf->output());
+            \Illuminate\Support\Facades\Storage::disk('private')->put($filePath, $pdf->output());
             $fileUrl = asset("storage/" . $filePath);
             $this->userToNotify->notify(new \App\Notifications\ExportReadyNotification($fileName, $fileUrl, 'Laporan PDF'));
             return;
@@ -156,7 +156,7 @@ class ProcessLaporanExport implements ShouldQueue
         \Maatwebsite\Excel\Facades\Excel::store(
             new \App\Exports\LaporanExport($leaderboard, $skorMaksimalSebulan, $namaBulan, $targetBulanan),
             $filePath,
-            'public'
+            'private'
         );
 
         $fileUrl = asset("storage/" . $filePath);

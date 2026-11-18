@@ -112,4 +112,31 @@ class PrivateMediaController extends Controller
 
         return $this->streamFile($fullPath);
     }
+
+    /**
+     * Hasil ekspor laporan (xlsx/pdf). Disimpan di disk privat, hanya untuk
+     * peran yang berwenang mengekspor laporan.
+     */
+    public function serveExport(Request $request, string $filename)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401);
+        }
+
+        $isAuthorized = $user->hasAnyRole(['admin', 'superadmin', 'kepala_sekolah', 'kurikulum'])
+            || $user->isActualSuperadmin();
+
+        if (!$isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengunduh laporan ini.');
+        }
+
+        $path = 'exports/' . $filename;
+
+        if (!Storage::disk('private')->exists($path)) {
+            abort(404, 'File laporan tidak ditemukan atau sudah dihapus.');
+        }
+
+        return Storage::disk('private')->download($path, $filename);
+    }
 }
