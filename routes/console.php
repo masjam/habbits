@@ -16,3 +16,25 @@ Schedule::call(function () {
         ->where('created_at', '<', now()->subMonths(3))
         ->delete();
 })->daily();
+
+// Bersihkan job gagal yang berumur lebih dari 30 hari
+Schedule::command('queue:prune-failed --hours=720')->daily();
+
+// Hapus file hasil ekspor (xlsx/pdf) yang berumur lebih dari 7 hari.
+// Mencakup disk lama ('public') maupun disk privat.
+Schedule::call(function () {
+    $cutoff = now()->subDays(7)->timestamp;
+    foreach (['public', 'private'] as $disk) {
+        $storage = \Illuminate\Support\Facades\Storage::disk($disk);
+        foreach ($storage->files('exports') as $file) {
+            if ($storage->lastModified($file) < $cutoff) {
+                $storage->delete($file);
+            }
+        }
+    }
+})->dailyAt('02:30')->name('prune-old-exports');
+
+// Pangkas log login yang berumur lebih dari 6 bulan
+Schedule::call(function () {
+    DB::table('login_logs')->where('created_at', '<', now()->subMonths(6))->delete();
+})->weekly()->name('prune-login-logs');

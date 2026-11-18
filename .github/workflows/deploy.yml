@@ -41,9 +41,46 @@ jobs:
           path: public/build/
           retention-days: 1
 
+  test:
+    name: Test & Security Audit
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, dom, fileinfo, gd, zip, intl, bcmath, curl, pdo_sqlite, sqlite3
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-assets
+          path: public/build/
+
+      - name: Install Composer Dependencies (with dev)
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare Environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Peringatan saja (tidak menggagalkan deploy) agar advisory pihak ketiga
+      # tidak memblokir hotfix. Hapus continue-on-error untuk membuatnya wajib lulus.
+      - name: Composer Security Audit
+        run: composer audit --locked
+        continue-on-error: true
+
+      - name: Run Tests
+        run: php artisan test
+
   deploy:
     name: Deploy to Server
-    needs: build
+    needs: [build, test]
     runs-on: self-hosted
     steps:
       - name: Checkout Code
@@ -68,6 +105,9 @@ jobs:
           --exclude='/node_modules' \
           --exclude='/public/storage' \
           ./ /var/www/habit/
+
+      - name: Backup Database (sebelum migrasi)
+        run: bash scripts/backup-db.sh /var/www/habit/.env "$HOME/habit-backups"
 
       - name: Optimizations & Migrations
         run: |
