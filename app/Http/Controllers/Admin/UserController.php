@@ -153,6 +153,15 @@ class UserController extends Controller
     }
 
     /**
+     * Akun dengan peran istimewa (kepala sekolah / tata usaha) tidak boleh
+     * diambil alih oleh admin biasa: ganti password dan hapus hanya untuk superadmin.
+     */
+    private function isPrivilegedTarget(User $target): bool
+    {
+        return $target->hasAnyRole(['kepala_sekolah', 'tata_usaha', 'admin', 'superadmin']);
+    }
+
+    /**
      * Update user yang ada.
      */
     public function update(Request $request, User $user)
@@ -179,6 +188,11 @@ class UserController extends Controller
             'rfid_uid'           => 'nullable|string|max:255|unique:'.User::class.',rfid_uid,'.$user->id,
             'fingerprint_id'     => 'nullable|string|max:255|unique:'.User::class.',fingerprint_id,'.$user->id,
         ];
+
+        // Admin biasa tidak boleh mengganti password akun istimewa
+        if ($request->filled('password') && !$isSuperadmin && $this->isPrivilegedTarget($user)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengganti password pengguna ini.');
+        }
 
         // Jika form mengirim password (opsional di edit)
         if ($request->filled('password')) {
@@ -258,7 +272,7 @@ class UserController extends Controller
 
         // Keamanan: Admin biasa hanya boleh reset password role user. Superadmin bebas.
         if (!$currentUser->hasRole('superadmin')) {
-            if (!$user->hasRole('user')) {
+            if (!$user->hasRole('user') || $this->isPrivilegedTarget($user)) {
                 abort(403, 'Anda tidak memiliki hak akses untuk mereset password pengguna ini.');
             }
         }
@@ -307,7 +321,7 @@ class UserController extends Controller
         $currentUser = Auth::user();
 
         // Keamanan: Admin biasa hanya boleh menghapus role user. Superadmin bebas.
-        if (!$currentUser->hasRole('superadmin') && !$user->hasRole('user')) {
+        if (!$currentUser->hasRole('superadmin') && (!$user->hasRole('user') || $this->isPrivilegedTarget($user))) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus pengguna ini.');
         }
 

@@ -4,9 +4,9 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [\App\Http\Controllers\System\WelcomeController::class, 'index'])->name('welcome');
-Route::get('/verifikasi-surat/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifySuratKeluar'])->name('public.verifikasi-surat');
-Route::get('/verifikasi-surat/{uuid}/download', [\App\Http\Controllers\System\PublicVerificationController::class, 'downloadSuratKeluar'])->name('public.verifikasi-surat.download');
-Route::get('/verifikasi-notulen/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifyNotulen'])->name('public.verifikasi-notulen');
+Route::get('/verifikasi-surat/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifySuratKeluar'])->middleware('throttle:30,1')->name('public.verifikasi-surat');
+Route::get('/verifikasi-surat/{uuid}/download', [\App\Http\Controllers\System\PublicVerificationController::class, 'downloadSuratKeluar'])->middleware('throttle:30,1')->name('public.verifikasi-surat.download');
+Route::get('/verifikasi-notulen/{uuid}', [\App\Http\Controllers\System\PublicVerificationController::class, 'verifyNotulen'])->middleware('throttle:30,1')->name('public.verifikasi-notulen');
 
 // Authentication Routes
 Route::get('/login', [\App\Http\Controllers\System\AuthController::class, 'showLogin'])->name('login');

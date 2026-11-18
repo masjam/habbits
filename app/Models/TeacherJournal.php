@@ -27,6 +27,17 @@ class TeacherJournal extends Model
         'student_absent',
     ];
 
+    /**
+     * Konten uraian materi ditampilkan dengan v-html di halaman admin, jadi
+     * selalu disanitasi (HTMLPurifier) setiap kali ditulis.
+     */
+    public function setMaterialAttribute($value): void
+    {
+        $this->attributes['material'] = $value === null
+            ? null
+            : \Stevebauman\Purify\Facades\Purify::clean((string) $value);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
