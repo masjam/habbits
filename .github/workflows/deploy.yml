@@ -95,16 +95,26 @@ jobs:
       - name: Install Composer Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
+      - name: Prepare Web Directory Permissions
+        run: |
+          if sudo -n true 2>/dev/null; then
+            sudo chown -R "$USER:www-data" /var/www/habit
+            sudo chmod -R 775 /var/www/habit
+          fi
+
       - name: Deploy to Web Directory
         run: |
           rsync -avz --delete \
-          --exclude='.git' \
-          --exclude='.github' \
-          --exclude='.env' \
-          --exclude='/storage' \
-          --exclude='/node_modules' \
-          --exclude='/public/storage' \
-          ./ /var/www/habit/
+            --no-perms --no-owner --no-group \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.env' \
+            --exclude='/storage' \
+            --exclude='/node_modules' \
+            --exclude='/public/storage' \
+            --exclude='/bootstrap/cache/*.php' \
+            --exclude='/.phpunit.result.cache' \
+            ./ /var/www/habit/
 
       - name: Backup Database (sebelum migrasi)
         run: bash scripts/backup-db.sh /var/www/habit/.env "$HOME/habit-backups"
@@ -120,3 +130,7 @@ jobs:
           php artisan event:cache
           php artisan storage:link
           php artisan queue:restart
+          if sudo -n true 2>/dev/null; then
+            sudo chown -R www-data:www-data /var/www/habit/storage /var/www/habit/bootstrap/cache
+            sudo chmod -R 775 /var/www/habit/storage /var/www/habit/bootstrap/cache
+          fi
