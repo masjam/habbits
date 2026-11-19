@@ -1,2 +1,6 @@
 *
 !.gitignore
+!installed-fonts.json
+!amiri_*
+!Times-*
+
