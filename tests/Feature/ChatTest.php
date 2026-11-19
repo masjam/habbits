@@ -115,7 +115,7 @@ class ChatTest extends TestCase
 
     public function test_user_can_send_file_attachment(): void
     {
-        Storage::fake('public');
+        Storage::fake('private');
 
         $conv = ChatConversation::findOrCreateDirect($this->userA->id, $this->userB->id);
         $file = UploadedFile::fake()->image('laporan.png', 200, 200);
@@ -227,5 +227,89 @@ class ChatTest extends TestCase
         $responseAfter = $this->actingAs($this->userA)->getJson(route('chat.unread-total'));
         $responseAfter->assertStatus(200);
         $responseAfter->assertJsonPath('unread_total', 0);
+    }
+
+    public function test_unauthorized_user_cannot_mark_others_chat_as_read_and_cannot_auto_join(): void
+    {
+        $conv = ChatConversation::findOrCreateDirect($this->userA->id, $this->userB->id);
+
+        // UserC attempts to mark conversation between A & B as read
+        $response = $this->actingAs($this->userC)->postJson(route('chat.read', $conv->id));
+        $response->assertStatus(403);
+
+        // UserC must NOT be added to participants
+        $this->assertFalse($conv->fresh()->users->contains($this->userC->id));
+    }
+
+    public function test_user_cannot_access_channel_of_different_division(): void
+    {
+        $tuDivision = \App\Models\Division::create(['name' => 'Tata Usaha']);
+        $tuChannel = ChatConversation::create([
+            'type' => 'channel',
+            'name' => 'Divisi Tata Usaha',
+            'division_id' => $tuDivision->id,
+        ]);
+        $tuChannel->users()->attach($this->userB->id);
+
+        // UserA (Kurikulum) cannot read or poll messages in TU channel
+        $responseA = $this->actingAs($this->userA)->getJson(route('chat.messages', $tuChannel->id));
+        $responseA->assertStatus(403);
+
+        // UserB (Tata Usaha) can read messages
+        $responseB = $this->actingAs($this->userB)->getJson(route('chat.messages', $tuChannel->id));
+        $responseB->assertStatus(200);
+    }
+
+    public function test_private_chat_attachment_requires_conversation_membership(): void
+    {
+        Storage::fake('private');
+
+        $conv = ChatConversation::findOrCreateDirect($this->userA->id, $this->userB->id);
+        $file = UploadedFile::fake()->image('rahasia.png', 100, 100);
+
+        $sendResponse = $this->actingAs($this->userA)->post(route('chat.send', $conv->id), [
+            'message' => 'Dokumen privat',
+            'attachment' => $file,
+        ]);
+        $sendResponse->assertStatus(201);
+
+        $msgId = $sendResponse->json('message.id');
+        $msg = ChatMessage::findOrFail($msgId);
+
+        // UserC (outside conversation) must be forbidden
+        $responseC = $this->actingAs($this->userC)->get(route('chat.attachment', $msg->id));
+        $responseC->assertStatus(403);
+
+        // UserB (participant) can view/download
+        $responseB = $this->actingAs($this->userB)->get(route('chat.attachment', $msg->id));
+        $responseB->assertStatus(200);
+    }
+
+    public function test_contact_list_does_not_expose_nip(): void
+    {
+        $this->userB->update(['nip' => '198501012010011001']);
+
+        $response = $this->actingAs($this->userA)->get(route('chat.index'));
+        $response->assertStatus(200);
+
+        $response->assertInertia(function (Assert $page) {
+            $page->has('contacts', function (Assert $contacts) {
+                $contacts->each(fn (Assert $contact) => $contact->missing('nip')->etc());
+            });
+        });
+    }
+
+    public function test_group_chat_rejects_exceeding_member_limit(): void
+    {
+        // Try to create group with 51 members
+        $memberIds = range(1, 51);
+
+        $response = $this->actingAs($this->userA)->postJson(route('chat.group.create'), [
+            'name' => 'Grup Raksasa',
+            'member_ids' => $memberIds,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('member_ids');
     }
 }

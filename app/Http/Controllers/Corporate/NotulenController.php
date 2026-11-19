@@ -94,7 +94,7 @@ class NotulenController extends Controller
         $dokPaths = [];
         if ($request->hasFile('dokumentasi')) {
             foreach ($request->file('dokumentasi') as $file) {
-                $path = $file->store('notulen', 'public');
+                $path = $file->store('notulen', 'private');
                 $dokPaths[] = $path;
             }
         }
@@ -127,7 +127,11 @@ class NotulenController extends Controller
 
         if ($notulen->dokumentasi) {
             foreach ($notulen->dokumentasi as $path) {
-                Storage::disk('public')->delete($path);
+                if (Storage::disk('private')->exists($path)) {
+                    Storage::disk('private')->delete($path);
+                } elseif (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
             }
         }
         
@@ -141,15 +145,17 @@ class NotulenController extends Controller
         $userName = auth()->user()->name;
         $userId = auth()->id();
 
-        // Cek apakah user ada di relasi pivot
-        $isPeserta = $notulen->pesertas()->where('user_id', $userId)->exists();
-        
-        if ($isPeserta) {
+        // 1. Cek apakah user ada di relasi pivot pesertas
+        $isPesertaPivot = $notulen->pesertas()->where('user_id', $userId)->exists();
+        if ($isPesertaPivot) {
             $notulen->pesertas()->updateExistingPivot($userId, ['is_hadir' => true]);
             return redirect()->back()->with('success', 'Anda berhasil menandai kehadiran pada rapat ini.');
-        } else {
-            // Jika tidak ada di pivot, anggap sebagai legacy / fallback teks
-            $hadirList = $notulen->daftar_hadir ? explode(', ', $notulen->daftar_hadir) : [];
+        }
+
+        // 2. Jalur fallback data lama: pastikan nama user memang ada di daftar peserta rapat awal
+        $pesertaList = $notulen->peserta_rapat ? array_map('trim', explode(',', $notulen->peserta_rapat)) : [];
+        if (in_array($userName, $pesertaList)) {
+            $hadirList = $notulen->daftar_hadir ? array_map('trim', explode(',', $notulen->daftar_hadir)) : [];
             if (!in_array($userName, $hadirList)) {
                 $hadirList[] = $userName;
                 $notulen->update([
@@ -157,9 +163,10 @@ class NotulenController extends Controller
                 ]);
                 return redirect()->back()->with('success', 'Anda berhasil menandai kehadiran pada rapat ini.');
             }
+            return redirect()->back()->with('info', 'Anda sudah tercatat hadir.');
         }
 
-        return redirect()->back()->with('info', 'Anda sudah tercatat hadir.');
+        abort(403, 'Anda bukan peserta dalam rapat ini.');
     }
 
     public function show(Notulen $notulen)
@@ -237,7 +244,7 @@ class NotulenController extends Controller
         $dokPaths = $notulen->dokumentasi ?? [];
         if ($request->hasFile('dokumentasi')) {
             foreach ($request->file('dokumentasi') as $file) {
-                $path = $file->store('notulen', 'public');
+                $path = $file->store('notulen', 'private');
                 $dokPaths[] = $path;
             }
         }
@@ -285,5 +292,41 @@ class NotulenController extends Controller
         SendNotulenApprovalNotification::dispatch($notulen);
         
         return redirect()->back()->with('success', 'Notulen berhasil disetujui.');
+    }
+
+    /**
+     * Unduh atau lihat berkas dokumentasi notulen dengan verifikasi hak akses.
+     */
+    public function serveDokumentasi(Request $request, Notulen $notulen, string $filename)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(401);
+        }
+
+        $isAuthorized = $user->hasAnyRole(['admin', 'superadmin', 'kepala_sekolah'])
+            || (method_exists($user, 'isActualSuperadmin') && $user->isActualSuperadmin())
+            || $notulen->user_id === $user->id
+            || $notulen->pesertas()->where('user_id', $user->id)->exists()
+            || in_array($user->name, array_map('trim', explode(',', (string) $notulen->peserta_rapat)));
+
+        if (!$isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat dokumentasi rapat ini.');
+        }
+
+        if (str_contains($filename, '..')) {
+            abort(400, 'Invalid path');
+        }
+
+        $fullPath = 'notulen/' . $filename;
+        $disk = Storage::disk('private')->exists($fullPath)
+            ? 'private'
+            : (Storage::disk('public')->exists($fullPath) ? 'public' : null);
+
+        if (!$disk) {
+            abort(404, 'Dokumentasi tidak ditemukan.');
+        }
+
+        return Storage::disk($disk)->response($fullPath);
     }
 }

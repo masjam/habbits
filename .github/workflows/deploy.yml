@@ -99,7 +99,10 @@ jobs:
         run: |
           if sudo -n true 2>/dev/null; then
             sudo chown -R "$USER:www-data" /var/www/habit
-            sudo chmod -R 775 /var/www/habit
+            sudo find /var/www/habit -type d -exec chmod 755 {} +
+            sudo find /var/www/habit -type f -exec chmod 644 {} +
+            sudo chmod 640 /var/www/habit/.env 2>/dev/null || true
+            sudo chmod -R 775 /var/www/habit/storage /var/www/habit/bootstrap/cache
           fi
 
       - name: Deploy to Web Directory
@@ -133,4 +136,5 @@ jobs:
           if sudo -n true 2>/dev/null; then
             sudo chown -R www-data:www-data /var/www/habit/storage /var/www/habit/bootstrap/cache
             sudo chmod -R 775 /var/www/habit/storage /var/www/habit/bootstrap/cache
+            sudo chmod 640 /var/www/habit/.env 2>/dev/null || true
           fi

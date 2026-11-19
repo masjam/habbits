@@ -97,8 +97,7 @@ const filteredContacts = computed(() => {
         if (!q) return true
         return (
             (contact.name && contact.name.toLowerCase().includes(q)) ||
-            (contact.divisi && contact.divisi.toLowerCase().includes(q)) ||
-            (contact.nip && contact.nip.toLowerCase().includes(q))
+            (contact.divisi && contact.divisi.toLowerCase().includes(q))
         )
     })
 })
@@ -368,28 +367,47 @@ const pollConversations = async () => {
     }
 }
 
+const startPolling = () => {
+    stopPolling()
+    if (!document.hidden) {
+        // Polling pesan setiap 6 detik saat tab aktif
+        messagePollTimer = setInterval(pollNewMessages, 6000)
+        // Polling daftar percakapan setiap 15 detik saat tab aktif
+        conversationPollTimer = setInterval(pollConversations, 15000)
+    }
+}
+
+const stopPolling = () => {
+    if (messagePollTimer) {
+        clearInterval(messagePollTimer)
+        messagePollTimer = null
+    }
+    if (conversationPollTimer) {
+        clearInterval(conversationPollTimer)
+        conversationPollTimer = null
+    }
+}
+
 const handleVisibilityChange = () => {
     isDocumentVisible = !document.hidden
     if (isDocumentVisible) {
         pollNewMessages()
         pollConversations()
+        startPolling()
+    } else {
+        stopPolling()
     }
 }
 
 onMounted(() => {
     scrollToBottom('auto')
     document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    // Message poll every 3.5s
-    messagePollTimer = setInterval(pollNewMessages, 3500)
-    // Conversation list poll every 7s
-    conversationPollTimer = setInterval(pollConversations, 7000)
+    startPolling()
 })
 
 onUnmounted(() => {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
-    if (messagePollTimer) clearInterval(messagePollTimer)
-    if (conversationPollTimer) clearInterval(conversationPollTimer)
+    stopPolling()
 })
 </script>
 
@@ -977,7 +995,7 @@ onUnmounted(() => {
                         </div>
                         <div class="flex-1 min-w-0">
                             <h4 class="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{{ contact.name }}</h4>
-                            <p class="text-[11px] text-slate-500 truncate">{{ contact.divisi || 'Pegawai' }} {{ contact.nip ? '• ' + contact.nip : '' }}</p>
+                            <p class="text-[11px] text-slate-500 truncate">{{ contact.divisi || 'Pegawai' }}</p>
                         </div>
                         <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

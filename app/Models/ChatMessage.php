@@ -42,6 +42,6 @@ class ChatMessage extends Model
             return null;
         }
 
-        return asset('storage/' . $this->attachment_path);
+        return route('chat.attachment', $this->id);
     }
 }

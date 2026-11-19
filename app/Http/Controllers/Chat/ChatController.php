@@ -51,9 +51,9 @@ class ChatController extends Controller
             }
         }
 
-        // Contacts list for starting new direct chat
+        // Contacts list for starting new direct chat (tanpa membocorkan NIP)
         $contacts = User::whereNull('deleted_at')
-            ->select(['id', 'name', 'email', 'avatar', 'gender', 'divisi', 'nip'])
+            ->select(['id', 'name', 'email', 'avatar', 'gender', 'divisi'])
             ->orderBy('name')
             ->get()
             ->map(fn($c) => [
@@ -62,7 +62,6 @@ class ChatController extends Controller
                 'avatar' => $c->avatar ? (str_starts_with($c->avatar, 'http') ? $c->avatar : asset('storage/' . $c->avatar)) : null,
                 'gender' => $c->gender,
                 'divisi' => $c->divisi,
-                'nip' => $c->nip,
             ]);
 
         $divisions = Division::allCached()->map(fn($d) => [
@@ -108,7 +107,7 @@ class ChatController extends Controller
             ->orderBy('id', 'asc');
 
         if ($afterId) {
-            $query->where('id', '>', (int) $afterId);
+            $query->where('id', '>', (int) $afterId)->limit(100);
         } else {
             $query->limit(50);
         }
@@ -164,7 +163,7 @@ class ChatController extends Controller
                 $attachmentType = 'file';
             }
 
-            $attachmentPath = $file->store('chat_attachments', 'public');
+            $attachmentPath = $file->store('chat_attachments', 'private');
         }
 
         $message = ChatMessage::create([
@@ -214,7 +213,7 @@ class ChatController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
-            'member_ids' => 'required|array|min:1',
+            'member_ids' => 'required|array|min:1|max:50',
             'member_ids.*' => 'exists:users,id',
         ]);
 
@@ -244,9 +243,43 @@ class ChatController extends Controller
     public function markAsRead(Request $request, ChatConversation $conversation): JsonResponse
     {
         $user = $request->user();
+        if (!$this->userCanAccess($user, $conversation)) {
+            return response()->json(['error' => 'Akses ditolak'], 403);
+        }
+
         $this->markConversationAsRead($user, $conversation);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Download or stream private chat attachment with authorization check.
+     */
+    public function attachment(Request $request, ChatMessage $message)
+    {
+        $user = $request->user();
+        if (!$this->userCanAccess($user, $message->conversation)) {
+            abort(403, 'Akses lampiran ditolak.');
+        }
+
+        if (!$message->attachment_path) {
+            abort(404, 'Lampiran tidak ditemukan.');
+        }
+
+        $path = $message->attachment_path;
+        if (str_contains($path, '..')) {
+            abort(400, 'Invalid path');
+        }
+
+        $disk = Storage::disk('private')->exists($path)
+            ? 'private'
+            : (Storage::disk('public')->exists($path) ? 'public' : null);
+
+        if (!$disk) {
+            abort(404, 'File lampiran tidak ditemukan.');
+        }
+
+        return Storage::disk($disk)->response($path, $message->attachment_name);
     }
 
     /**
@@ -272,7 +305,25 @@ class ChatController extends Controller
     private function userCanAccess(User $user, ChatConversation $conversation): bool
     {
         if ($conversation->type === 'channel') {
-            return true;
+            // Ruang umum publik terbuka untuk semua pengguna aktif
+            if ($conversation->division_id === null && $conversation->name === 'Ruang Umum') {
+                return true;
+            }
+
+            // Superadmin & Admin dapat mengakses kanal untuk keperluan moderasi/bantuan
+            if ($user->hasAnyRole(['superadmin', 'admin']) || (method_exists($user, 'isActualSuperadmin') && $user->isActualSuperadmin())) {
+                return true;
+            }
+
+            // Kanal divisi dibatasi hanya untuk anggota divisi yang bersangkutan
+            if ($conversation->division_id !== null) {
+                $divName = $conversation->division?->name;
+                if ($divName && trim((string) $user->divisi) === trim((string) $divName)) {
+                    return true;
+                }
+            }
+
+            return $conversation->users()->where('users.id', $user->id)->exists();
         }
 
         return $conversation->users()->where('users.id', $user->id)->exists();
@@ -411,18 +462,30 @@ class ChatController extends Controller
 
     private function markConversationAsRead(User $user, ChatConversation $conversation): void
     {
-        $user->chatConversations()->syncWithoutDetaching([
-            $conversation->id => ['last_read_at' => now()],
-        ]);
+        // Hanya update pivot jika user memang sudah terdaftar sebagai anggota percakapan
+        if ($conversation->users()->where('users.id', $user->id)->exists()) {
+            $conversation->users()->updateExistingPivot($user->id, [
+                'last_read_at' => now(),
+            ]);
+        }
     }
 
     private function notifyParticipants(ChatConversation $conversation, ChatMessage $message, User $sender): void
     {
+        // Kanal umum publik tidak memicu WebPush massal ke seluruh pengguna
+        if ($conversation->type === 'channel' && $conversation->division_id === null) {
+            return;
+        }
+
         try {
             $participants = $conversation->users()
                 ->where('users.id', '!=', $sender->id)
                 ->wherePivot('is_muted', false)
                 ->get();
+
+            if ($participants->isEmpty()) {
+                return;
+            }
 
             $title = $sender->name;
             if ($conversation->type !== 'direct') {
@@ -435,14 +498,20 @@ class ChatController extends Controller
 
             $chatUrl = route('chat.index', ['conversation' => $conversation->id]);
 
-            foreach ($participants as $participant) {
-                // Check if user has push subscriptions or notification settings
-                $participant->notify(new GenericWebPushNotification(
-                    title: $title,
-                    body: $body,
-                    url: $chatUrl,
-                ));
-            }
+            // Kirim WebPush secara async setelah response dikirimkan ke client agar tidak memblokir request
+            dispatch(function () use ($participants, $title, $body, $chatUrl) {
+                foreach ($participants as $participant) {
+                    try {
+                        $participant->notify(new GenericWebPushNotification(
+                            title: $title,
+                            body: $body,
+                            url: $chatUrl,
+                        ));
+                    } catch (\Throwable $inner) {
+                        // ignore individual push error
+                    }
+                }
+            })->afterResponse();
         } catch (\Throwable $e) {
             Log::warning('Gagal mengirim WebPush Chat: ' . $e->getMessage());
         }

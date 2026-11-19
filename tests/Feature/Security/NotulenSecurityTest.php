@@ -227,4 +227,43 @@ class NotulenSecurityTest extends TestCase
         $this->assertStringContainsString('Safe bold', $saved->isi_pembahasan);
         $this->assertStringContainsString('<strong>Safe bold</strong>', $saved->isi_pembahasan);
     }
+
+    public function test_unauthorized_user_cannot_mark_hadir_if_not_peserta()
+    {
+        $notulen = Notulen::create([
+            'user_id' => $this->creator->id,
+            'judul_rapat' => 'Rapat Terbatas',
+            'jenis_rapat' => 'Koordinasi',
+            'tanggal_waktu' => now()->format('Y-m-d H:i:s'),
+            'pimpinan_rapat' => $this->pimpinan->name,
+            'lokasi' => 'Ruang Guru',
+            'isi_pembahasan' => 'Pembahasan internal',
+            'ttd_notulis' => $this->validBase64Png(),
+        ]);
+
+        // otherUser is not a participant (not in pesertas pivot and not in peserta_rapat)
+        $response = $this->actingAs($this->otherUser)->post(route('notulen.hadir', $notulen->id));
+        $response->assertStatus(403);
+    }
+
+    public function test_authorized_peserta_can_mark_hadir()
+    {
+        $notulen = Notulen::create([
+            'user_id' => $this->creator->id,
+            'judul_rapat' => 'Rapat Terbuka',
+            'jenis_rapat' => 'Koordinasi',
+            'tanggal_waktu' => now()->format('Y-m-d H:i:s'),
+            'pimpinan_rapat' => $this->pimpinan->name,
+            'lokasi' => 'Ruang Guru',
+            'isi_pembahasan' => 'Pembahasan terbuka',
+            'ttd_notulis' => $this->validBase64Png(),
+        ]);
+
+        $notulen->pesertas()->attach($this->otherUser->id, ['is_hadir' => false]);
+
+        $response = $this->actingAs($this->otherUser)->post(route('notulen.hadir', $notulen->id));
+        $response->assertSessionHas('success');
+
+        $this->assertTrue((bool) $notulen->pesertas()->where('user_id', $this->otherUser->id)->first()->pivot->is_hadir);
+    }
 }
