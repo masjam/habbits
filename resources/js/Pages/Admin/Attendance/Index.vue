@@ -2,6 +2,9 @@
 import { ref, computed, watch } from 'vue'
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { useConfirm } from '@/Composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 const page = usePage()
 
@@ -206,11 +209,17 @@ const approvalForm = useForm({
     rejection_note: '',
 })
 
-const handleQuickApprove = (item) => {
+const handleQuickApprove = async (item) => {
     const attId = item.attendance_id || item.id || item.record?.id || item.record?.attendance_id
     if (!attId) return
     const userName = item.name || item.userName || 'pegawai ini'
-    if (!confirm(`Setujui permohonan izin/kehadiran untuk ${userName}?`)) return
+    const ok = await confirm({
+        title: 'Persetujuan Presensi / Izin',
+        message: `Setujui permohonan izin/kehadiran untuk ${userName}?`,
+        confirmText: 'Ya, Setujui',
+        type: 'primary',
+    })
+    if (!ok) return
 
     router.post(route('admin.attendance.approval'), {
         attendance_id: attId,
@@ -330,13 +339,18 @@ const submitEditAttendance = () => {
     })
 }
 
-const deleteAttendanceRecord = () => {
+const deleteAttendanceRecord = async () => {
     if (!editForm.id) return
     const name = selectedDetailModal.value?.userName || 'pegawai'
     const date = selectedDetailModal.value?.date || ''
-    if (!confirm(`Hapus data presensi ${name} pada tanggal ${date}? Tindakan ini tidak dapat dibatalkan.`)) {
-        return
-    }
+    const ok = await confirm({
+        title: 'Hapus Data Presensi',
+        message: `Hapus data presensi ${name} pada tanggal ${date}? Tindakan ini tidak dapat dibatalkan.`,
+        confirmText: 'Hapus Presensi',
+        type: 'danger',
+    })
+    if (!ok) return
+
     isDeletingAttendance.value = true
     router.delete(route('admin.attendance.delete-record', editForm.id), {
         preserveScroll: true,

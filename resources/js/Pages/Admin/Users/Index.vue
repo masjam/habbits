@@ -2,6 +2,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, Link, useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import { useConfirm } from '@/Composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 const props = defineProps({
     users: Object,
@@ -191,12 +194,18 @@ const assignBadge = (userId) => {
     })
 }
 
-const removeBadge = (userId, badgeId) => {
-    if(confirm('Yakin ingin menarik lencana ini?')) {
-        router.delete(route('admin.users.badges.remove', { user: userId, badge_id: badgeId }), {
-            preserveScroll: true
-        })
-    }
+const removeBadge = async (userId, badgeId) => {
+    const ok = await confirm({
+        title: 'Tarik Lencana',
+        message: 'Apakah Anda yakin ingin menarik lencana ini dari pengguna?',
+        confirmText: 'Ya, Tarik Lencana',
+        type: 'warning',
+    })
+    if (!ok) return
+
+    router.delete(route('admin.users.badges.remove', { user: userId, badge_id: badgeId }), {
+        preserveScroll: true
+    })
 }
 
 // Security Check helper
@@ -206,12 +215,18 @@ const canResetPassword = (user) => {
     return (user.roles.includes('user') || user.roles.includes('kurikulum')) && !user.roles.includes('superadmin') && !user.roles.includes('admin')
 }
 
-const deleteUser = (user) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus pengguna ${user.name}?`)) {
-        router.delete(route('admin.users.destroy', user.id), {
-            preserveScroll: true,
-        })
-    }
+const deleteUser = async (user) => {
+    const ok = await confirm({
+        title: 'Hapus Pengguna',
+        message: `Apakah Anda yakin ingin menghapus pengguna "${user.name}"? Tindakan ini akan menonaktifkan akun.`,
+        confirmText: 'Hapus Pengguna',
+        type: 'danger',
+    })
+    if (!ok) return
+
+    router.delete(route('admin.users.destroy', user.id), {
+        preserveScroll: true,
+    })
 }
 
 const canDeleteUser = (user) => {

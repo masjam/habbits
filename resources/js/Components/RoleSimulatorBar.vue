@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { usePage, router } from '@inertiajs/vue3'
+import { useConfirm } from '@/Composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 const page = usePage()
 
@@ -28,8 +31,15 @@ const switchRole = (targetRole) => {
     })
 }
 
-const toggleMaintenance = () => {
-    if (!confirm('Apakah Anda yakin ingin mengubah status mode maintenance?')) return
+const toggleMaintenance = async () => {
+    const ok = await confirm({
+        title: 'Ubah Status Maintenance',
+        message: 'Apakah Anda yakin ingin mengubah status mode maintenance sistem?',
+        confirmText: 'Ya, Ubah Status',
+        type: 'warning',
+    })
+    if (!ok) return
+
     router.post(route('admin.maintenance.toggle'), {}, {
         preserveScroll: true
     })

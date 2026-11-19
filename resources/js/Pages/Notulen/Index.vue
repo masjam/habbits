@@ -1,8 +1,12 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import Pagination from '@/Components/UI/Pagination.vue'
 import { Head, router, Link, usePage } from '@inertiajs/vue3'
 import { ref, watch, computed, nextTick } from 'vue'
+import { useConfirm } from '@/Composables/useConfirm'
 import SignaturePad from 'signature_pad'
+
+const { confirm } = useConfirm()
 
 const page = usePage()
 const currentUser = computed(() => page.props.auth.user)
@@ -28,8 +32,14 @@ watch(search, (value) => {
     })
 })
 
-const deleteNotulen = (id) => {
-    if (confirm('Apakah Anda yakin ingin menghapus notulen ini?')) {
+const deleteNotulen = async (id) => {
+    const ok = await confirm({
+        title: 'Hapus Notulen',
+        message: 'Apakah Anda yakin ingin menghapus notulen ini? Tindakan ini tidak dapat dibatalkan.',
+        confirmText: 'Hapus Notulen',
+        type: 'danger',
+    })
+    if (ok) {
         router.delete(route('notulen.destroy', id), {
             preserveScroll: true
         })
@@ -80,8 +90,14 @@ const submitApproval = () => {
     })
 }
 
-const markHadir = (id) => {
-    if (confirm('Anda ingin menandai kehadiran di rapat ini?')) {
+const markHadir = async (id) => {
+    const ok = await confirm({
+        title: 'Tandai Kehadiran',
+        message: 'Apakah Anda ingin menandai kehadiran Anda pada rapat ini?',
+        confirmText: 'Ya, Tandai Hadir',
+        type: 'primary',
+    })
+    if (ok) {
         router.post(route('notulen.hadir', id), {}, {
             preserveScroll: true
         })
@@ -232,12 +248,14 @@ const hasUserAttended = (notulen) => {
             </div>
             
             
-            <!-- Pagination (if any) -->
-            <div v-if="notulens.links && notulens.links.length > 3" class="mt-6 flex justify-center">
-                <div class="inline-flex bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-1">
-                    <Link v-for="(link, k) in notulens.links" :key="k" :href="link.url || '#'" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors" :class="{'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400': link.active, 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700': !link.active, 'opacity-50 cursor-not-allowed': !link.url}" v-html="link.label"></Link>
-                </div>
-            </div>
+            <!-- Pagination -->
+            <Pagination
+                class="mt-6"
+                :links="notulens.links"
+                :from="notulens.from"
+                :to="notulens.to"
+                :total="notulens.total"
+            />
 
             <!-- Approval Signature Modal -->
             <div v-if="showApprovalModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

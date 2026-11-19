@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { usePage, Link, router } from '@inertiajs/vue3'
 import { usePWA } from '@/Composables/usePWA'
+import { useToast } from '@/Composables/useToast'
 import Sidebar from '@/Layouts/Sidebar.vue'
 import Topbar from '@/Layouts/Topbar.vue'
 import RoleSimulatorBar from '@/Components/RoleSimulatorBar.vue'
+import ToastContainer from '@/Components/UI/ToastContainer.vue'
+import ConfirmDialog from '@/Components/UI/ConfirmDialog.vue'
 
 const resetRole = () => {
     router.post(route('admin.maintenance.switch-role'), {
@@ -65,6 +68,17 @@ const dismissPushBanner = () => {
         localStorage.setItem('habit_push_banner_dismissed', '1')
     }
 }
+
+// ─── Global Flash Messages to Toast ──────────────────────────────────────────
+const toast = useToast()
+watch(() => page.props.flash, (flash) => {
+    if (!flash) return
+    if (flash.success) toast.success(flash.success)
+    if (flash.error) toast.error(flash.error)
+    if (flash.warning) toast.warning(flash.warning)
+    if (flash.info) toast.info(flash.info)
+    if (flash.message) toast.info(flash.message)
+}, { immediate: true, deep: true })
 
 onMounted(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -257,5 +271,9 @@ onMounted(() => {
 
         <!-- ═══ FLOATING ROLE SIMULATOR BAR (KHUSUS SUPERADMIN DI MODE MAINTENANCE) ═══ -->
         <RoleSimulatorBar />
+
+        <!-- ═══ GLOBAL TOAST & CONFIRM DIALOG ═══ -->
+        <ToastContainer />
+        <ConfirmDialog />
     </div>
 </template>
