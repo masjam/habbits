@@ -224,6 +224,21 @@ const isManajemenUserOpen = ref(
                 </span>
             </Link>
 
+            <!-- Chat Pegawai — Semua Role -->
+            <Link
+                :href="route('chat.index')"
+                :class="navLinkClass('chat.*')"
+                @click="closeSidebar"
+            >
+                <svg
+                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('chat.*') ? 'text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-emerald-500']"
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span class="flex-1">Chat Pegawai</span>
+            </Link>
+
             <!-- Notulen Rapat — Semua Role -->
             <Link
                 :href="route('notulen.index')"

@@ -984,7 +984,7 @@ onMounted(() => {
     }
 
     watch(activeTab, (newTab) => {
-        if (newTab === 'hadis' && !hadisDetail.value && !loadingHadis.value) {
+        if (newTab === 'hadis' && !hadisData.value && !loadingHadis.value) {
             fetchHadis(1)
         }
     })

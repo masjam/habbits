@@ -347,6 +347,18 @@ class User extends Authenticatable
     {
         return $this->hasMany(Disposisi::class, 'penerima_id');
     }
+
+    public function chatConversations(): BelongsToMany
+    {
+        return $this->belongsToMany(ChatConversation::class, 'chat_conversation_user', 'user_id', 'conversation_id')
+            ->withPivot(['last_read_at', 'is_muted'])
+            ->withTimestamps();
+    }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class, 'user_id');
+    }
 }
 
 

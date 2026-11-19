@@ -120,6 +120,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/notulen/{notulen}/approve', [\App\Http\Controllers\Corporate\NotulenController::class, 'approve'])->name('notulen.approve');
     Route::delete('/notulen/{notulen}', [\App\Http\Controllers\Corporate\NotulenController::class, 'destroy'])->name('notulen.destroy');
 
+    // ─── Fitur Chat Pegawai ───────────────────────────────────────────
+    Route::get('/chat', [\App\Http\Controllers\Chat\ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/conversations', [\App\Http\Controllers\Chat\ChatController::class, 'conversations'])->name('chat.conversations');
+    Route::get('/chat/unread-count', [\App\Http\Controllers\Chat\ChatController::class, 'unreadTotal'])->name('chat.unread-total');
+    Route::post('/chat/direct/{targetUser}', [\App\Http\Controllers\Chat\ChatController::class, 'startDirect'])->name('chat.direct');
+    Route::post('/chat/group', [\App\Http\Controllers\Chat\ChatController::class, 'createGroup'])->name('chat.group.create');
+    Route::get('/chat/{conversation}/messages', [\App\Http\Controllers\Chat\ChatController::class, 'messages'])->name('chat.messages');
+    Route::post('/chat/{conversation}/messages', [\App\Http\Controllers\Chat\ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/{conversation}/read', [\App\Http\Controllers\Chat\ChatController::class, 'markAsRead'])->name('chat.read');
+
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {
         
