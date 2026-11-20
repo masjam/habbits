@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Corporate;
 use App\Http\Controllers\Controller;
 
 use App\Models\EmployeeDocument;
+use App\Notifications\EmployeeDocumentStatusNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -40,10 +42,24 @@ class EmployeeDocumentController extends Controller
 
         $query = EmployeeDocument::with('user:id,name,nip,divisi')->latest();
 
-        // Filter status verifikasi
+        // Filter status verifikasi: verified, pending, rejected
         if ($status && $status !== 'all') {
-            $isVerified = ($status === 'verified');
-            $query->where('is_verified', $isVerified);
+            if ($status === 'verified') {
+                $query->where(function ($q) {
+                    $q->where('status', 'verified')
+                      ->orWhere(fn ($sq) => $sq->whereNull('status')->where('is_verified', true));
+                });
+            } elseif ($status === 'rejected') {
+                $query->where(function ($q) {
+                    $q->where('status', 'rejected')
+                      ->orWhere(fn ($sq) => $sq->whereNull('status')->where('is_verified', false)->whereNotNull('notes')->where('notes', '!=', ''));
+                });
+            } elseif ($status === 'pending') {
+                $query->where(function ($q) {
+                    $q->where('status', 'pending')
+                      ->orWhere(fn ($sq) => $sq->whereNull('status')->where('is_verified', false)->where(fn ($ssq) => $ssq->whereNull('notes')->orWhere('notes', '')));
+                });
+            }
         }
 
         // Filter pencarian teks
@@ -62,6 +78,17 @@ class EmployeeDocumentController extends Controller
 
         $allDocs = (clone $query)->get();
 
+        // Helper resolver status dokumen
+        $resolveStatus = function ($doc) {
+            if ($doc->status) {
+                return $doc->status;
+            }
+            if ($doc->is_verified) {
+                return 'verified';
+            }
+            return !empty($doc->notes) ? 'rejected' : 'pending';
+        };
+
         // Grouping dokumen berdasarkan pegawai
         $groupedByUser = $allDocs->groupBy('user_id');
         $groupedEmployees = [];
@@ -70,14 +97,20 @@ class EmployeeDocumentController extends Controller
             $empUser = $docs->first()->user;
             if (!$empUser) continue;
 
+            $verifiedCount = $docs->filter(fn ($d) => $resolveStatus($d) === 'verified')->count();
+            $pendingCount  = $docs->filter(fn ($d) => $resolveStatus($d) === 'pending')->count();
+            $rejectedCount = $docs->filter(fn ($d) => $resolveStatus($d) === 'rejected')->count();
+
             $groupedEmployees[] = [
                 'user_id'          => $empUser->id,
                 'name'             => $empUser->name,
                 'nip'              => $empUser->nip,
                 'divisi'           => $empUser->divisi,
                 'total_docs'       => $docs->count(),
-                'verified_count'   => $docs->where('is_verified', true)->count(),
-                'unverified_count' => $docs->where('is_verified', false)->count(),
+                'verified_count'   => $verifiedCount,
+                'pending_count'    => $pendingCount,
+                'rejected_count'   => $rejectedCount,
+                'unverified_count' => $pendingCount + $rejectedCount,
                 'documents'        => $docs->values(),
             ];
         }
@@ -88,8 +121,9 @@ class EmployeeDocumentController extends Controller
         // Statistik dokumen sistem
         $stats = [
             'total_all'      => EmployeeDocument::count(),
-            'total_verified' => EmployeeDocument::where('is_verified', true)->count(),
-            'total_pending'  => EmployeeDocument::where('is_verified', false)->count(),
+            'total_verified' => EmployeeDocument::where('status', 'verified')->orWhere(fn ($q) => $q->whereNull('status')->where('is_verified', true))->count(),
+            'total_pending'  => EmployeeDocument::where('status', 'pending')->orWhere(fn ($q) => $q->whereNull('status')->where('is_verified', false)->where(fn ($sq) => $sq->whereNull('notes')->orWhere('notes', '')))->count(),
+            'total_rejected' => EmployeeDocument::where('status', 'rejected')->orWhere(fn ($q) => $q->whereNull('status')->where('is_verified', false)->whereNotNull('notes')->where('notes', '!=', ''))->count(),
             'total_employees'=> EmployeeDocument::distinct()->pluck('user_id')->count(),
         ];
 
@@ -137,6 +171,8 @@ class EmployeeDocumentController extends Controller
             'document_year' => $request->document_year,
             'file_path' => $path,
             'file_extension' => strtolower($extension),
+            'status' => 'pending',
+            'is_verified' => false,
         ]);
 
         return redirect()->back()->with('success', 'Dokumen berhasil diunggah.');
@@ -312,15 +348,42 @@ class EmployeeDocumentController extends Controller
         }
 
         $request->validate([
-            'is_verified' => 'required|boolean',
-            'notes' => 'nullable|string'
+            'status' => 'nullable|string|in:verified,pending,rejected',
+            'is_verified' => 'nullable|boolean',
+            'notes' => 'nullable|string|max:1000'
         ]);
 
+        if ($request->has('status')) {
+            $status = $request->status;
+            $isVerified = ($status === 'verified');
+        } else {
+            $isVerified = (bool) $request->is_verified;
+            $status = $isVerified ? 'verified' : ($request->notes ? 'rejected' : 'pending');
+        }
+
         $employeeDocument->update([
-            'is_verified' => $request->is_verified,
+            'status' => $status,
+            'is_verified' => $isVerified,
             'notes' => $request->notes
         ]);
 
-        return redirect()->back()->with('success', 'Status dokumen berhasil diperbarui.');
+        // Kirim notifikasi ke pegawai pemilik arsip
+        $owner = $employeeDocument->user;
+        if ($owner) {
+            $notes = $request->notes;
+            dispatch(function () use ($owner, $employeeDocument, $status, $notes) {
+                try {
+                    $owner->notify(new EmployeeDocumentStatusNotification(
+                        $employeeDocument,
+                        $status,
+                        $notes
+                    ));
+                } catch (\Throwable $e) {
+                    Log::warning('Gagal kirim notifikasi status dokumen: ' . $e->getMessage());
+                }
+            })->afterResponse();
+        }
+
+        return redirect()->back()->with('success', 'Status dokumen berhasil diperbarui dan notifikasi telah dikirim ke pegawai.');
     }
 }

@@ -92,18 +92,55 @@ const showVerifyModal = ref(false)
 const selectedDoc = ref(null)
 
 const verifyForm = useForm({
+    status: 'verified',
     is_verified: true,
     notes: ''
 })
 
+const getDocStatus = (doc) => {
+    if (!doc) return 'pending'
+    if (doc.status) return doc.status
+    if (doc.is_verified) return 'verified'
+    return doc.notes ? 'rejected' : 'pending'
+}
+
+const getStatusBadge = (doc) => {
+    const s = getDocStatus(doc)
+    if (s === 'verified') {
+        return {
+            status: 'verified',
+            label: 'Valid',
+            class: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
+            dotClass: 'bg-emerald-500'
+        }
+    }
+    if (s === 'rejected') {
+        return {
+            status: 'rejected',
+            label: 'Ditolak',
+            class: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
+            dotClass: 'bg-rose-500'
+        }
+    }
+    return {
+        status: 'pending',
+        label: 'Menunggu',
+        class: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
+        dotClass: 'bg-amber-500'
+    }
+}
+
 const openVerifyModal = (doc) => {
     selectedDoc.value = doc
-    verifyForm.is_verified = doc.is_verified
+    const currentStatus = getDocStatus(doc)
+    verifyForm.status = currentStatus
+    verifyForm.is_verified = (currentStatus === 'verified')
     verifyForm.notes = doc.notes || ''
     showVerifyModal.value = true
 }
 
 const submitVerify = () => {
+    verifyForm.is_verified = (verifyForm.status === 'verified')
     verifyForm.patch(route('employee-documents.verify', selectedDoc.value.id), {
         preserveScroll: true,
         onSuccess: () => {
@@ -193,20 +230,24 @@ const deleteDocument = (id) => {
             </div>
 
             <!-- ── Stat Cards Ringkasan ─────────────────────────── -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="p-5 rounded-3xl bg-surface border border-theme shadow-xs">
-                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Berkas Diunggah</p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                <div class="p-4 md:p-5 rounded-3xl bg-surface border border-theme shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Berkas</p>
                     <p class="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 mt-1">{{ stats.total_all }}</p>
                 </div>
-                <div class="p-5 rounded-3xl bg-surface border border-theme shadow-xs">
-                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Telah Disetujui (Valid)</p>
+                <div class="p-4 md:p-5 rounded-3xl bg-surface border border-theme shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Disetujui (Valid)</p>
                     <p class="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{{ stats.total_verified }}</p>
                 </div>
-                <div class="p-5 rounded-3xl bg-surface border border-theme shadow-xs">
-                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Menunggu Verifikasi</p>
+                <div class="p-4 md:p-5 rounded-3xl bg-surface border border-theme shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Menunggu</p>
                     <p class="text-2xl md:text-3xl font-black text-amber-500 mt-1">{{ stats.total_pending }}</p>
                 </div>
-                <div class="p-5 rounded-3xl bg-surface border border-theme shadow-xs">
+                <div class="p-4 md:p-5 rounded-3xl bg-surface border border-theme shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Ditolak</p>
+                    <p class="text-2xl md:text-3xl font-black text-rose-500 mt-1">{{ stats.total_rejected || 0 }}</p>
+                </div>
+                <div class="p-4 md:p-5 rounded-3xl bg-surface border border-theme shadow-xs col-span-2 sm:col-span-1">
                     <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Pegawai dg Arsip</p>
                     <p class="text-2xl md:text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-1">{{ stats.total_employees }}</p>
                 </div>
@@ -225,8 +266,9 @@ const deleteDocument = (id) => {
                                 class="w-full text-xs md:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500"
                             >
                                 <option value="all">Semua Status Arsip</option>
-                                <option value="verified">Sudah Disetujui / Valid Saja</option>
-                                <option value="unverified">Menunggu Verifikasi Saja</option>
+                                <option value="verified">Valid &amp; Disetujui Saja</option>
+                                <option value="pending">Menunggu Verifikasi Saja</option>
+                                <option value="rejected">Ditolak Saja</option>
                             </select>
                         </div>
 
@@ -335,10 +377,10 @@ const deleteDocument = (id) => {
                         <!-- Kolom Kanan: Status Kelengkapan & Tombol Buka -->
                         <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-subtle">
                             <!-- Badge Status Verifikasi Dokumen Pegawai -->
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5 flex-wrap">
                                 <span
                                     v-if="emp.verified_count > 0"
-                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60"
+                                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60"
                                 >
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -347,10 +389,17 @@ const deleteDocument = (id) => {
                                 </span>
 
                                 <span
-                                    v-if="emp.unverified_count > 0"
-                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60"
+                                    v-if="emp.pending_count > 0"
+                                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60"
                                 >
-                                    <span>⏳ {{ emp.unverified_count }} Menunggu</span>
+                                    <span>⏳ {{ emp.pending_count }} Menunggu</span>
+                                </span>
+
+                                <span
+                                    v-if="emp.rejected_count > 0"
+                                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60"
+                                >
+                                    <span>✕ {{ emp.rejected_count }} Ditolak</span>
                                 </span>
                             </div>
 
@@ -430,19 +479,17 @@ const deleteDocument = (id) => {
                                         <td class="py-3.5 px-4 text-center whitespace-nowrap">
                                             <div class="space-y-1.5">
                                                 <span
-                                                    v-if="doc.is_verified"
-                                                    class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 shadow-2xs"
+                                                    class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs"
+                                                    :class="getStatusBadge(doc).class"
                                                 >
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <svg v-if="getStatusBadge(doc).status === 'verified'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                                     </svg>
-                                                    <span>Valid</span>
-                                                </span>
-                                                <span
-                                                    v-else
-                                                    class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-3 py-1 rounded-full text-xs font-bold border border-amber-200 dark:border-amber-800/60"
-                                                >
-                                                    <span>Menunggu</span>
+                                                    <svg v-else-if="getStatusBadge(doc).status === 'rejected'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                    <span v-else class="w-2 h-2 rounded-full mr-0.5" :class="getStatusBadge(doc).dotClass"></span>
+                                                    <span>{{ getStatusBadge(doc).label }}</span>
                                                 </span>
 
                                                 <!-- Catatan HR jika ada -->
@@ -547,12 +594,18 @@ const deleteDocument = (id) => {
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    <span v-if="doc.is_verified" class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-2.5 py-1 rounded-full text-xs font-bold">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                        Valid
-                                    </span>
-                                    <span v-else class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-2.5 py-1 rounded-full text-xs font-bold">
-                                        Menunggu
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border"
+                                        :class="getStatusBadge(doc).class"
+                                    >
+                                        <svg v-if="getStatusBadge(doc).status === 'verified'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <svg v-else-if="getStatusBadge(doc).status === 'rejected'" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        <span v-else class="w-2 h-2 rounded-full mr-0.5" :class="getStatusBadge(doc).dotClass"></span>
+                                        <span>{{ getStatusBadge(doc).label }}</span>
                                     </span>
                                 </td>
                                 <td class="px-6 py-4">
@@ -617,22 +670,78 @@ const deleteDocument = (id) => {
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Status Dokumen</label>
-                                    <div class="flex gap-4">
-                                        <label class="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" v-model="verifyForm.is_verified" :value="true" class="w-4 h-4 text-emerald-600 focus:ring-emerald-600 border-slate-300">
-                                            <span class="text-sm text-slate-700 dark:text-slate-300 font-bold">Valid &amp; Disetujui</span>
+                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Pilih Status Dokumen</label>
+                                    <div class="grid grid-cols-3 gap-2.5">
+                                        <!-- Valid & Disetujui -->
+                                        <label
+                                            class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition-all text-center select-none"
+                                            :class="verifyForm.status === 'verified'
+                                                ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs ring-1 ring-emerald-500'
+                                                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-600 dark:text-slate-300'"
+                                        >
+                                            <input type="radio" v-model="verifyForm.status" value="verified" class="sr-only">
+                                            <div class="w-7 h-7 rounded-full flex items-center justify-center mb-1.5" :class="verifyForm.status === 'verified' ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
+                                            <span class="text-xs">Valid &amp; Disetujui</span>
                                         </label>
-                                        <label class="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" v-model="verifyForm.is_verified" :value="false" class="w-4 h-4 text-amber-600 focus:ring-amber-600 border-slate-300">
-                                            <span class="text-sm text-slate-700 dark:text-slate-300 font-bold">Menunggu / Ditolak</span>
+
+                                        <!-- Menunggu Verifikasi -->
+                                        <label
+                                            class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition-all text-center select-none"
+                                            :class="verifyForm.status === 'pending'
+                                                ? 'border-amber-500 bg-amber-50/80 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-bold shadow-xs ring-1 ring-amber-500'
+                                                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-600 dark:text-slate-300'"
+                                        >
+                                            <input type="radio" v-model="verifyForm.status" value="pending" class="sr-only">
+                                            <div class="w-7 h-7 rounded-full flex items-center justify-center mb-1.5" :class="verifyForm.status === 'pending' ? 'bg-amber-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                            <span class="text-xs">Menunggu</span>
+                                        </label>
+
+                                        <!-- Ditolak -->
+                                        <label
+                                            class="flex flex-col items-center justify-center p-3 rounded-2xl border-2 cursor-pointer transition-all text-center select-none"
+                                            :class="verifyForm.status === 'rejected'
+                                                ? 'border-rose-500 bg-rose-50/80 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 font-bold shadow-xs ring-1 ring-rose-500'
+                                                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-600 dark:text-slate-300'"
+                                        >
+                                            <input type="radio" v-model="verifyForm.status" value="rejected" class="sr-only">
+                                            <div class="w-7 h-7 rounded-full flex items-center justify-center mb-1.5" :class="verifyForm.status === 'rejected' ? 'bg-rose-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </div>
+                                            <span class="text-xs">Ditolak</span>
                                         </label>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan HR (Opsional)</label>
-                                    <textarea v-model="verifyForm.notes" rows="3" placeholder="Tulis catatan jika ada kekurangan atau keterangan dokumen..." class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-700 dark:text-slate-300 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Catatan HR
+                                            <span v-if="verifyForm.status === 'rejected'" class="text-rose-600 dark:text-rose-400 text-xs font-semibold ml-1">(Dianjurkan memberi alasan penolakan)</span>
+                                            <span v-else class="text-slate-400 text-xs font-normal ml-1">(Opsional)</span>
+                                        </label>
+                                    </div>
+                                    <textarea
+                                        v-model="verifyForm.notes"
+                                        rows="3"
+                                        :placeholder="verifyForm.status === 'rejected' ? 'Tuliskan alasan penolakan agar pegawai mengetahui kekurangan dokumen...' : 'Tulis catatan jika ada kekurangan atau keterangan dokumen...'"
+                                        class="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500"
+                                    ></textarea>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-2">
+                                        <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                        </svg>
+                                        <span>Notifikasi otomatis akan dikirim ke akun dan HP/perangkat pegawai.</span>
+                                    </p>
                                 </div>
                             </div>
                             <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl">

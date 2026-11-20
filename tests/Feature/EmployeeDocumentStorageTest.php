@@ -154,4 +154,98 @@ class EmployeeDocumentStorageTest extends TestCase
         $response = $this->actingAs($this->employee)->get(route('employee-documents.preview', $doc));
         $response->assertStatus(404);
     }
+
+    public function test_admin_can_verify_document_with_verified_status_and_notifies_employee()
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $doc = EmployeeDocument::create([
+            'user_id' => $this->employee->id,
+            'document_type' => 'ijazah-sd',
+            'title' => 'Ijazah SD',
+            'file_path' => 'dummy.pdf',
+            'file_extension' => 'pdf',
+            'status' => 'pending',
+            'is_verified' => false,
+        ]);
+
+        $response = $this->actingAs($this->admin)->patch(route('employee-documents.verify', $doc), [
+            'status' => 'verified',
+            'notes' => 'Dokumen asli dan jelas',
+        ]);
+
+        $response->assertRedirect();
+        $doc->refresh();
+        $this->assertEquals('verified', $doc->status);
+        $this->assertTrue((bool)$doc->is_verified);
+        $this->assertEquals('Dokumen asli dan jelas', $doc->notes);
+
+        \Illuminate\Support\Facades\Notification::assertSentTo(
+            $this->employee,
+            \App\Notifications\EmployeeDocumentStatusNotification::class,
+            function ($notification) {
+                return $notification->status === 'verified';
+            }
+        );
+    }
+
+    public function test_admin_can_reject_document_and_notifies_employee_with_notes()
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $doc = EmployeeDocument::create([
+            'user_id' => $this->employee->id,
+            'document_type' => 'ijazah-sd',
+            'title' => 'Ijazah SD Buram',
+            'file_path' => 'dummy.pdf',
+            'file_extension' => 'pdf',
+            'status' => 'pending',
+            'is_verified' => false,
+        ]);
+
+        $response = $this->actingAs($this->admin)->patch(route('employee-documents.verify', $doc), [
+            'status' => 'rejected',
+            'notes' => 'Hasil scan terpotong dan buram, silakan scan ulang.',
+        ]);
+
+        $response->assertRedirect();
+        $doc->refresh();
+        $this->assertEquals('rejected', $doc->status);
+        $this->assertFalse((bool)$doc->is_verified);
+        $this->assertEquals('Hasil scan terpotong dan buram, silakan scan ulang.', $doc->notes);
+
+        \Illuminate\Support\Facades\Notification::assertSentTo(
+            $this->employee,
+            \App\Notifications\EmployeeDocumentStatusNotification::class,
+            function ($notification) {
+                return $notification->status === 'rejected'
+                    && str_contains($notification->notes, 'terpotong');
+            }
+        );
+    }
+
+    public function test_admin_can_set_status_back_to_pending()
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $doc = EmployeeDocument::create([
+            'user_id' => $this->employee->id,
+            'document_type' => 'ijazah-sd',
+            'title' => 'Ijazah SD',
+            'file_path' => 'dummy.pdf',
+            'file_extension' => 'pdf',
+            'status' => 'verified',
+            'is_verified' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin)->patch(route('employee-documents.verify', $doc), [
+            'status' => 'pending',
+            'notes' => null,
+        ]);
+
+        $response->assertRedirect();
+        $doc->refresh();
+        $this->assertEquals('pending', $doc->status);
+        $this->assertFalse((bool)$doc->is_verified);
+    }
 }

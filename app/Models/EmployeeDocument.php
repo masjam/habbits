@@ -16,6 +16,7 @@ class EmployeeDocument extends Model
         'document_year',
         'file_path',
         'file_extension',
+        'status',
         'is_verified',
         'notes',
     ];
