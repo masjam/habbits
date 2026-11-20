@@ -527,6 +527,11 @@ if ($validated['nomor_mode'] === 'manual') {
             return Storage::disk('public')->response($suratKeluar->file_path);
         }
 
+        $legacyAppPath = storage_path('app/' . ltrim($suratKeluar->file_path, '/\\'));
+        if (file_exists($legacyAppPath) && !is_dir($legacyAppPath)) {
+            return response()->file($legacyAppPath);
+        }
+
         abort(404, 'Berkas fisik tidak ditemukan di server.');
     }
 }

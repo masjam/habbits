@@ -153,11 +153,9 @@ class EmployeeDocumentController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if (!Storage::disk('local')->exists($employeeDocument->file_path)) {
-            abort(404, 'File not found.');
-        }
+        $downloadName = ($employeeDocument->title ?: 'dokumen') . '.' . ($employeeDocument->file_extension ?: 'pdf');
 
-        return Storage::disk('local')->download($employeeDocument->file_path, $employeeDocument->title . '.' . $employeeDocument->file_extension);
+        return $this->respondWithFile($employeeDocument->file_path, $downloadName, true);
     }
 
     /**
@@ -171,11 +169,7 @@ class EmployeeDocumentController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if (!Storage::disk('local')->exists($employeeDocument->file_path)) {
-            abort(404, 'File not found.');
-        }
-
-        return Storage::disk('local')->response($employeeDocument->file_path);
+        return $this->respondWithFile($employeeDocument->file_path, null, false);
     }
 
     /**
@@ -189,14 +183,122 @@ class EmployeeDocumentController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Hapus file fisik
-        if (Storage::disk('local')->exists($employeeDocument->file_path)) {
-            Storage::disk('local')->delete($employeeDocument->file_path);
-        }
+        // Hapus file fisik dari seluruh kemungkinan lokasi
+        $this->deleteFileFromAnywhere($employeeDocument->file_path);
 
         $employeeDocument->delete();
 
         return redirect()->back()->with('success', 'Dokumen berhasil dihapus.');
+    }
+
+    /**
+     * Resolve the storage response for preview or download across private, public, and legacy locations.
+     */
+    private function respondWithFile(string $filePath, ?string $downloadName = null, bool $isDownload = false)
+    {
+        // Path traversal defense
+        if (str_contains($filePath, '..')) {
+            abort(400, 'Invalid path');
+        }
+
+        // 1. Cek disk 'local' (private)
+        if (Storage::disk('local')->exists($filePath)) {
+            return $isDownload
+                ? Storage::disk('local')->download($filePath, $downloadName)
+                : Storage::disk('local')->response($filePath);
+        }
+
+        // 2. Cek disk 'private'
+        if (Storage::disk('private')->exists($filePath)) {
+            return $isDownload
+                ? Storage::disk('private')->download($filePath, $downloadName)
+                : Storage::disk('private')->response($filePath);
+        }
+
+        // 3. Cek disk 'public'
+        if (Storage::disk('public')->exists($filePath)) {
+            return $isDownload
+                ? Storage::disk('public')->download($filePath, $downloadName)
+                : Storage::disk('public')->response($filePath);
+        }
+
+        // 4. Cek legacy direktori storage/app/
+        $legacyAppPath = storage_path('app/' . ltrim($filePath, '/\\'));
+        if (file_exists($legacyAppPath) && !is_dir($legacyAppPath)) {
+            return $isDownload
+                ? response()->download($legacyAppPath, $downloadName)
+                : response()->file($legacyAppPath);
+        }
+
+        // 5. Cek langsung storage_path()
+        $directStoragePath = storage_path(ltrim($filePath, '/\\'));
+        if (file_exists($directStoragePath) && !is_dir($directStoragePath)) {
+            return $isDownload
+                ? response()->download($directStoragePath, $downloadName)
+                : response()->file($directStoragePath);
+        }
+
+        // 6. Cek jika prefix "public/" atau "private/" ikut tersimpan di DB
+        $stripped = preg_replace('#^(public|private)/#', '', ltrim($filePath, '/\\'));
+        if ($stripped !== $filePath) {
+            if (Storage::disk('local')->exists($stripped)) {
+                return $isDownload
+                    ? Storage::disk('local')->download($stripped, $downloadName)
+                    : Storage::disk('local')->response($stripped);
+            }
+            if (Storage::disk('public')->exists($stripped)) {
+                return $isDownload
+                    ? Storage::disk('public')->download($stripped, $downloadName)
+                    : Storage::disk('public')->response($stripped);
+            }
+            $legacyStripped = storage_path('app/' . $stripped);
+            if (file_exists($legacyStripped) && !is_dir($legacyStripped)) {
+                return $isDownload
+                    ? response()->download($legacyStripped, $downloadName)
+                    : response()->file($legacyStripped);
+            }
+        }
+
+        abort(404, 'File not found.');
+    }
+
+    /**
+     * Delete file from any disk or legacy path.
+     */
+    private function deleteFileFromAnywhere(string $filePath): void
+    {
+        if (str_contains($filePath, '..')) {
+            return;
+        }
+
+        if (Storage::disk('local')->exists($filePath)) {
+            Storage::disk('local')->delete($filePath);
+        }
+        if (Storage::disk('private')->exists($filePath)) {
+            Storage::disk('private')->delete($filePath);
+        }
+        if (Storage::disk('public')->exists($filePath)) {
+            Storage::disk('public')->delete($filePath);
+        }
+
+        $legacyAppPath = storage_path('app/' . ltrim($filePath, '/\\'));
+        if (file_exists($legacyAppPath) && !is_dir($legacyAppPath)) {
+            @unlink($legacyAppPath);
+        }
+
+        $stripped = preg_replace('#^(public|private)/#', '', ltrim($filePath, '/\\'));
+        if ($stripped !== $filePath) {
+            if (Storage::disk('local')->exists($stripped)) {
+                Storage::disk('local')->delete($stripped);
+            }
+            if (Storage::disk('public')->exists($stripped)) {
+                Storage::disk('public')->delete($stripped);
+            }
+            $legacyStripped = storage_path('app/' . $stripped);
+            if (file_exists($legacyStripped) && !is_dir($legacyStripped)) {
+                @unlink($legacyStripped);
+            }
+        }
     }
     
     /**

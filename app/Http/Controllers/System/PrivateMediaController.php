@@ -27,6 +27,11 @@ class PrivateMediaController extends Controller
             return Storage::disk('public')->response($diskPath);
         }
 
+        $legacyAppPath = storage_path('app/' . ltrim($diskPath, '/\\'));
+        if (file_exists($legacyAppPath) && !is_dir($legacyAppPath)) {
+            return response()->file($legacyAppPath);
+        }
+
         abort(404, 'File tidak ditemukan.');
     }
 

@@ -63,6 +63,11 @@ class PublicVerificationController extends Controller
             return Storage::disk('public')->response($surat->file_path);
         }
 
+        $legacyAppPath = storage_path('app/' . ltrim($surat->file_path, '/\\'));
+        if (file_exists($legacyAppPath) && !is_dir($legacyAppPath)) {
+            return response()->file($legacyAppPath);
+        }
+
         abort(404, 'Berkas fisik tidak ditemukan di server.');
     }
     public function verifyNotulen($uuid)
