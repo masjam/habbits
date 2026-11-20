@@ -104,6 +104,8 @@ jobs:
             sudo chmod 640 /var/www/habit/.env 2>/dev/null || true
             sudo chmod -R 775 /var/www/habit/storage /var/www/habit/bootstrap/cache
           fi
+          # Hapus cache bootstrap lama di web directory agar tidak memuat package dev yang sudah dihapus
+          sudo rm -f /var/www/habit/bootstrap/cache/*.php 2>/dev/null || rm -f /var/www/habit/bootstrap/cache/*.php 2>/dev/null || true
 
       - name: Deploy to Web Directory
         run: |
@@ -125,6 +127,8 @@ jobs:
       - name: Optimizations & Migrations
         run: |
           cd /var/www/habit
+          sudo rm -f bootstrap/cache/*.php 2>/dev/null || rm -f bootstrap/cache/*.php 2>/dev/null || true
+          php artisan package:discover --ansi
           php artisan migrate --force
           php artisan optimize:clear
           php artisan config:cache
