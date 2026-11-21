@@ -50,6 +50,14 @@
         </script>
 
         <!-- Scripts & Styles -->
+        <script>
+            window.__REVERB_CONFIG__ = {
+                key: "{{ config('reverb.apps.apps.0.key', env('REVERB_APP_KEY', '')) }}",
+                host: "{{ env('REVERB_HOST', 'localhost') }}",
+                port: {{ (int) env('REVERB_PORT', 8080) }},
+                scheme: "{{ env('REVERB_SCHEME', 'http') }}"
+            };
+        </script>
         @routes
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @inertiaHead
