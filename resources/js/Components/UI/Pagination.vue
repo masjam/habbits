@@ -33,7 +33,7 @@ defineProps({
             <template v-for="(link, key) in links" :key="key">
                 <span
                     v-if="!link.url"
-                    class="px-3 py-1.5 text-xs text-slate-400 dark:text-slate-600 rounded-lg select-none"
+                    class="px-3 py-1.5 text-xs text-slate-400 dark:text-slate-600 rounded-xl select-none"
                     v-html="link.label"
                 />
                 <Link
@@ -41,9 +41,9 @@ defineProps({
                     :href="link.url"
                     preserve-scroll
                     :class="[
-                        'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                        'px-3 py-1.5 text-xs font-medium rounded-xl transition-colors',
                         link.active
-                            ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-bold'
+                            ? 'bg-primary-600 text-white shadow-sm shadow-primary-600/30 font-bold'
                             : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                     ]"
                     v-html="link.label"

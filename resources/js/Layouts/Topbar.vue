@@ -93,7 +93,7 @@ const userAvatarUrl = computed(() => {
 </script>
 
 <template>
-    <header class="flex items-center justify-between h-16 px-4 md:px-6 bg-topbar backdrop-blur-md border-b border-theme flex-shrink-0 z-20 shadow-xs transition-colors duration-200">
+    <header class="flex items-center justify-between h-[var(--topbar-h,4rem)] px-4 md:px-6 bg-topbar backdrop-blur-md border-b border-theme flex-shrink-0 z-20 shadow-xs transition-colors duration-200">
         <!-- Left: Hamburger (mobile/tablet drawer trigger) & Breadcrumb / App Title -->
         <div class="flex items-center gap-3">
             <button
@@ -174,7 +174,7 @@ const userAvatarUrl = computed(() => {
                 >
                     <div
                         v-if="isNotificationOpen"
-                        class="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-auto sm:-right-12 sm:top-full sm:mt-2 sm:w-[380px] origin-top sm:origin-top-right bg-sidebar rounded-3xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
+                        class="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-auto sm:-right-12 sm:top-full sm:mt-2 sm:w-[380px] origin-top sm:origin-top-right bg-sidebar rounded-2xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
                     >
                         <div class="flex items-center justify-between px-5 py-3.5 bg-card-subtle border-b border-theme">
                             <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Notifikasi</h3>
@@ -281,7 +281,7 @@ const userAvatarUrl = computed(() => {
                 >
                     <div
                         v-if="isDropdownOpen"
-                        class="absolute right-0 top-full mt-2 w-64 origin-top-right bg-sidebar rounded-3xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
+                        class="absolute right-0 top-full mt-2 w-64 origin-top-right bg-sidebar rounded-2xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
                         role="menu"
                     >
                         <!-- Header tile -->

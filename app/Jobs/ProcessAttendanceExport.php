@@ -100,6 +100,7 @@ class ProcessAttendanceExport implements ShouldQueue
             
             $fileUrl = asset("storage/" . $filePath);
             $this->userToNotify->notify(new \App\Notifications\ExportReadyNotification($fileName, $fileUrl, 'Presensi Harian'));
+            \App\Events\ExportReady::dispatch($this->userToNotify->id, $fileName, $fileUrl, 'Presensi Harian');
             return;
         }
 
@@ -144,6 +145,7 @@ class ProcessAttendanceExport implements ShouldQueue
 
             $fileUrl = asset("storage/" . $filePath);
             $this->userToNotify->notify(new \App\Notifications\ExportReadyNotification($fileName, $fileUrl, 'Tugas Luar'));
+            \App\Events\ExportReady::dispatch($this->userToNotify->id, $fileName, $fileUrl, 'Tugas Luar');
             return;
         }
 
@@ -261,5 +263,6 @@ class ProcessAttendanceExport implements ShouldQueue
 
         $fileUrl = asset("storage/" . $filePath);
         $this->userToNotify->notify(new \App\Notifications\ExportReadyNotification($fileName, $fileUrl, 'Presensi Bulanan'));
+        \App\Events\ExportReady::dispatch($this->userToNotify->id, $fileName, $fileUrl, 'Presensi Bulanan');
     }
 }

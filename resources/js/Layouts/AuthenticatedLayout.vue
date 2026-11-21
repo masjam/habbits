@@ -86,6 +86,19 @@ onMounted(() => {
     }
     listenInstallPrompt()
     listenNetworkStatus()
+
+    // ─── Listen export selesai via Reverb ──────────────────────────────────
+    if (user.value?.id && window.Echo) {
+        window.Echo.private(`exports.${user.value.id}`)
+            .listen('.ready', (e) => {
+                toast.success(
+                    `${e.label} siap diunduh.`,
+                    'File Siap',
+                    0, // tidak auto-dismiss — user harus klik download
+                    { label: `Unduh ${e.label}`, url: e.fileUrl }
+                )
+            })
+    }
 })
 </script>
 
@@ -150,7 +163,7 @@ onMounted(() => {
                     <button 
                         type="button"
                         @click="dismissPushBanner" 
-                        class="p-1 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                        class="p-1 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                         title="Tutup banner"
                         aria-label="Tutup banner notifikasi"
                     >
@@ -174,7 +187,7 @@ onMounted(() => {
             <div v-if="isInstallable"
                 class="fixed bottom-4 inset-x-4 z-[100] md:left-auto md:right-4 md:max-w-sm"
             >
-                <div class="bg-slate-900 text-white rounded-3xl shadow-2xl p-4 border border-slate-700/80 flex items-center gap-3.5">
+                <div class="bg-slate-900 text-white rounded-2xl shadow-2xl p-4 border border-slate-700/80 flex items-center gap-3.5">
                     <img src="/img/icon-192.png" class="w-11 h-11 rounded-2xl object-contain bg-white dark:bg-slate-800 p-1 shadow-xs flex-shrink-0" alt="SDAM Logo" />
                     <div class="flex-1 min-w-0">
                         <p class="font-bold text-sm">Install Aplikasi</p>
@@ -250,7 +263,7 @@ onMounted(() => {
                     <Link
                         v-if="page.props.auth?.simulated_role !== 'user'"
                         :href="route('admin.settings.hr')"
-                        class="px-2.5 py-1 bg-amber-800/90 hover:bg-amber-900 rounded-lg text-xs font-black text-white transition-colors"
+                        class="px-2.5 py-1 bg-amber-800/90 hover:bg-amber-900 rounded-xl text-xs font-black text-white transition-colors"
                     >
                         Kelola
                     </Link>
@@ -258,7 +271,7 @@ onMounted(() => {
                         v-else
                         @click="resetRole"
                         type="button"
-                        class="px-2.5 py-1 bg-slate-900/90 hover:bg-slate-950 rounded-lg text-xs font-black text-amber-300 border border-amber-400/40 transition-colors shadow-sm cursor-pointer"
+                        class="px-2.5 py-1 bg-slate-900/90 hover:bg-slate-950 rounded-xl text-xs font-black text-amber-300 border border-amber-400/40 transition-colors shadow-sm cursor-pointer"
                     >
                         Kembali ke Super Admin
                     </button>

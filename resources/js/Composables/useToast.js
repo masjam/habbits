@@ -11,7 +11,7 @@ export function useToast() {
         }
     }
 
-    const addToast = ({ type = 'info', message, title = null, duration = 4000 }) => {
+    const addToast = ({ type = 'info', message, title = null, duration = 4000, action = null }) => {
         if (!message) return null
 
         const id = nextId++
@@ -21,6 +21,7 @@ export function useToast() {
             title,
             message,
             duration,
+            action, // { label: string, url: string } — opsional, tampilkan tombol download
         }
 
         toasts.value.push(toast)
@@ -34,8 +35,8 @@ export function useToast() {
         return id
     }
 
-    const success = (message, title = 'Berhasil', duration = 4000) => {
-        return addToast({ type: 'success', message, title, duration })
+    const success = (message, title = 'Berhasil', duration = 4000, action = null) => {
+        return addToast({ type: 'success', message, title, duration, action })
     }
 
     const error = (message, title = 'Terjadi Kesalahan', duration = 5000) => {
