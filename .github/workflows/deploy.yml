@@ -76,7 +76,7 @@ jobs:
         continue-on-error: true
 
       - name: Run Tests
-        run: php artisan test --exclude=Tests\\Feature\\UiConsistencyTest
+        run: php artisan test --exclude-testsuite=UI
 
   deploy:
     name: Deploy to Server

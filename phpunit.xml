@@ -10,6 +10,10 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+            <exclude>tests/Feature/UiConsistencyTest.php</exclude>
+        </testsuite>
+        <testsuite name="UI">
+            <file>tests/Feature/UiConsistencyTest.php</file>
         </testsuite>
     </testsuites>
     <source>
