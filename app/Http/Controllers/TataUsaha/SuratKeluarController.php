@@ -16,6 +16,9 @@ class SuratKeluarController extends Controller
     private function sanitizeHtml(?string $html): string
     {
         if (!$html) return '';
+        if (class_exists(\Stevebauman\Purify\Facades\Purify::class)) {
+            return \Stevebauman\Purify\Facades\Purify::clean($html);
+        }
         if (class_exists(\Mews\Purifier\Facades\Purifier::class)) {
             return \Mews\Purifier\Facades\Purifier::clean($html);
         }
