@@ -147,6 +147,20 @@ class SettingController extends Controller
 
         $data = $request->validate($rules);
 
+        // Security Hardening: Sanitize public text and popup HTML against XSS
+        if (isset($data['running_text'])) {
+            $data['running_text'] = trim(strip_tags(\Stevebauman\Purify\Facades\Purify::clean((string) $data['running_text'])));
+        }
+        if (isset($data['announcement_text'])) {
+            $data['announcement_text'] = trim(strip_tags(\Stevebauman\Purify\Facades\Purify::clean((string) $data['announcement_text'])));
+        }
+        if (isset($data['popup_text'])) {
+            $data['popup_text'] = \Stevebauman\Purify\Facades\Purify::clean((string) $data['popup_text']);
+        }
+        if (isset($data['maintenance_message'])) {
+            $data['maintenance_message'] = \Stevebauman\Purify\Facades\Purify::clean((string) $data['maintenance_message']);
+        }
+
         foreach ($data as $key => $value) {
             if (is_bool($value)) {
                 $value = $value ? '1' : '0';

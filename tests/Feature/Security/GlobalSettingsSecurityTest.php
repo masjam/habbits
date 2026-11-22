@@ -57,4 +57,27 @@ class GlobalSettingsSecurityTest extends TestCase
             ->where('kiosk_token', 'SUPER-SECRET-KIOSK-TOKEN-1234567890')
         );
     }
+
+    public function test_settings_update_sanitizes_running_text_and_popup_text()
+    {
+        $superadmin = User::factory()->create();
+        $superadmin->assignRole('superadmin');
+
+        $response = $this->actingAs($superadmin)->post(route('admin.settings.update'), [
+            'running_text' => 'Halo <b>Semua</b><script>alert("xss")</script>',
+            'popup_text' => '<p>Pengumuman Penting</p><img src=x onerror=alert("xss")>',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $runningText = Setting::where('key', 'running_text')->value('value');
+        $this->assertStringNotContainsString('<script', $runningText);
+        $this->assertStringNotContainsString('alert(', $runningText);
+        $this->assertStringContainsString('Halo Semua', $runningText);
+
+        $popupText = Setting::where('key', 'popup_text')->value('value');
+        $this->assertStringNotContainsString('onerror', $popupText);
+        $this->assertStringNotContainsString('alert(', $popupText);
+        $this->assertStringContainsString('Pengumuman Penting', $popupText);
+    }
 }
