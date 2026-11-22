@@ -213,7 +213,7 @@ onUnmounted(() => {
     <AuthenticatedLayout>
         <Head title="Dzikir Pagi & Petang" />
 
-        <div class="max-w-5xl mx-auto space-y-6 pb-16">
+        <div class="w-full space-y-6 pb-16">
             <!-- ── Header Banner ───────────────────────────────────────────── -->
             <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-800 text-white p-6 sm:p-8 shadow-xl shadow-emerald-900/10">
                 <!-- Background Geometric Motif -->

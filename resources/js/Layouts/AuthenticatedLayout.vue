@@ -280,7 +280,7 @@ onMounted(() => {
 
             <!-- Main Content Canvas (Material 3 tonal surface) -->
             <main class="flex-1 overflow-y-auto bg-transparent p-4 sm:p-6">
-                <div class="w-full">
+                <div class="max-w-7xl mx-auto w-full">
                     <slot />
                 </div>
             </main>

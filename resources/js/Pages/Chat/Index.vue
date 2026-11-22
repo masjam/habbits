@@ -415,7 +415,7 @@ onUnmounted(() => {
     <Head title="Chat Pegawai" />
 
     <AuthenticatedLayout>
-        <div class="h-[calc(100vh-4.5rem)] md:h-[calc(100vh-5rem)] flex flex-col p-2 sm:p-4 max-w-7xl mx-auto">
+        <div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-6.5rem)] flex flex-col w-full">
             
             <!-- Main Chat Box Container -->
             <div class="flex-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex overflow-hidden">
