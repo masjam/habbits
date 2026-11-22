@@ -673,6 +673,23 @@ const fetchHadis = async (nomor) => {
     hadisData.value = null
     hadisDetailSyarah.value = null
     syarahError.value = null
+
+    // Periksa apakah hadis ini adalah Hadis Acak Hari Ini
+    if (typeof window !== 'undefined') {
+        const today = getTodayDateString()
+        const savedDailyStr = localStorage.getItem('hadis_daily_picked')
+        if (savedDailyStr) {
+            try {
+                const saved = JSON.parse(savedDailyStr)
+                isDailyHadis.value = (saved.date === today && saved.perawi === selectedPerawi.value && saved.nomor === nomor)
+            } catch (e) {
+                isDailyHadis.value = false
+            }
+        } else {
+            isDailyHadis.value = false
+        }
+    }
+
     try {
         const res = await fetch(`${HADIS_API}/${selectedPerawi.value}/${nomor}`)
         const json = await res.json()
@@ -729,13 +746,93 @@ const goToNomor = () => {
 
 const randomHadis = () => {
     const total = currentPerawi.value?.total ?? 100
-    const n = Math.floor(Math.random() * Math.min(total, 500)) + 1
+    const maxRange = Math.min(total, 500)
+    let n = Math.floor(Math.random() * maxRange) + 1
+    if (n === hadisNomor.value && maxRange > 1) {
+        n = (n % maxRange) + 1
+    }
     fetchHadis(n)
 }
 
-watch(selectedPerawi, () => {
-    hadisNomor.value = 1
+// ─── Hadis Acak Harian (Daily Random Hadis) ──────────────────────────────────
+const isDailyHadis = ref(false)
+let isProgrammaticPerawiChange = false
+
+const getTodayDateString = () => {
+    const d = new Date()
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
+const initDailyHadisOrFallback = () => {
+    if (typeof window === 'undefined') {
+        fetchHadis(1)
+        return
+    }
+
+    const today = getTodayDateString()
+    const lastDate = localStorage.getItem('hadis_daily_last_date')
+    const savedDailyStr = localStorage.getItem('hadis_daily_picked')
+
+    // Jika belum dibuka hari ini, acak hadis baru untuk hari ini
+    if (lastDate !== today) {
+        // Kitab utama (Bukhari, Muslim, Tirmidzi, Abu Dawud) dengan hadis shahih
+        const popularSlugs = ['bukhari', 'bukhari', 'muslim', 'muslim', 'tirmidzi', 'abu-dawud']
+        const randomSlug = popularSlugs[Math.floor(Math.random() * popularSlugs.length)]
+        const targetPerawi = perawiList.find(p => p.slug === randomSlug) || perawiList[0]
+        const maxRange = Math.min(targetPerawi.total, 400)
+        const randomNomor = Math.floor(Math.random() * maxRange) + 1
+
+        const dailyObj = {
+            date: today,
+            perawi: targetPerawi.slug,
+            nomor: randomNomor,
+        }
+
+        try {
+            localStorage.setItem('hadis_daily_last_date', today)
+            localStorage.setItem('hadis_daily_picked', JSON.stringify(dailyObj))
+        } catch (e) {}
+
+        if (selectedPerawi.value !== targetPerawi.slug) {
+            isProgrammaticPerawiChange = true
+            selectedPerawi.value = targetPerawi.slug
+        }
+        isDailyHadis.value = true
+        fetchHadis(randomNomor)
+        return
+    }
+
+    // Jika sudah pernah dibuka hari ini, muat hadis harian yang sudah diacak untuk hari ini
+    if (savedDailyStr) {
+        try {
+            const saved = JSON.parse(savedDailyStr)
+            if (saved && saved.date === today && saved.nomor) {
+                if (saved.perawi && selectedPerawi.value !== saved.perawi) {
+                    isProgrammaticPerawiChange = true
+                    selectedPerawi.value = saved.perawi
+                }
+                isDailyHadis.value = true
+                fetchHadis(saved.nomor)
+                return
+            }
+        } catch (e) {}
+    }
+
     fetchHadis(1)
+}
+
+watch(selectedPerawi, (newVal, oldVal) => {
+    if (isProgrammaticPerawiChange) {
+        isProgrammaticPerawiChange = false
+        return
+    }
+    if (oldVal && newVal !== oldVal) {
+        hadisNomor.value = 1
+        fetchHadis(1)
+    }
 })
 
 // ─── Search Hadis Lintas Kitab ────────────────────────────────────────────────
@@ -978,14 +1075,17 @@ onMounted(() => {
             const perawi = urlParams.get('perawi')
             const nomor = urlParams.get('nomor')
             if (perawi) selectedPerawi.value = perawi
-            if (nomor) fetchHadis(parseInt(nomor))
-            else fetchHadis(1)
+            if (nomor) {
+                fetchHadis(parseInt(nomor))
+            } else {
+                initDailyHadisOrFallback()
+            }
         }
     }
 
     watch(activeTab, (newTab) => {
         if (newTab === 'hadis' && !hadisData.value && !loadingHadis.value) {
-            fetchHadis(1)
+            initDailyHadisOrFallback()
         }
     })
 
@@ -1798,8 +1898,12 @@ onUnmounted(() => {
                             <!-- Info & Kontrol Tampilan Hadis -->
                             <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
                                 <div class="flex items-center gap-2">
-                                    <span class="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-full font-bold border border-amber-200 shadow-xs">
-                                        {{ currentPerawi?.nama }} · No. {{ hadisNomor }}
+                                    <span class="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-full font-bold border border-amber-200 shadow-xs flex items-center gap-1.5">
+                                        <span v-if="isDailyHadis" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white tracking-wide shadow-2xs">
+                                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                            Hadis Hari Ini
+                                        </span>
+                                        <span>{{ currentPerawi?.nama }} · No. {{ hadisNomor }}</span>
                                     </span>
                                     <span class="text-slate-400">dari {{ currentPerawi?.total?.toLocaleString('id-ID') }} hadis</span>
                                 </div>
