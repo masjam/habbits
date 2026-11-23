@@ -93,7 +93,7 @@ const userAvatarUrl = computed(() => {
 </script>
 
 <template>
-    <header class="flex items-center justify-between h-[var(--topbar-h,4rem)] px-4 md:px-6 bg-topbar backdrop-blur-md border-b border-theme flex-shrink-0 z-20 shadow-xs transition-colors duration-200">
+    <header class="flex items-center justify-between h-[var(--topbar-h,4rem)] px-4 md:px-6 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-b border-white/50 dark:border-white/10 flex-shrink-0 z-20 shadow-xs transition-colors duration-200">
         <!-- Left: Hamburger (mobile/tablet drawer trigger) & Breadcrumb / App Title -->
         <div class="flex items-center gap-3">
             <button
@@ -174,9 +174,9 @@ const userAvatarUrl = computed(() => {
                 >
                     <div
                         v-if="isNotificationOpen"
-                        class="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-auto sm:-right-12 sm:top-full sm:mt-2 sm:w-[380px] origin-top sm:origin-top-right bg-sidebar rounded-2xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
+                        class="fixed inset-x-4 top-[4.5rem] sm:absolute sm:inset-auto sm:-right-12 sm:top-full sm:mt-2 sm:w-[380px] origin-top sm:origin-top-right bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/60 dark:border-white/10 overflow-hidden z-20 transition-colors duration-200"
                     >
-                        <div class="flex items-center justify-between px-5 py-3.5 bg-card-subtle border-b border-theme">
+                        <div class="flex items-center justify-between px-5 py-3.5 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border-b border-white/40 dark:border-white/10">
                             <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Notifikasi</h3>
                             <Link 
                                 :href="route('notifications.index')" 
@@ -235,7 +235,7 @@ const userAvatarUrl = computed(() => {
                 <!-- Trigger Button -->
                 <button
                     type="button"
-                    class="flex items-center gap-2.5 rounded-full p-1 pl-1.5 pr-3 sm:pr-3.5 border border-theme/70 bg-card-subtle/80 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 active:bg-slate-300/60 dark:active:bg-slate-700/60 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 cursor-pointer whitespace-nowrap"
+                    class="flex items-center gap-2.5 rounded-full p-1 pl-1.5 pr-3 sm:pr-3.5 border border-white/60 dark:border-white/10 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md hover:bg-white/80 dark:hover:bg-slate-800/80 active:bg-slate-300/60 dark:active:bg-slate-700/60 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 cursor-pointer whitespace-nowrap"
                     aria-haspopup="true"
                     :aria-expanded="isDropdownOpen"
                     @click="toggleDropdown"
@@ -281,11 +281,11 @@ const userAvatarUrl = computed(() => {
                 >
                     <div
                         v-if="isDropdownOpen"
-                        class="absolute right-0 top-full mt-2 w-64 origin-top-right bg-sidebar rounded-2xl shadow-xl border border-theme overflow-hidden z-20 transition-colors duration-200"
+                        class="absolute right-0 top-full mt-2 w-64 origin-top-right bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/60 dark:border-white/10 overflow-hidden z-20 transition-colors duration-200"
                         role="menu"
                     >
                         <!-- Header tile -->
-                        <div class="flex items-center gap-3 px-4 py-3.5 bg-card-subtle border-b border-theme">
+                        <div class="flex items-center gap-3 px-4 py-3.5 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border-b border-white/40 dark:border-white/10">
                             <div class="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center flex-shrink-0 overflow-hidden shadow-xs">
                                 <img v-if="userAvatarUrl" :src="userAvatarUrl" :alt="user?.name" class="w-full h-full object-cover" />
                                 <span v-else class="text-sm font-bold">{{ userInitial }}</span>

@@ -1127,8 +1127,8 @@ onUnmounted(() => {
             </div>
 
             <!-- ── Tabs ────────────────────────────────────────────────── -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="flex border-b border-slate-100">
+            <div class="card overflow-hidden">
+                <div class="flex border-b border-white/50 dark:border-white/10">
                     <button
                         @click="activeTab = 'quran'"
                         :class="['flex-1 px-4 py-3.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2', activeTab === 'quran' ? 'text-emerald-700 border-b-2 border-emerald-500 bg-emerald-50/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50']"
@@ -1650,7 +1650,7 @@ onUnmounted(() => {
                                     v-for="surah in col"
                                     :key="surah.nomor"
                                     @click="fetchSurahDetail(surah.nomor)"
-                                    class="flex items-center gap-2 p-2 md:p-2.5 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50/40 transition-all text-left group"
+                                    class="flex items-center gap-2 p-2 md:p-2.5 rounded-xl border border-white/60 dark:border-white/10 bg-white/40 dark:bg-slate-800/40 backdrop-blur-sm hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition-all text-left group shadow-2xs"
                                 >
                                     <!-- Nomor -->
                                     <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition-colors">

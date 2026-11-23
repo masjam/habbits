@@ -61,7 +61,7 @@ onUnmounted(() => {
                 >
                     <div
                         v-if="isOpen"
-                        class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 overflow-hidden relative"
+                        class="bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/60 dark:border-white/10 max-w-md w-full p-6 overflow-hidden relative"
                     >
                         <!-- Header with Icon -->
                         <div class="flex items-start gap-4">

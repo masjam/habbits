@@ -123,14 +123,14 @@ const isManajemenUserOpen = ref(
     <aside
         :class="[
             'fixed inset-y-0 left-0 z-40 flex w-72 flex-col',
-            'bg-sidebar shadow-xs border-r border-theme',
+            'bg-white/75 dark:bg-slate-900/80 backdrop-blur-2xl shadow-xl shadow-slate-900/5 border-r border-white/50 dark:border-white/10',
             'transition-transform duration-300 ease-in-out',
             isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:-ml-72',
             'md:relative md:z-auto md:flex-shrink-0',
         ]"
     >
         <!-- ── Sidebar Header / Brand ─────────────────────────── -->
-        <div class="flex items-center gap-3.5 px-6 py-5 border-b border-subtle flex-shrink-0">
+        <div class="flex items-center gap-3.5 px-6 py-5 border-b border-white/40 dark:border-white/10 flex-shrink-0">
             <div class="w-10 h-10 rounded-2xl bg-primary-100/70 dark:bg-primary-900/40 border border-primary-200/60 dark:border-primary-800/50 flex items-center justify-center p-1.5 shadow-xs flex-shrink-0">
                 <img src="/logo.png" alt="Logo SDAM" class="w-full h-full object-contain" />
             </div>
@@ -866,8 +866,8 @@ const isManajemenUserOpen = ref(
         </nav>
 
         <!-- ── Sidebar Footer (M3 tactile user chip card) ─────── -->
-        <div class="flex-shrink-0 px-3.5 py-3.5 border-t border-subtle">
-            <div class="flex items-center gap-3 px-3 py-2 rounded-2xl bg-card-subtle border border-theme/60 shadow-xs">
+        <div class="flex-shrink-0 px-3.5 py-3.5 border-t border-white/40 dark:border-white/10">
+            <div class="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-white/60 dark:border-white/10 shadow-sm">
                 <div class="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center flex-shrink-0 border border-primary-200 dark:border-primary-700/60 overflow-hidden">
                     <img v-if="userAvatarUrl" :src="userAvatarUrl" :alt="user?.name" class="w-full h-full object-cover" />
                     <span v-else class="text-xs font-bold text-primary-700 dark:text-primary-300">{{ userInitial }}</span>

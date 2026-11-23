@@ -418,19 +418,19 @@ onUnmounted(() => {
         <div class="h-[calc(100vh-6rem)] md:h-[calc(100vh-6.5rem)] flex flex-col w-full">
             
             <!-- Main Chat Box Container -->
-            <div class="flex-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex overflow-hidden">
+            <div class="flex-1 card flex overflow-hidden">
                 
                 <!-- ───────────────────────────────────────────────────────────── -->
                 <!-- LEFT SIDEBAR: Conversation List & Actions                    -->
                 <!-- ───────────────────────────────────────────────────────────── -->
                 <div
                     :class="[
-                        'w-full md:w-80 lg:w-96 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all',
+                        'w-full md:w-80 lg:w-96 flex flex-col border-r border-white/50 dark:border-white/10 bg-white/40 dark:bg-slate-900/50 backdrop-blur-md transition-all',
                         activeChat ? 'hidden md:flex' : 'flex'
                     ]"
                 >
                     <!-- Sidebar Header -->
-                    <div class="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50">
+                    <div class="p-3.5 border-b border-white/40 dark:border-white/10 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2">
                                 <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shadow-sm shadow-emerald-500/30">

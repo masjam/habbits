@@ -27,7 +27,7 @@ onMounted(() => {
 <template>
     <div class="relative flex items-center">
         <!-- ═══ DESKTOP VERSION (Pill swatches langsung klik) ═══ -->
-        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100/90 dark:bg-slate-700/60 border border-slate-200/80 dark:border-slate-600/50 shadow-xs backdrop-blur-xs transition-all">
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 shadow-xs backdrop-blur-md transition-all">
             <span class="text-[11px] font-semibold text-slate-400 dark:text-slate-400 mr-0.5 flex items-center gap-1 select-none">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
@@ -101,7 +101,7 @@ onMounted(() => {
             >
                 <div
                     v-if="isMobileMenuOpen"
-                    class="absolute right-0 top-full mt-2 w-56 origin-top-right bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200/90 dark:border-slate-700/80 p-2.5 z-40"
+                    class="absolute right-0 top-full mt-2 w-56 origin-top-right bg-white/85 dark:bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/60 dark:border-white/10 p-2.5 z-40"
                     role="menu"
                 >
                     <div class="px-2.5 py-1.5 mb-1.5 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between">

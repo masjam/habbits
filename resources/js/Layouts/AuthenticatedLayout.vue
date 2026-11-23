@@ -103,7 +103,14 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="flex h-screen overflow-hidden bg-transparent select-auto">
+    <div class="flex h-screen overflow-hidden bg-transparent select-auto relative">
+
+        <!-- ═══ AMBIENT LIGHT ORBS (GLASSMORPHISM GLOW) ═════════════ -->
+        <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10" aria-hidden="true">
+            <div class="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-primary-400/20 dark:bg-primary-500/10 blur-3xl animate-pulse" style="animation-duration: 8s;"></div>
+            <div class="absolute top-1/3 -left-32 w-80 h-80 rounded-full bg-teal-400/15 dark:bg-teal-500/10 blur-3xl"></div>
+            <div class="absolute -bottom-32 right-1/4 w-96 h-96 rounded-full bg-indigo-400/15 dark:bg-indigo-500/10 blur-3xl"></div>
+        </div>
 
         <!-- ═══ OFFLINE BANNER ══════════════════════════════════════ -->
         <Transition

@@ -20,7 +20,7 @@ const { toasts, removeToast } = useToast()
             <div
                 v-for="toast in toasts"
                 :key="toast.id"
-                class="pointer-events-auto w-full rounded-2xl shadow-xl shadow-slate-900/10 border p-4 flex items-start gap-3.5 backdrop-blur-md transition-all bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800"
+                class="pointer-events-auto w-full rounded-2xl shadow-xl shadow-slate-900/10 border p-4 flex items-start gap-3.5 backdrop-blur-xl transition-all bg-white/85 dark:bg-slate-900/85 border-white/60 dark:border-white/10"
             >
                 <!-- Semantic Icon Container -->
                 <div class="flex-shrink-0 mt-0.5">

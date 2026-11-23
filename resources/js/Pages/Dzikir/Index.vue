@@ -242,7 +242,7 @@ onUnmounted(() => {
             </div>
 
             <!-- ── Navigation Tabs ─────────────────────────────────────────── -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+            <div class="card p-1.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                     @click="activeTab = 'pagi'"
                     :class="[
@@ -326,7 +326,7 @@ onUnmounted(() => {
             <!-- ══════════════════════════════════════════════════════════════ -->
             <div v-if="activeTab !== 'tasbih'" class="space-y-5">
                 <!-- ── 1 Unified Progress & Control Card ────────────────────── -->
-                <div class="bg-white dark:bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-200">
+                <div class="card p-4 sm:p-6 transition-all duration-200">
                     <div class="flex items-center justify-between gap-3">
                         <!-- Left: Title & Status -->
                         <div class="space-y-1 min-w-0">
@@ -668,7 +668,7 @@ onUnmounted(() => {
                 <!-- ══════════════════════════════════════════════════════════ -->
                 <div v-if="viewMode === 'slide' && filteredList.length > 0 && currentDzikirItem" class="space-y-4">
                     <!-- Top Navigation Bar << >> & Indicator (Hidden on Mobile, Displayed on Desktop sm:flex) -->
-                    <div class="hidden sm:flex items-center justify-between gap-1.5 sm:gap-3 bg-white dark:bg-slate-800 p-2.5 sm:p-4 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm w-full min-w-0">
+                    <div class="card hidden sm:flex items-center justify-between gap-1.5 sm:gap-3 p-2.5 sm:p-4 rounded-3xl w-full min-w-0">
                         <!-- Tombol << SEBELUMNYA -->
                         <button
                             @click="prevDzikir"
@@ -725,10 +725,10 @@ onUnmounted(() => {
                     <!-- Slide Item Card -->
                     <div
                         :class="[
-                            'bg-white dark:bg-slate-800 rounded-3xl p-5 sm:p-8 border transition-all duration-300 shadow-md relative overflow-hidden',
+                            'card p-5 sm:p-8 transition-all duration-300 relative overflow-hidden',
                             isCompleted(currentDzikirItem)
-                                ? 'border-emerald-400 dark:border-emerald-700/80 bg-emerald-50/15 dark:bg-emerald-950/10'
-                                : 'border-slate-200 dark:border-slate-700'
+                                ? 'border-emerald-400 dark:border-emerald-700/80 bg-emerald-50/30 dark:bg-emerald-950/20 ring-2 ring-emerald-400/20'
+                                : ''
                         ]"
                     >
                         <!-- Header of Current Slide -->

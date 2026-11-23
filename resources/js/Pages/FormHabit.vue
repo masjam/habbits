@@ -433,7 +433,7 @@ const toggleBoolean = (index) => {
             </div> -->
                         <!-- Header Section -->
             <!-- Ubah padding dari p-6 menjadi p-3 untuk mobile, dan p-6/p-8 untuk tablet/desktop -->
-            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-3 md:p-6 sm:p-8 relative overflow-hidden mb-2">
+            <div class="card p-3 md:p-6 sm:p-8 relative overflow-hidden mb-2">
                 <div class="absolute -right-20 -top-20 w-64 h-64 bg-emerald-50 rounded-full blur-3xl pointer-events-none" aria-hidden="true" />
                 
                 <div class="relative z-10">
@@ -460,7 +460,7 @@ const toggleBoolean = (index) => {
                         </div>
                         
                         <!-- Date Picker: Menjadi fokus utama di Mobile -->
-                        <div class="w-full md:w-auto bg-slate-50 dark:bg-slate-800/50 p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="w-full md:w-auto bg-white/50 dark:bg-slate-800/50 backdrop-blur-md p-3 md:p-4 rounded-xl border border-white/60 dark:border-white/10 shadow-xs">
                             <label class="block text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Tanggal Laporan</label>
                             <input 
                                 type="date" 
@@ -517,7 +517,7 @@ const toggleBoolean = (index) => {
                     </div>
                 </div> -->
                 <!-- Habit Tabs Mobile Grid (Tampil Semua Dalam 1 Layar Tanpa Geser) -->
-                <div class="md:hidden mb-4 bg-white dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="card md:hidden mb-4 p-2">
                     <div class="grid grid-cols-4 gap-1.5">
                         <button 
                             v-for="habit in habits" 
@@ -571,15 +571,15 @@ const toggleBoolean = (index) => {
                         v-for="habit in habits" 
                         :key="habit.id" 
                         :class="[
-                            'bg-white dark:bg-slate-800 rounded-xl border shadow-sm transition-all duration-200 break-inside-avoid mb-6',
-                            activeTabId === habit.id ? 'border-emerald-300 ring-1 ring-emerald-50' : 'border-slate-200 dark:border-slate-700',
+                            'card transition-all duration-200 break-inside-avoid mb-6',
+                            activeTabId === habit.id ? 'border-primary-400 ring-2 ring-primary-400/30 shadow-lg' : '',
                             'md:block', // Selalu tampil di desktop
                             activeTabId === habit.id ? 'block' : 'hidden' // Di mobile hanya tampil jika aktif
                         ]"
                     >
                         
                         <!-- Habit Header (Dengan Balon Pop-up Deskripsi) -->
-                        <div class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 px-4 py-2.5 flex justify-between items-center rounded-t-xl relative">
+                        <div class="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border-b border-slate-200/50 dark:border-white/5 px-4 py-2.5 flex justify-between items-center rounded-t-xl relative">
                             <div 
                                 class="flex-1 pr-2 truncate cursor-pointer select-none group"
                                 @click="showHabitTooltip(habit)"
