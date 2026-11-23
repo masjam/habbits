@@ -133,6 +133,34 @@ class SuratKeluarTest extends TestCase
         ]);
     }
 
+    public function test_tu_can_generate_surat_with_custom_manual_date()
+    {
+        $payload = [
+            'jenis_surat' => 'Umum',
+            'nomor_mode' => 'manual',
+            'nomor_surat' => '100/Pan.Milad/2026',
+            'tanggal_mode' => 'manual',
+            'tanggal_surat' => '2026-05-15',
+            'lampiran' => '1 Berkas',
+            'perihal' => 'Surat Backdate Milad',
+            'kepada' => 'Alumni SDAM',
+            'di' => 'Tempat',
+            'tanggal_masehi' => '15 Mei 2026 M',
+            'tanggal_hijriah' => '28 Dzulqa\'dah 1447 H',
+            'isi_surat' => '<p>Undangan temu alumni.</p>',
+        ];
+
+        $response = $this->actingAs($this->tuUser)->post(route('tata-usaha.surat-keluar.generate'), $payload);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('surat_keluar', [
+            'nomor_surat' => '100/Pan.Milad/2026',
+            'tanggal_surat' => '2026-05-15',
+            'perihal' => 'Surat Backdate Milad',
+            'status' => 'draft',
+        ]);
+    }
+
     public function test_generate_automatic_nomor_recalculates_if_conflict()
     {
         // Existing letter with next automatic number

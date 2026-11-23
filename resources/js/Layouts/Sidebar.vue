@@ -1,11 +1,54 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import {
+    IconDashboard,
+    IconQuranHadis,
+    IconDzikir,
+    IconHpt,
+    IconNotification,
+    IconChat,
+    IconNotulen,
+    IconPresensi,
+    IconFormHabit,
+    IconInputHabit,
+    IconRekapQuran,
+    IconJurnalKajian,
+    IconHaid,
+    IconJurnalGuru,
+    IconAdministrasiGuru,
+    IconArsip,
+    IconKpi,
+    IconSuratMasuk,
+    IconSuratKeluar,
+    IconDisposisi,
+    IconPengaturanSurat,
+    IconRekapPresensi,
+    IconRekapHabit,
+    IconSemuaLaporan,
+    IconBelumIsiHabit,
+    IconRekapJurnalGuru,
+    IconRekapAdministrasiGuru,
+    IconMasterHabit,
+    IconManajemenUser,
+    IconDaftarUser,
+    IconVerifikasiArsip,
+    IconEvaluasiKpi,
+    IconJadwalPiket,
+    IconJadwalKhusus,
+    IconDaftarDivisi,
+    IconPengaturanSistem,
+    IconPanduan,
+    IconFiturHr,
+    IconLogAkses,
+    IconPemantauanSistem,
+    IconChevronDown
+} from '@/Components/Icons'
 
 const props = defineProps({
     isOpen: {
         type: Boolean,
-        default: false
+        default: true
     },
     user: {
         type: Object,
@@ -17,7 +60,7 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'expand', 'toggle'])
 
 const closeSidebar = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -65,7 +108,9 @@ const isActive = (routeName) => {
     }
     let res = false
     try {
-        res = route().current(routeName)
+        if (typeof route !== 'undefined') {
+            res = route().current(routeName)
+        }
     } catch {
         res = false
     }
@@ -73,19 +118,50 @@ const isActive = (routeName) => {
     return res
 }
 
-// ─── Nav Link Class Builders (Material 3 Navigation Drawer) ──────────────────
+// ─── Dynamic Classes (Responsive Desktop Rail vs Expanded Drawer) ───────────
 const navLinkClass = (routeName) => [
-    'group flex items-center gap-3.5 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-150 w-full select-none cursor-pointer',
+    'group relative flex items-center rounded-2xl text-sm font-medium transition-all duration-200 ease-out select-none cursor-pointer',
+    props.isOpen
+        ? 'w-full gap-3.5 px-4 py-2.5'
+        : 'w-11 h-11 p-2.5 mx-auto justify-center',
     isActive(routeName)
-        ? 'bg-primary-100/90 dark:bg-primary-900/50 text-primary-900 dark:text-primary-100 font-bold shadow-xs'
-        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100',
+        ? (props.isOpen
+            ? 'bg-gradient-to-r from-primary-500/20 via-primary-500/10 to-transparent text-primary-950 dark:text-primary-100 font-bold shadow-xs translate-x-1 border-l-4 border-primary-500'
+            : 'bg-primary-500/20 text-primary-700 dark:text-primary-300 font-bold shadow-xs ring-2 ring-primary-500/40 scale-105')
+        : (props.isOpen
+            ? 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1.5'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:scale-110')
 ]
 
 const subNavLinkClass = (routeName) => [
-    'group flex items-center gap-3 px-3.5 py-2 rounded-full text-xs font-medium transition-colors duration-150 w-full select-none cursor-pointer',
+    'group flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200 ease-out w-full select-none cursor-pointer',
     isActive(routeName)
-        ? 'bg-primary-100/80 dark:bg-primary-900/40 text-primary-900 dark:text-primary-100 font-bold shadow-xs'
-        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100',
+        ? 'bg-primary-100/80 dark:bg-primary-900/50 text-primary-900 dark:text-primary-100 font-bold shadow-xs translate-x-1'
+        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1'
+]
+
+const accordionButtonClass = (isOpenState) => [
+    'group flex items-center rounded-2xl text-sm font-medium transition-all duration-200 select-none cursor-pointer',
+    props.isOpen
+        ? 'w-full gap-3.5 px-4 py-2.5 rounded-full'
+        : 'w-11 h-11 p-2.5 mx-auto justify-center',
+    isOpenState
+        ? 'bg-slate-200/60 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-semibold'
+        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100' + (!props.isOpen ? ' hover:scale-110' : '')
+]
+
+const iconClass = (routeName) => [
+    'w-5 h-5 flex-shrink-0 transition-colors',
+    isActive(routeName)
+        ? 'text-primary-600 dark:text-primary-400'
+        : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400'
+]
+
+const subIconClass = (routeName) => [
+    'w-4 h-4 flex-shrink-0 transition-colors',
+    isActive(routeName)
+        ? 'text-primary-600 dark:text-primary-400'
+        : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400'
 ]
 
 // ─── Feature Flags (dari global_settings yang di-share via Inertia) ─────────
@@ -97,7 +173,7 @@ const featureEnabled = (key) => {
     return val === '1' || val === 'true' || val === true
 }
 
-// ─── Menu Toggle States ──────────────────────────────────────────────────────
+// ─── Menu Toggle States & Mini Rail Click Behavior ──────────────────────────
 const isFormHabitOpen = ref(
     isActive('habit.form') || 
     isActive('quran.recap') || 
@@ -117,154 +193,151 @@ const isManajemenUserOpen = ref(
     isActive('admin.special-schedules.*') ||
     isActive('admin.divisions.*')
 )
+
+const toggleAccordion = (type) => {
+    if (!props.isOpen) {
+        emit('expand')
+        emit('toggle')
+        if (type === 'formHabit') isFormHabitOpen.value = true
+        if (type === 'rekapHabit') isRekapHabitOpen.value = true
+        if (type === 'manajemenUser') isManajemenUserOpen.value = true
+        return
+    }
+    if (type === 'formHabit') isFormHabitOpen.value = !isFormHabitOpen.value
+    if (type === 'rekapHabit') isRekapHabitOpen.value = !isRekapHabitOpen.value
+    if (type === 'manajemenUser') isManajemenUserOpen.value = !isManajemenUserOpen.value
+}
 </script>
 
 <template>
     <aside
         :class="[
-            'fixed inset-y-0 left-0 z-40 flex w-72 flex-col',
-            'bg-white/75 dark:bg-slate-900/80 backdrop-blur-2xl shadow-xl shadow-slate-900/5 border-r border-white/50 dark:border-white/10',
-            'transition-transform duration-300 ease-in-out',
-            isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:-ml-72',
-            'md:relative md:z-auto md:flex-shrink-0',
+            'fixed inset-y-0 left-0 z-40 flex flex-col',
+            'bg-white/80 dark:bg-slate-900/85 backdrop-blur-2xl shadow-2xl border-r border-white/60 dark:border-white/10',
+            'transition-all duration-300 ease-in-out select-none',
+            // Mobile: drawer behavior (< 768px)
+            isOpen ? 'translate-x-0 w-72' : '-translate-x-full w-72',
+            // Desktop: always visible (>= 768px), mini rail or expanded
+            'md:translate-x-0 md:relative md:z-auto md:flex-shrink-0',
+            isOpen ? 'md:w-72' : 'md:w-20'
         ]"
     >
         <!-- ── Sidebar Header / Brand ─────────────────────────── -->
-        <div class="flex items-center gap-3.5 px-6 py-5 border-b border-white/40 dark:border-white/10 flex-shrink-0">
-            <div class="w-10 h-10 rounded-2xl bg-primary-100/70 dark:bg-primary-900/40 border border-primary-200/60 dark:border-primary-800/50 flex items-center justify-center p-1.5 shadow-xs flex-shrink-0">
+        <div
+            :class="[
+                'flex items-center py-5 border-b border-white/40 dark:border-white/10 flex-shrink-0 group cursor-default transition-all duration-300',
+                isOpen ? 'px-6 gap-3.5 justify-start' : 'px-2 justify-center'
+            ]"
+            :title="!isOpen ? 'SAHABAT SDAM' : undefined"
+        >
+            <div class="w-10 h-10 rounded-2xl bg-primary-100/70 dark:bg-primary-900/40 border border-primary-200/60 dark:border-primary-800/50 flex items-center justify-center p-1.5 shadow-xs flex-shrink-0 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300 ease-out">
                 <img src="/logo.png" alt="Logo SDAM" class="w-full h-full object-contain" />
             </div>
-            <div class="leading-tight min-w-0">
-                <p class="text-base font-bold text-primary-600 dark:text-primary-400 tracking-tight">SAHABAT SDAM</p>
+            <div v-show="isOpen" class="leading-tight min-w-0 transition-opacity duration-200">
+                <p class="text-base font-bold text-primary-600 dark:text-primary-400 tracking-tight group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">SAHABAT SDAM</p>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">Presensi &amp; Kebiasaan</p>
             </div>
         </div>
 
-        <!-- ── Navigation Links (M3 Navigation Drawer items) ─── -->
-        <nav class="flex-1 overflow-y-auto px-3.5 py-4 space-y-1">
+        <!-- ── Navigation Links ──────────────────────────────── -->
+        <nav class="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-4 space-y-1">
             <!-- ── Section: Menu utama ── -->
-            <p class="px-4 pt-1 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal">
+            <p v-show="isOpen" class="px-4 pt-1 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
                 Menu utama
             </p>
 
-            <!-- A. Dashboard — Semua Role -->
+            <!-- Dashboard -->
             <Link
                 :href="route('dashboard')"
                 :class="navLinkClass('dashboard')"
+                :title="!isOpen ? 'Dashboard' : undefined"
                 @click="closeSidebar"
             >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('dashboard') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    aria-hidden="true"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <span>Dashboard</span>
+                <IconDashboard :class="iconClass('dashboard')" />
+                <span v-show="isOpen" class="truncate">Dashboard</span>
             </Link>
 
-            <!-- Al-Qur'an & Hadis — Semua Role -->
+            <!-- Al-Qur'an & Hadis -->
             <Link
                 :href="route('quran.hadis')"
                 :class="navLinkClass('quran.hadis')"
+                :title="!isOpen ? 'Al-Qur\'an & Hadis' : undefined"
                 @click="closeSidebar"
             >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('quran.hadis') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    aria-hidden="true"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <span>Al-Qur'an &amp; Hadis</span>
+                <IconQuranHadis :class="iconClass('quran.hadis')" />
+                <span v-show="isOpen" class="truncate">Al-Qur'an &amp; Hadis</span>
             </Link>
 
-            <!-- Dzikir Pagi & Petang — Semua Role -->
+            <!-- Dzikir Pagi & Petang -->
             <Link
                 :href="route('dzikir.index')"
                 :class="navLinkClass('dzikir.index')"
+                :title="!isOpen ? 'Dzikir Pagi & Petang' : undefined"
                 @click="closeSidebar"
             >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('dzikir.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    aria-hidden="true"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                </svg>
-                <span>Dzikir Pagi &amp; Petang</span>
+                <IconDzikir :class="iconClass('dzikir.index')" />
+                <span v-show="isOpen" class="truncate">Dzikir Pagi &amp; Petang</span>
             </Link>
 
-            <!-- HPT Online — Semua Role -->
+            <!-- HPT Online -->
             <Link
                 :href="route('hpt.index')"
                 :class="navLinkClass('hpt.*')"
+                :title="!isOpen ? 'HPT Online' : undefined"
                 @click="closeSidebar"
             >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('hpt.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    aria-hidden="true"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                </svg>
-                <span>HPT Online</span>
+                <IconHpt :class="iconClass('hpt.*')" />
+                <span v-show="isOpen" class="truncate">HPT Online</span>
             </Link>
 
-            <!-- Pesan & Notifikasi — Semua Role -->
+            <!-- Pesan & Notifikasi -->
             <Link
                 :href="route('notifications.index')"
                 :class="navLinkClass('notifications.index')"
+                :title="!isOpen ? 'Pesan & Notifikasi' : undefined"
                 @click="closeSidebar"
             >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('notifications.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    aria-hidden="true"
+                <div class="relative flex items-center justify-center">
+                    <IconNotification :class="iconClass('notifications.index')" />
+                    <span
+                        v-if="!isOpen && $page.props.notifications?.unread_count > 0"
+                        class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900"
+                    />
+                </div>
+                <span v-show="isOpen" class="flex-1 truncate">Pesan &amp; Notifikasi</span>
+                <span
+                    v-if="isOpen && $page.props.notifications?.unread_count > 0"
+                    class="ml-auto flex items-center justify-center px-2 py-0.5 text-xs font-bold bg-rose-500 text-white rounded-full flex-shrink-0"
                 >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                <span class="flex-1">Pesan &amp; Notifikasi</span>
-                <span v-if="$page.props.notifications?.unread_count > 0" class="ml-auto flex items-center justify-center px-2 py-0.5 text-xs font-bold bg-rose-500 text-white rounded-full">
                     {{ $page.props.notifications.unread_count }}
                 </span>
             </Link>
 
-            <!-- Chat Pegawai — Semua Role -->
+            <!-- Chat Pegawai -->
             <Link
                 :href="route('chat.index')"
                 :class="navLinkClass('chat.*')"
+                :title="!isOpen ? 'Chat Pegawai' : undefined"
                 @click="closeSidebar"
             >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('chat.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    aria-hidden="true"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <span class="flex-1">Chat Pegawai</span>
+                <IconChat :class="iconClass('chat.*')" />
+                <span v-show="isOpen" class="flex-1 truncate">Chat Pegawai</span>
             </Link>
 
-            <!-- Notulen Rapat — Semua Role -->
+            <!-- Notulen Rapat -->
             <Link
                 :href="route('notulen.index')"
                 :class="navLinkClass('notulen.*')"
+                :title="!isOpen ? 'Notulen Rapat' : undefined"
                 @click="closeSidebar"
             >
-                <svg
-                    :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('notulen.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                    aria-hidden="true"
-                >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Notulen Rapat</span>
+                <IconNotulen :class="iconClass('notulen.*')" />
+                <span v-show="isOpen" class="truncate">Notulen Rapat</span>
             </Link>
 
-            <!-- ── Section: Catatan ibadahku (Pegawai: role user) ── -->
+            <!-- ── Section: Catatan ibadahku ── -->
             <template v-if="hasRole('user')">
-                <p class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal">
+                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
                     Catatan ibadahku
                 </p>
 
@@ -273,102 +346,80 @@ const isManajemenUserOpen = ref(
                     v-if="featureEnabled('feature_presensi')"
                     :href="route('attendance.index')"
                     :class="navLinkClass('attendance.index')"
+                    :title="!isOpen ? 'Presensiku' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('attendance.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>Presensiku</span>
+                    <IconPresensi :class="iconClass('attendance.index')" />
+                    <span v-show="isOpen" class="truncate">Presensiku</span>
                 </Link>
 
                 <!-- Accordion: Form Isi Habit -->
                 <div class="space-y-1" v-if="featureEnabled('feature_habit')">
                     <button
                         type="button"
-                        @click="isFormHabitOpen = !isFormHabitOpen"
-                        :class="[
-                            'w-full flex items-center gap-3.5 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-150 select-none cursor-pointer',
-                            isFormHabitOpen
-                                ? 'bg-slate-200/60 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-semibold'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100'
-                        ]"
+                        @click="toggleAccordion('formHabit')"
+                        :class="accordionButtonClass(isFormHabitOpen)"
+                        :title="!isOpen ? 'Form Isi Habit' : undefined"
                     >
-                        <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isFormHabitOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Form Isi Habit</span>
-                        <svg
+                        <IconFormHabit :class="['w-5 h-5 flex-shrink-0 transition-colors', isFormHabitOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']" />
+                        <span v-show="isOpen" class="truncate">Form Isi Habit</span>
+                        <IconChevronDown
+                            v-show="isOpen"
                             class="w-4 h-4 ml-auto transition-transform duration-200 text-slate-400"
                             :class="{ 'rotate-180': isFormHabitOpen }"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+                        />
                     </button>
 
-                    <div v-show="isFormHabitOpen" class="ml-4 pl-3 border-l border-theme space-y-1 pt-1">
-                        <Link
-                            :href="route('habit.form')"
-                            :class="subNavLinkClass('habit.form')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('habit.form') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            <span>Input Habit Harian</span>
-                        </Link>
+                    <Transition
+                        enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+                        enter-from-class="opacity-0 -translate-y-2 max-h-0"
+                        enter-to-class="opacity-100 translate-y-0 max-h-96"
+                        leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+                        leave-from-class="opacity-100 translate-y-0 max-h-96"
+                        leave-to-class="opacity-0 -translate-y-2 max-h-0"
+                    >
+                        <div v-show="isFormHabitOpen && isOpen" class="ml-4 pl-3 border-l-2 border-primary-500/30 space-y-1 pt-1">
+                            <Link
+                                :href="route('habit.form')"
+                                :class="subNavLinkClass('habit.form')"
+                                @click="closeSidebar"
+                            >
+                                <IconInputHabit :class="subIconClass('habit.form')" />
+                                <span>Input Habit Harian</span>
+                            </Link>
 
-                        <Link
-                            :href="route('quran.recap')"
-                            :class="subNavLinkClass('quran.recap')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('quran.recap') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
-                            <span>Rekap Al-Quran</span>
-                        </Link>
+                            <Link
+                                :href="route('quran.recap')"
+                                :class="subNavLinkClass('quran.recap')"
+                                @click="closeSidebar"
+                            >
+                                <IconRekapQuran :class="subIconClass('quran.recap')" />
+                                <span>Rekap Al-Quran</span>
+                            </Link>
 
-                        <Link
-                            :href="route('kajian.index')"
-                            :class="subNavLinkClass('kajian.index')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('kajian.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            <span>Jurnal Kajian &amp; Hadits</span>
-                        </Link>
-                    </div>
+                            <Link
+                                :href="route('kajian.index')"
+                                :class="subNavLinkClass('kajian.index')"
+                                @click="closeSidebar"
+                            >
+                                <IconJurnalKajian :class="subIconClass('kajian.index')" />
+                                <span>Jurnal Kajian &amp; Hadits</span>
+                            </Link>
+                        </div>
+                    </Transition>
                 </div>
 
-                <!-- Catatan Haid (Pegawai Perempuan) -->
+                <!-- Catatan Haid -->
                 <Link
                     v-if="isFemale"
                     :href="route('haid.index')"
                     :class="navLinkClass('haid.index')"
+                    :title="!isOpen ? 'Catatan Haid' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('haid.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4c0 0-6 5.5-6 8.5a6 6 0 0012 0C18 9.5 12 4 12 4z" />
-                    </svg>
-                    <span>Catatan Haid</span>
-                    <span class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300">
+                    <IconHaid :class="iconClass('haid.index')" />
+                    <span v-show="isOpen" class="truncate">Catatan Haid</span>
+                    <span v-show="isOpen" class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 flex-shrink-0">
                         Aktif
                     </span>
                 </Link>
@@ -378,50 +429,35 @@ const isManajemenUserOpen = ref(
                     v-if="!hasAnyRole(['admin', 'superadmin']) && page.props.global_settings?.feature_jurnal !== 'false' && page.props.global_settings?.feature_jurnal !== '0'"
                     :href="route('teacher-journals.index')"
                     :class="navLinkClass('teacher-journals.index')"
+                    :title="!isOpen ? 'Jurnal Harian Guru' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('teacher-journals.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span>Jurnal Harian Guru</span>
+                    <IconJurnalGuru :class="iconClass('teacher-journals.index')" />
+                    <span v-show="isOpen" class="truncate">Jurnal Harian Guru</span>
                 </Link>
 
-                <!-- Administrasi Guru (Perangkat Pembelajaran) -->
+                <!-- Administrasi Guru -->
                 <Link
                     v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_administrasi_guru')"
                     :href="route('teacher-administrations.index')"
                     :class="navLinkClass('teacher-administrations.*')"
+                    :title="!isOpen ? 'Administrasi Guru' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('teacher-administrations.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <span>Administrasi Guru</span>
+                    <IconAdministrasiGuru :class="iconClass('teacher-administrations.*')" />
+                    <span v-show="isOpen" class="truncate">Administrasi Guru</span>
                 </Link>
 
-                <!-- Arsip Saya -->
+                <!-- Arsip Kepegawaian -->
                 <Link
                     v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_arsip')"
                     :href="route('employee-documents.index')"
                     :class="navLinkClass('employee-documents.*')"
+                    :title="!isOpen ? 'Arsip Kepegawaian' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('employee-documents.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Arsip Kepegawaian</span>
+                    <IconArsip :class="iconClass('employee-documents.*')" />
+                    <span v-show="isOpen" class="truncate">Arsip Kepegawaian</span>
                 </Link>
 
                 <!-- Rapor Kinerja (KPI) -->
@@ -429,90 +465,64 @@ const isManajemenUserOpen = ref(
                     v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_kpi')"
                     :href="route('performance.index')"
                     :class="navLinkClass('performance.*')"
+                    :title="!isOpen ? 'Rapor Kinerja (KPI)' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('performance.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                    <span>Rapor Kinerja (KPI)</span>
+                    <IconKpi :class="iconClass('performance.*')" />
+                    <span v-show="isOpen" class="truncate">Rapor Kinerja (KPI)</span>
                 </Link>
             </template>
 
-            <!-- ── Section: Tata usaha (tata_usaha, kepala_sekolah & superadmin) ── -->
+            <!-- ── Section: Tata usaha ── -->
             <template v-if="hasAnyRole(['tata_usaha', 'kepala_sekolah', 'superadmin'])">
-                <p class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal">
+                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
                     Tata usaha
                 </p>
                 
                 <Link
                     :href="route('tata-usaha.surat-masuk.index')"
                     :class="navLinkClass('tata-usaha.surat-masuk.*')"
+                    :title="!isOpen ? 'Surat Masuk' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('tata-usaha.surat-masuk.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span>Surat Masuk</span>
+                    <IconSuratMasuk :class="iconClass('tata-usaha.surat-masuk.*')" />
+                    <span v-show="isOpen" class="truncate">Surat Masuk</span>
                 </Link>
 
                 <Link
                     :href="route('tata-usaha.surat-keluar.index')"
                     :class="navLinkClass('tata-usaha.surat-keluar.*')"
+                    :title="!isOpen ? 'Surat Keluar' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('tata-usaha.surat-keluar.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                    <span>Surat Keluar</span>
+                    <IconSuratKeluar :class="iconClass('tata-usaha.surat-keluar.*')" />
+                    <span v-show="isOpen" class="truncate">Surat Keluar</span>
                 </Link>
 
                 <Link
                     :href="route('tata-usaha.disposisi.index')"
                     :class="navLinkClass('tata-usaha.disposisi.*')"
+                    :title="!isOpen ? 'Disposisi' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('tata-usaha.disposisi.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                    <span>Disposisi</span>
+                    <IconDisposisi :class="iconClass('tata-usaha.disposisi.*')" />
+                    <span v-show="isOpen" class="truncate">Disposisi</span>
                 </Link>
 
                 <Link
                     :href="route('tata-usaha.settings.index')"
                     :class="navLinkClass('tata-usaha.settings.*')"
+                    :title="!isOpen ? 'Pengaturan Surat' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('tata-usaha.settings.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>Pengaturan Surat</span>
+                    <IconPengaturanSurat :class="iconClass('tata-usaha.settings.*')" />
+                    <span v-show="isOpen" class="truncate">Pengaturan Surat</span>
                 </Link>
             </template>
 
             <!-- ── Section: Monitoring Guru / Kurikulum ── -->
             <template v-if="(hasRole('kepala_sekolah') || hasRole('kurikulum')) && !hasAnyRole(['admin', 'superadmin'])">
-                <p class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal">
+                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
                     {{ hasRole('kurikulum') && !hasRole('kepala_sekolah') ? 'Kurikulum' : 'Monitoring guru' }}
                 </p>
 
@@ -520,38 +530,28 @@ const isManajemenUserOpen = ref(
                     v-if="featureEnabled('feature_administrasi_guru')"
                     :href="route('admin.teacher-administrations.index')"
                     :class="navLinkClass('admin.teacher-administrations.*')"
+                    :title="!isOpen ? 'Rekap Administrasi Guru' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.teacher-administrations.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Rekap Administrasi Guru</span>
+                    <IconRekapAdministrasiGuru :class="iconClass('admin.teacher-administrations.*')" />
+                    <span v-show="isOpen" class="truncate">Rekap Administrasi Guru</span>
                 </Link>
 
                 <Link
                     v-if="hasRole('kepala_sekolah')"
                     :href="route('admin.teacher-journals.index')"
                     :class="navLinkClass('admin.teacher-journals.index')"
+                    :title="!isOpen ? 'Rekap Jurnal Guru' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.teacher-journals.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    <span>Rekap Jurnal Guru</span>
+                    <IconRekapJurnalGuru :class="iconClass('admin.teacher-journals.index')" />
+                    <span v-show="isOpen" class="truncate">Rekap Jurnal Guru</span>
                 </Link>
             </template>
 
             <!-- ── Section: Administrasi (Admin & Superadmin) ── -->
             <template v-if="hasAnyRole(['admin', 'superadmin'])">
-                <p class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal">
+                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
                     Administrasi
                 </p>
 
@@ -560,324 +560,300 @@ const isManajemenUserOpen = ref(
                     v-if="featureEnabled('feature_presensi')"
                     :href="route('admin.attendance.index')"
                     :class="navLinkClass('admin.attendance.index')"
+                    :title="!isOpen ? 'Rekap Presensi' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.attendance.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
-                    <span>Rekap Presensi</span>
+                    <IconRekapPresensi :class="iconClass('admin.attendance.index')" />
+                    <span v-show="isOpen" class="truncate">Rekap Presensi</span>
                 </Link>
 
                 <!-- Accordion: Rekap Habits -->
                 <div class="space-y-1" v-if="featureEnabled('feature_habit')">
                     <button
                         type="button"
-                        @click="isRekapHabitOpen = !isRekapHabitOpen"
-                        :class="[
-                            'w-full flex items-center gap-3.5 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-150 select-none cursor-pointer',
-                            isRekapHabitOpen
-                                ? 'bg-slate-200/60 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-semibold'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100'
-                        ]"
+                        @click="toggleAccordion('rekapHabit')"
+                        :class="accordionButtonClass(isRekapHabitOpen)"
+                        :title="!isOpen ? 'Rekap Habits' : undefined"
                     >
-                        <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isRekapHabitOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        <span>Rekap Habits</span>
-                        <svg
+                        <IconRekapHabit :class="['w-5 h-5 flex-shrink-0 transition-colors', isRekapHabitOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']" />
+                        <span v-show="isOpen" class="truncate">Rekap Habits</span>
+                        <IconChevronDown
+                            v-show="isOpen"
                             class="w-4 h-4 ml-auto transition-transform duration-200 text-slate-400"
                             :class="{ 'rotate-180': isRekapHabitOpen }"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+                        />
                     </button>
 
-                    <div v-show="isRekapHabitOpen" class="ml-4 pl-3 border-l border-theme space-y-1 pt-1">
-                        <Link
-                            :href="route('admin.laporan')"
-                            :class="subNavLinkClass('admin.laporan')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.laporan') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                            </svg>
-                            <span>Semua Laporan</span>
-                        </Link>
+                    <Transition
+                        enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+                        enter-from-class="opacity-0 -translate-y-2 max-h-0"
+                        enter-to-class="opacity-100 translate-y-0 max-h-96"
+                        leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+                        leave-from-class="opacity-100 translate-y-0 max-h-96"
+                        leave-to-class="opacity-0 -translate-y-2 max-h-0"
+                    >
+                        <div v-show="isRekapHabitOpen && isOpen" class="ml-4 pl-3 border-l-2 border-primary-500/30 space-y-1 pt-1">
+                            <Link
+                                :href="route('admin.laporan')"
+                                :class="subNavLinkClass('admin.laporan')"
+                                @click="closeSidebar"
+                            >
+                                <IconSemuaLaporan :class="subIconClass('admin.laporan')" />
+                                <span>Semua Laporan</span>
+                            </Link>
 
-                        <Link
-                            v-if="hasRole('superadmin')"
-                            :href="route('admin.laporan.unfilled')"
-                            :class="subNavLinkClass('admin.laporan.unfilled')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.laporan.unfilled') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <span>Cek Belum Isi Habit</span>
-                        </Link>
-                    </div>
+                            <Link
+                                v-if="hasRole('superadmin')"
+                                :href="route('admin.laporan.unfilled')"
+                                :class="subNavLinkClass('admin.laporan.unfilled')"
+                                @click="closeSidebar"
+                            >
+                                <IconBelumIsiHabit :class="subIconClass('admin.laporan.unfilled')" />
+                                <span>Cek Belum Isi Habit</span>
+                            </Link>
+                        </div>
+                    </Transition>
                 </div>
 
+                <!-- Rekap Jurnal Guru -->
                 <Link
                     :href="route('admin.teacher-journals.index')"
                     :class="navLinkClass('admin.teacher-journals.index')"
+                    :title="!isOpen ? 'Rekap Jurnal Guru' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.teacher-journals.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    <span>Rekap Jurnal Guru</span>
+                    <IconRekapJurnalGuru :class="iconClass('admin.teacher-journals.index')" />
+                    <span v-show="isOpen" class="truncate">Rekap Jurnal Guru</span>
                 </Link>
 
+                <!-- Rekap Administrasi Guru -->
                 <Link
                     v-if="featureEnabled('feature_administrasi_guru')"
                     :href="route('admin.teacher-administrations.index')"
                     :class="navLinkClass('admin.teacher-administrations.*')"
+                    :title="!isOpen ? 'Rekap Administrasi Guru' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.teacher-administrations.*') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Rekap Administrasi Guru</span>
+                    <IconRekapAdministrasiGuru :class="iconClass('admin.teacher-administrations.*')" />
+                    <span v-show="isOpen" class="truncate">Rekap Administrasi Guru</span>
                 </Link>
 
+                <!-- Master Data Habit -->
                 <Link
                     v-if="featureEnabled('feature_habit')"
                     :href="route('admin.habits.index')"
                     :class="navLinkClass('admin.habits.index')"
+                    :title="!isOpen ? 'Master Data Habit' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.habits.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                    </svg>
-                    <span>Master Data Habit</span>
+                    <IconMasterHabit :class="iconClass('admin.habits.index')" />
+                    <span v-show="isOpen" class="truncate">Master Data Habit</span>
                 </Link>
 
                 <!-- Accordion: Manajemen User -->
                 <div class="space-y-1">
                     <button
                         type="button"
-                        @click="isManajemenUserOpen = !isManajemenUserOpen"
-                        :class="[
-                            'w-full flex items-center gap-3.5 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-150 select-none cursor-pointer',
-                            isManajemenUserOpen
-                                ? 'bg-slate-200/60 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-semibold'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100'
-                        ]"
+                        @click="toggleAccordion('manajemenUser')"
+                        :class="accordionButtonClass(isManajemenUserOpen)"
+                        :title="!isOpen ? 'Manajemen User' : undefined"
                     >
-                        <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isManajemenUserOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span>Manajemen User</span>
-                        <svg
+                        <IconManajemenUser :class="['w-5 h-5 flex-shrink-0 transition-colors', isManajemenUserOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']" />
+                        <span v-show="isOpen" class="truncate">Manajemen User</span>
+                        <IconChevronDown
+                            v-show="isOpen"
                             class="w-4 h-4 ml-auto transition-transform duration-200 text-slate-400"
                             :class="{ 'rotate-180': isManajemenUserOpen }"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
+                        />
                     </button>
 
-                    <div v-show="isManajemenUserOpen" class="ml-4 pl-3 border-l border-theme space-y-1 pt-1">
-                        <!-- Submenu Daftar User -->
-                        <Link
-                            :href="route('admin.users.index')"
-                            :class="subNavLinkClass('admin.users.index')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.users.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <span>Daftar User</span>
-                        </Link>
+                    <Transition
+                        enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+                        enter-from-class="opacity-0 -translate-y-2 max-h-0"
+                        enter-to-class="opacity-100 translate-y-0 max-h-[32rem]"
+                        leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+                        leave-from-class="opacity-100 translate-y-0 max-h-[32rem]"
+                        leave-to-class="opacity-0 -translate-y-2 max-h-0"
+                    >
+                        <div v-show="isManajemenUserOpen && isOpen" class="ml-4 pl-3 border-l-2 border-primary-500/30 space-y-1 pt-1">
+                            <!-- Submenu Daftar User -->
+                            <Link
+                                :href="route('admin.users.index')"
+                                :class="subNavLinkClass('admin.users.index')"
+                                @click="closeSidebar"
+                            >
+                                <IconDaftarUser :class="subIconClass('admin.users.index')" />
+                                <span>Daftar User</span>
+                            </Link>
 
-                        <!-- Submenu Verifikasi Arsip Pegawai -->
-                        <Link
-                            v-if="featureEnabled('feature_arsip')"
-                            :href="route('admin.employee-documents.index')"
-                            :class="subNavLinkClass('admin.employee-documents.index')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.employee-documents.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span>Verifikasi Arsip Pegawai</span>
-                        </Link>
+                            <!-- Submenu Verifikasi Arsip Pegawai -->
+                            <Link
+                                v-if="featureEnabled('feature_arsip')"
+                                :href="route('admin.employee-documents.index')"
+                                :class="subNavLinkClass('admin.employee-documents.index')"
+                                @click="closeSidebar"
+                            >
+                                <IconVerifikasiArsip :class="subIconClass('admin.employee-documents.index')" />
+                                <span>Verifikasi Arsip Pegawai</span>
+                            </Link>
 
-                        <!-- Submenu Evaluasi Kinerja (KPI) -->
-                        <Link
-                            v-if="featureEnabled('feature_kpi')"
-                            :href="route('admin.performance.index')"
-                            :class="subNavLinkClass('admin.performance.index')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.performance.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                            <span>Evaluasi Kinerja (KPI)</span>
-                        </Link>
+                            <!-- Submenu Evaluasi Kinerja (KPI) -->
+                            <Link
+                                v-if="featureEnabled('feature_kpi')"
+                                :href="route('admin.performance.index')"
+                                :class="subNavLinkClass('admin.performance.index')"
+                                @click="closeSidebar"
+                            >
+                                <IconEvaluasiKpi :class="subIconClass('admin.performance.index')" />
+                                <span>Evaluasi Kinerja (KPI)</span>
+                            </Link>
 
-                        <!-- Submenu Jadwal Piket -->
-                        <Link
-                            v-if="featureEnabled('feature_presensi')"
-                            :href="route('admin.duty-schedules.index')"
-                            :class="subNavLinkClass('admin.duty-schedules.index')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.duty-schedules.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span>Jam Kerja Harian &amp; Piket</span>
-                        </Link>
-                        
-                        <!-- Submenu Jadwal Khusus -->
-                        <Link
-                            v-if="featureEnabled('feature_presensi')"
-                            :href="route('admin.special-schedules.index')"
-                            :class="subNavLinkClass('admin.special-schedules.index')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.special-schedules.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span>Jadwal Khusus Tertentu</span>
-                        </Link>
+                            <!-- Submenu Jadwal Piket -->
+                            <Link
+                                v-if="featureEnabled('feature_presensi')"
+                                :href="route('admin.duty-schedules.index')"
+                                :class="subNavLinkClass('admin.duty-schedules.index')"
+                                @click="closeSidebar"
+                            >
+                                <IconJadwalPiket :class="subIconClass('admin.duty-schedules.index')" />
+                                <span>Jam Kerja Harian &amp; Piket</span>
+                            </Link>
+                            
+                            <!-- Submenu Jadwal Khusus -->
+                            <Link
+                                v-if="featureEnabled('feature_presensi')"
+                                :href="route('admin.special-schedules.index')"
+                                :class="subNavLinkClass('admin.special-schedules.index')"
+                                @click="closeSidebar"
+                            >
+                                <IconJadwalKhusus :class="subIconClass('admin.special-schedules.index')" />
+                                <span>Jadwal Khusus Tertentu</span>
+                            </Link>
 
-                        <!-- Submenu Daftar Divisi -->
-                        <Link
-                            v-if="featureEnabled('feature_divisi')"
-                            :href="route('admin.divisions.index')"
-                            :class="subNavLinkClass('admin.divisions.index')"
-                            @click="closeSidebar"
-                        >
-                            <svg class="w-4 h-4 flex-shrink-0 transition-colors" :class="isActive('admin.divisions.index') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            <span>Daftar Divisi</span>
-                        </Link>
-                    </div>
+                            <!-- Submenu Daftar Divisi -->
+                            <Link
+                                v-if="featureEnabled('feature_divisi')"
+                                :href="route('admin.divisions.index')"
+                                :class="subNavLinkClass('admin.divisions.index')"
+                                @click="closeSidebar"
+                            >
+                                <IconDaftarDivisi :class="subIconClass('admin.divisions.index')" />
+                                <span>Daftar Divisi</span>
+                            </Link>
+                        </div>
+                    </Transition>
                 </div>
 
+                <!-- Pengaturan Sistem -->
                 <Link
                     :href="route('admin.settings')"
                     :class="navLinkClass('admin.settings')"
+                    :title="!isOpen ? 'Pengaturan Sistem' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.settings') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>Pengaturan Sistem</span>
+                    <IconPengaturanSistem :class="iconClass('admin.settings')" />
+                    <span v-show="isOpen" class="truncate">Pengaturan Sistem</span>
                 </Link>
 
+                <!-- Buku Panduan -->
                 <Link
                     :href="route('panduan')"
                     :class="navLinkClass('panduan')"
+                    :title="!isOpen ? 'Buku Panduan' : undefined"
                     @click="closeSidebar"
                 >
-                    <svg
-                        :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('panduan') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                        aria-hidden="true"
-                    >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                    <span>Buku Panduan</span>
+                    <IconPanduan :class="iconClass('panduan')" />
+                    <span v-show="isOpen" class="truncate">Buku Panduan</span>
                 </Link>
                 
                 <template v-if="hasRole('superadmin')">
+                    <!-- Fitur HR & Lanjutan -->
                     <Link
                         :href="route('admin.settings.hr')"
                         :class="navLinkClass('admin.settings.hr')"
+                        :title="!isOpen ? 'Fitur HR & Lanjutan' : undefined"
                         @click="closeSidebar"
                     >
-                        <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.settings.hr') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span>Fitur HR &amp; Lanjutan</span>
+                        <IconFiturHr :class="iconClass('admin.settings.hr')" />
+                        <span v-show="isOpen" class="truncate">Fitur HR &amp; Lanjutan</span>
                     </Link>
 
+                    <!-- Log Akses Login -->
                     <Link
                         :href="route('admin.login-logs')"
                         :class="navLinkClass('admin.login-logs')"
+                        :title="!isOpen ? 'Log Akses Login' : undefined"
                         @click="closeSidebar"
                     >
-                        <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.login-logs') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Log Akses Login</span>
+                        <IconLogAkses :class="iconClass('admin.login-logs')" />
+                        <span v-show="isOpen" class="truncate">Log Akses Login</span>
                     </Link>
 
+                    <!-- Pemantauan Sistem -->
                     <Link
                         :href="route('admin.system.monitor')"
                         :class="navLinkClass('admin.system.monitor')"
+                        :title="!isOpen ? 'Pemantauan Sistem' : undefined"
                         @click="closeSidebar"
                     >
-                        <svg
-                            :class="['w-5 h-5 flex-shrink-0 transition-colors', isActive('admin.system.monitor') ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400']"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
-                            aria-hidden="true"
-                        >
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M3 9h2m-2 6h2m14-6h2m-2 6h2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                        </svg>
-                        <span>Pemantauan Sistem</span>
+                        <IconPemantauanSistem :class="iconClass('admin.system.monitor')" />
+                        <span v-show="isOpen" class="truncate">Pemantauan Sistem</span>
                     </Link>
                 </template>
             </template>
         </nav>
 
-        <!-- ── Sidebar Footer (M3 tactile user chip card) ─────── -->
-        <div class="flex-shrink-0 px-3.5 py-3.5 border-t border-white/40 dark:border-white/10">
-            <div class="flex items-center gap-3 px-3 py-2 rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-white/60 dark:border-white/10 shadow-sm">
-                <div class="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center flex-shrink-0 border border-primary-200 dark:border-primary-700/60 overflow-hidden">
+        <!-- ── Sidebar Footer (User Chip Card) ────────────────── -->
+        <div
+            :class="[
+                'flex-shrink-0 py-3.5 border-t border-white/40 dark:border-white/10 transition-all duration-300',
+                isOpen ? 'px-3.5' : 'px-2 flex justify-center'
+            ]"
+        >
+            <div
+                :class="[
+                    'flex items-center rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-white/60 dark:border-white/10 shadow-sm hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/80 hover:-translate-y-0.5 transition-all duration-200 group cursor-pointer',
+                    isOpen ? 'gap-3 px-3 py-2 w-full' : 'p-2 justify-center w-11 h-11'
+                ]"
+                :title="!isOpen ? (user?.name + ' (' + roleLabel + ')') : undefined"
+            >
+                <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center flex-shrink-0 border border-primary-200 dark:border-primary-700/60 overflow-hidden group-hover:scale-105 transition-transform duration-200">
                     <img v-if="userAvatarUrl" :src="userAvatarUrl" :alt="user?.name" class="w-full h-full object-cover" />
                     <span v-else class="text-xs font-bold text-primary-700 dark:text-primary-300">{{ userInitial }}</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{{ user?.name }}</p>
+                <div v-show="isOpen" class="flex-1 min-w-0 transition-opacity duration-200">
+                    <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate group-hover:text-primary-700 dark:group-hover:text-primary-400 transition-colors">{{ user?.name }}</p>
                     <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">{{ roleLabel }}</p>
                 </div>
-                <span class="w-2.5 h-2.5 rounded-full bg-primary-500 flex-shrink-0 ring-2 ring-white dark:ring-slate-900" title="Online" />
+                <span v-show="isOpen" class="relative flex h-2.5 w-2.5 flex-shrink-0" title="Online">
+                    <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-white dark:ring-slate-900"></span>
+                </span>
             </div>
         </div>
     </aside>
 </template>
+
+<style scoped>
+nav a svg,
+nav button svg:first-child {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease-out;
+}
+nav a:hover svg,
+nav button:hover svg:first-child {
+    transform: scale(1.14) translateY(-1px);
+}
+nav a:active svg,
+nav button:active svg:first-child {
+    transform: scale(0.95);
+}
+@media (prefers-reduced-motion: reduce) {
+    nav a,
+    nav button,
+    nav a svg,
+    nav button svg {
+        transition: none !important;
+        transform: none !important;
+    }
+}
+</style>

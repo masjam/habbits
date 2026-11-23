@@ -93,7 +93,7 @@ const userAvatarUrl = computed(() => {
 </script>
 
 <template>
-    <header class="flex items-center justify-between h-[var(--topbar-h,4rem)] px-4 md:px-6 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border-b border-white/50 dark:border-white/10 flex-shrink-0 z-20 shadow-xs transition-colors duration-200">
+    <header class="flex items-center justify-between h-[var(--topbar-h,4rem)] px-4 md:px-6 bg-white/75 dark:bg-slate-900/80 backdrop-blur-2xl border-b border-white/60 dark:border-white/10 flex-shrink-0 z-20 shadow-xs transition-colors duration-200">
         <!-- Left: Hamburger (mobile/tablet drawer trigger) & Breadcrumb / App Title -->
         <div class="flex items-center gap-3">
             <button

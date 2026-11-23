@@ -7,6 +7,8 @@ import { ref, computed } from 'vue'
 const props = defineProps({
     next_nomor: String,
     current_nomor: String,
+    tanggal_surat: String,
+    tanggal_mode: String,
     tanggal_masehi: String,
     tanggal_hijriah: String,
     isEdit: { type: Boolean, default: false },
@@ -16,15 +18,19 @@ const props = defineProps({
 })
 
 const defaultMode = props.builderData?.nomor_mode || (props.isEdit ? 'manual' : 'otomatis')
+const todayIso = new Date().toISOString().split('T')[0]
+const defaultTanggalMode = props.builderData?.tanggal_mode || (props.isEdit && props.builderData?.tanggal_mode ? props.builderData.tanggal_mode : 'otomatis')
 
 const form = useForm({
     jenis_surat: props.builderData?.jenis_surat || 'Umum',
     nomor_mode: defaultMode,
     nomor_surat: props.builderData?.nomor_surat || props.current_nomor || props.next_nomor || '',
-    lampiran: props.builderData?.lampiran || '-',
-    perihal: props.builderData?.perihal || 'Surat Edaran',
+    tanggal_mode: defaultTanggalMode,
+    tanggal_surat: props.builderData?.tanggal_surat || props.tanggal_surat || todayIso,
     tanggal_masehi: props.builderData?.tanggal_masehi || props.tanggal_masehi,
     tanggal_hijriah: props.builderData?.tanggal_hijriah || props.tanggal_hijriah,
+    lampiran: props.builderData?.lampiran || '-',
+    perihal: props.builderData?.perihal || 'Surat Edaran',
     kepada: props.builderData?.kepada || 'Bapak/Ibu Orangtua Wali Murid Kelas I-VI',
     di: props.builderData?.di || 'tempat',
     pegawai_ditugaskan: props.builderData?.pegawai_ditugaskan || [],
@@ -33,6 +39,68 @@ const form = useForm({
     line_spacing: props.builderData?.line_spacing || '1.15',
     paragraph_indent: props.builderData?.paragraph_indent || '0'
 })
+
+const formatMasehi = (isoDate) => {
+    if (!isoDate) return ''
+    const parts = isoDate.split('-')
+    if (parts.length !== 3) return ''
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+    if (isNaN(d.getTime())) return ''
+    try {
+        return new Intl.DateTimeFormat('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }).format(d) + ' M'
+    } catch {
+        return ''
+    }
+}
+
+const formatHijri = (isoDate) => {
+    if (!isoDate) return ''
+    const parts = isoDate.split('-')
+    if (parts.length !== 3) return ''
+    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+    if (isNaN(d.getTime())) return ''
+    try {
+        const formatter = new Intl.DateTimeFormat('id-u-ca-islamic-umalqura', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        })
+        const fParts = formatter.formatToParts(d)
+        let day = '', month = '', year = ''
+        for (const p of fParts) {
+            if (p.type === 'day') day = p.value
+            if (p.type === 'month') month = p.value
+            if (p.type === 'year') year = p.value
+        }
+        return `${day} ${month} ${year} H`
+    } catch {
+        return ''
+    }
+}
+
+const setTanggalMode = (mode) => {
+    form.tanggal_mode = mode
+    if (mode === 'otomatis') {
+        form.tanggal_surat = props.tanggal_surat || todayIso
+        form.tanggal_masehi = props.tanggal_masehi || formatMasehi(form.tanggal_surat)
+        form.tanggal_hijriah = props.tanggal_hijriah || formatHijri(form.tanggal_surat)
+    }
+}
+
+const onTanggalPickerChange = (val) => {
+    form.tanggal_surat = val
+    if (val) {
+        form.tanggal_masehi = formatMasehi(val)
+        const hijri = formatHijri(val)
+        if (hijri) {
+            form.tanggal_hijriah = hijri
+        }
+    }
+}
 
 const customNomorDraft = ref(
     form.nomor_mode === 'manual'
@@ -233,6 +301,122 @@ const submit = () => {
                         </div>
                     </div>
 
+                    <!-- Pilihan Tanggal Surat (Otomatis vs Custom Manual) -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-800">Tanggal Surat Keluar</label>
+                                <p class="text-xs text-slate-500 mt-0.5">Gunakan tanggal hari ini secara otomatis atau atur tanggal surat secara manual (Masehi &amp; Hijriah).</p>
+                            </div>
+                            <div class="inline-flex rounded-lg bg-slate-100 p-1 border border-slate-200 shrink-0">
+                                <button
+                                    type="button"
+                                    @click="setTanggalMode('otomatis')"
+                                    :class="form.tanggal_mode === 'otomatis' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'"
+                                    class="px-3 py-1.5 rounded-md text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>Tanggal Otomatis (Hari ini)</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="setTanggalMode('manual')"
+                                    :class="form.tanggal_mode === 'manual' ? 'bg-white text-amber-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'"
+                                    class="px-3 py-1.5 rounded-md text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    <span>Tanggal Manual (Custom)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Mode Tanggal Otomatis View -->
+                        <div v-if="form.tanggal_mode === 'otomatis'" class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Tanggal Surat Otomatis</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        Hari Ini
+                                    </span>
+                                </div>
+                                <div class="text-sm sm:text-base font-semibold text-emerald-950 flex flex-wrap items-center gap-2">
+                                    <span>{{ form.tanggal_masehi }}</span>
+                                    <span class="text-emerald-400">/</span>
+                                    <span class="text-emerald-800 font-medium">{{ form.tanggal_hijriah }}</span>
+                                </div>
+                                <p class="text-xs text-emerald-700">
+                                    Tanggal surat otomatis menggunakan tanggal hari ini (tersimpan di arsip: {{ form.tanggal_surat }}).
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="setTanggalMode('manual')"
+                                class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 bg-white hover:bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shadow-xs shrink-0 cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <span>Ubah Tanggal Manual</span>
+                            </button>
+                        </div>
+
+                        <!-- Mode Tanggal Manual View -->
+                        <div v-else class="space-y-4 p-4 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-amber-900 uppercase">Input &amp; Kustomisasi Tanggal Surat Manual</label>
+                                <button
+                                    type="button"
+                                    @click="setTanggalMode('otomatis')"
+                                    class="text-xs text-amber-700 hover:text-amber-900 font-semibold underline underline-offset-2 cursor-pointer"
+                                >
+                                    Kembali ke Tanggal Otomatis (Hari ini)
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase text-amber-900 mb-1">Pilih Tanggal Kalender</label>
+                                    <input
+                                        type="date"
+                                        v-model="form.tanggal_surat"
+                                        @change="onTanggalPickerChange($event.target.value)"
+                                        class="w-full p-2.5 text-sm font-medium border-amber-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 bg-white"
+                                        required
+                                    />
+                                    <span class="text-[10px] text-amber-700">Mengubah tanggal otomatis memperbarui Masehi &amp; Hijriah.</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase text-amber-900 mb-1">Teks Tanggal Masehi (Cetak Surat)</label>
+                                    <input
+                                        type="text"
+                                        v-model="form.tanggal_masehi"
+                                        placeholder="Contoh: 15 Oktober 2026 M"
+                                        class="w-full p-2.5 text-sm font-medium border-amber-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 bg-white"
+                                        required
+                                    />
+                                    <span class="text-[10px] text-amber-700">Teks Masehi yang tampil pada surat PDF.</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase text-amber-900 mb-1">Teks Tanggal Hijriah (Cetak Surat)</label>
+                                    <input
+                                        type="text"
+                                        v-model="form.tanggal_hijriah"
+                                        placeholder="Contoh: 04 Rabi'ul Akhir 1448 H"
+                                        class="w-full p-2.5 text-sm font-medium border-amber-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 bg-white"
+                                        required
+                                    />
+                                    <span class="text-[10px] text-amber-700">Teks Hijriah yang tampil pada surat PDF.</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-amber-800">
+                                Anda dapat menentukan tanggal mundur (backdate) atau tanggal mendatang sesuai kebutuhan agenda surat resmi sekolah.
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Informasi Meta Surat (Hanya untuk Surat Umum) -->
                     <div v-if="form.jenis_surat === 'Umum'" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <div>
@@ -251,10 +435,6 @@ const submit = () => {
                             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Di (Tempat)</label>
                             <input type="text" v-model="form.di" class="w-full p-2 text-sm border-slate-300 rounded-lg" required />
                         </div>
-                        
-                        <!-- Hidden Inputs -->
-                        <input type="hidden" v-model="form.tanggal_hijriah">
-                        <input type="hidden" v-model="form.tanggal_masehi">
                     </div>
                     <div v-else-if="form.jenis_surat === 'Tugas'" class="grid grid-cols-1 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <p class="text-xs text-slate-500 mb-2">
@@ -277,17 +457,12 @@ const submit = () => {
                             <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Pokok Tugas / Kegiatan</label>
                             <input type="text" v-model="form.pokok_tugas" class="w-full p-2 text-sm border-slate-300 rounded-lg" placeholder="Contoh: Mengikuti Pelatihan Kurikulum Merdeka" required />
                         </div>
-                        <!-- Hidden Inputs -->
-                        <input type="hidden" v-model="form.tanggal_hijriah">
-                        <input type="hidden" v-model="form.tanggal_masehi">
                     </div>
                     
                     <div v-else class="grid grid-cols-1 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <p class="text-xs text-slate-500">
                             <i>Format Surat Keterangan tidak menggunakan field Hal, Lampiran, dan Kepada Yth. Format ini akan menggunakan judul tengah otomatis.</i>
                         </p>
-                        <input type="hidden" v-model="form.tanggal_hijriah">
-                        <input type="hidden" v-model="form.tanggal_masehi">
                     </div>
 
                     <!-- Layout Settings -->

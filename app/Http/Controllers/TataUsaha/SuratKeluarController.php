@@ -113,14 +113,34 @@ class SuratKeluarController extends Controller
         return redirect()->back()->with('success', 'Surat Keluar berhasil ditambahkan.');
     }
 
+    private function getHijriDate(\Carbon\Carbon|string|null $date = null): string
+    {
+        $timestamp = $date ? (\Carbon\Carbon::parse($date)->timestamp) : time();
+        if (class_exists(\IntlDateFormatter::class)) {
+            try {
+                $fmt = new \IntlDateFormatter('id_ID@calendar=islamic-umalqura', \IntlDateFormatter::FULL, \IntlDateFormatter::NONE, 'Asia/Jakarta', \IntlDateFormatter::TRADITIONAL, 'd MMMM y');
+                $formatted = $fmt ? $fmt->format($timestamp) : null;
+                if ($formatted) {
+                    return $formatted . ' H';
+                }
+            } catch (\Throwable $e) {
+                // fallback if intl fails
+            }
+        }
+        return '11 Rabi\'ul Akhir 1447 H';
+    }
+
     public function builder()
     {
         $nextNomor = $this->generateNextNomor();
+        $today = \Carbon\Carbon::now();
 
         return Inertia::render('TataUsaha/SuratKeluar/Builder', [
             'next_nomor' => $nextNomor,
-            'tanggal_masehi' => \Carbon\Carbon::now()->translatedFormat('d F Y') . ' M',
-            'tanggal_hijriah' => '11 Rabi\'ul Akhir 1447 H', // TODO: Implement Hijri Converter if needed
+            'tanggal_surat' => $today->format('Y-m-d'),
+            'tanggal_mode' => 'otomatis',
+            'tanggal_masehi' => $today->translatedFormat('d F Y') . ' M',
+            'tanggal_hijriah' => $this->getHijriDate($today),
             'users' => User::whereDoesntHave('roles', function ($q) {
                 $q->whereIn('name', ['admin', 'superadmin']);
             })->orderBy('name')->get(['id', 'name'])
@@ -133,6 +153,8 @@ class SuratKeluarController extends Controller
             'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
             'nomor_mode' => 'nullable|string|in:otomatis,manual',
             'nomor_surat' => 'required|string',
+            'tanggal_mode' => 'nullable|string|in:otomatis,manual',
+            'tanggal_surat' => 'nullable|date',
             'lampiran' => 'nullable|string',
             'perihal' => 'nullable|string',
             'kepada' => 'nullable|string',
@@ -194,31 +216,32 @@ class SuratKeluarController extends Controller
         }
 
         $validated = $request->validate([
+            'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
+            'nomor_mode' => 'nullable|string|in:otomatis,manual',
+            'nomor_surat' => ['required','string'],
+            'tanggal_mode' => 'nullable|string|in:otomatis,manual',
+            'tanggal_surat' => 'nullable|date',
+            'lampiran' => 'nullable|string',
+            'perihal' => 'nullable|string',
+            'kepada' => 'nullable|string',
+            'di' => 'nullable|string',
+            'tanggal_masehi' => 'required|string',
+            'tanggal_hijriah' => 'required|string',
+            'isi_surat' => 'required|string',
+            'pegawai_ditugaskan' => 'nullable|array',
+            'pokok_tugas' => 'nullable|string',
+            'line_spacing' => 'nullable|string',
+            'paragraph_indent' => 'nullable|string',
+        ]);
 
-    'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
-    'nomor_mode' => 'nullable|string|in:otomatis,manual',
-    'nomor_surat' => ['required','string'],
-    'lampiran' => 'nullable|string',
-    'perihal' => 'nullable|string',
-    'kepada' => 'nullable|string',
-    'di' => 'nullable|string',
-    'tanggal_masehi' => 'required|string',
-    'tanggal_hijriah' => 'required|string',
-    'isi_surat' => 'required|string',
-    'pegawai_ditugaskan' => 'nullable|array',
-    'pokok_tugas' => 'nullable|string',
-    'line_spacing' => 'nullable|string',
-    'paragraph_indent' => 'nullable|string',
-]);
-
-// Apply unique validation only for manual mode
-if ($validated['nomor_mode'] === 'manual') {
-    $request->validate([
-        'nomor_surat' => ['unique:surat_keluar,nomor_surat'],
-    ], [
-        'nomor_surat.unique' => 'Nomor surat sudah terdaftar. Silakan gunakan nomor lain atau nomor otomatis.',
-    ]);
-}
+        // Apply unique validation only for manual mode
+        if ($validated['nomor_mode'] === 'manual') {
+            $request->validate([
+                'nomor_surat' => ['unique:surat_keluar,nomor_surat'],
+            ], [
+                'nomor_surat.unique' => 'Nomor surat sudah terdaftar. Silakan gunakan nomor lain atau nomor otomatis.',
+            ]);
+        }
 
         // Sanitize HTML content
         $validated['isi_surat'] = $this->sanitizeHtml($validated['isi_surat']);
@@ -254,16 +277,17 @@ if ($validated['nomor_mode'] === 'manual') {
         $validated['qrCode'] = $qrCode;
 
         $validated['is_draft'] = true; // Newly generated is draft
+
+        $date = $request->filled('tanggal_surat') ? $request->input('tanggal_surat') : date('Y-m-d');
+        $db_tujuan = $validated['kepada'];
+        $db_perihal = $validated['perihal'];
+        if ($validated['jenis_surat'] === 'Tugas') {
+            $db_tujuan = !empty($validated['pegawai_ditugaskan']) ? implode(', ', (array)$validated['pegawai_ditugaskan']) : 'Yang Bersangkutan';
+            $db_perihal = !empty($validated['pokok_tugas']) ? $validated['pokok_tugas'] : 'Surat Tugas';
+        }
+
         // In testing, create the record and return early
         if (app()->environment('testing') || app()->runningUnitTests()) {
-            $date = date('Y-m-d');
-            $db_tujuan = $validated['kepada'];
-            $db_perihal = $validated['perihal'];
-            if ($validated['jenis_surat'] === 'Tugas') {
-                $db_tujuan = !empty($validated['pegawai_ditugaskan']) ? implode(', ', (array)$validated['pegawai_ditugaskan']) : 'Yang Bersangkutan';
-                $db_perihal = !empty($validated['pokok_tugas']) ? $validated['pokok_tugas'] : 'Surat Tugas';
-            }
-
             SuratKeluar::create([
                 'uuid' => $uuid,
                 'document_hash' => $hash,
@@ -280,19 +304,15 @@ if ($validated['nomor_mode'] === 'manual') {
             return redirect()->route('tata-usaha.surat-keluar.index')
                 ->with('success', 'Surat keluar otomatis berhasil dibuat dan disimpan.');
         }
-        // Proceed with normal PDF generation for all environments
-        // Redundant testing block removed; record creation handled earlier.
-
-
 
         // Create the surat record first
         $record = SuratKeluar::create([
             'uuid' => $uuid,
             'document_hash' => $hash,
             'nomor_surat' => $validated['nomor_surat'],
-            'tanggal_surat' => date('Y-m-d'),
-            'tujuan' => $validated['kepada'],
-            'perihal' => $validated['perihal'],
+            'tanggal_surat' => $date,
+            'tujuan' => $db_tujuan,
+            'perihal' => $db_perihal,
             'builder_data' => $validated,
             'file_path' => null,
             'status' => 'draft',
@@ -321,14 +341,18 @@ if ($validated['nomor_mode'] === 'manual') {
             return redirect()->back()->with('error', 'Surat ini tidak dibuat melalui sistem otomatis sehingga tidak bisa diedit ulang.');
         }
 
+        $tanggalSurat = $suratKeluar->tanggal_surat ? \Carbon\Carbon::parse($suratKeluar->tanggal_surat) : \Carbon\Carbon::now();
+
         return Inertia::render('TataUsaha/SuratKeluar/Builder', [
             'isEdit' => true,
             'suratId' => $suratKeluar->id,
             'builderData' => $suratKeluar->builder_data,
             'next_nomor' => $this->generateNextNomor(),
             'current_nomor' => $suratKeluar->nomor_surat,
-            'tanggal_masehi' => $suratKeluar->builder_data['tanggal_masehi'] ?? \Carbon\Carbon::now()->translatedFormat('d F Y') . ' M',
-            'tanggal_hijriah' => $suratKeluar->builder_data['tanggal_hijriah'] ?? '11 Rabi\'ul Akhir 1447 H',
+            'tanggal_surat' => $tanggalSurat->format('Y-m-d'),
+            'tanggal_mode' => $suratKeluar->builder_data['tanggal_mode'] ?? 'otomatis',
+            'tanggal_masehi' => $suratKeluar->builder_data['tanggal_masehi'] ?? ($tanggalSurat->translatedFormat('d F Y') . ' M'),
+            'tanggal_hijriah' => $suratKeluar->builder_data['tanggal_hijriah'] ?? $this->getHijriDate($tanggalSurat),
             'users' => User::whereDoesntHave('roles', function ($q) {
                 $q->whereIn('name', ['admin', 'superadmin']);
             })->orderBy('name')->get(['id', 'name'])
@@ -341,6 +365,8 @@ if ($validated['nomor_mode'] === 'manual') {
             'jenis_surat' => 'required|string|in:Umum,Tugas,Keterangan',
             'nomor_mode' => 'nullable|string|in:otomatis,manual',
             'nomor_surat' => 'required|string|unique:surat_keluar,nomor_surat,' . $suratKeluar->id,
+            'tanggal_mode' => 'nullable|string|in:otomatis,manual',
+            'tanggal_surat' => 'nullable|date',
             'lampiran' => 'nullable|string',
             'perihal' => 'nullable|string',
             'kepada' => 'nullable|string',
@@ -386,6 +412,8 @@ if ($validated['nomor_mode'] === 'manual') {
         $qrCode = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->margin(0)->generate($verifyUrl));
         $validated['qrCode'] = $qrCode;
 
+        $date = $request->filled('tanggal_surat') ? $request->input('tanggal_surat') : ($suratKeluar->tanggal_surat ? \Carbon\Carbon::parse($suratKeluar->tanggal_surat)->format('Y-m-d') : date('Y-m-d'));
+
         // In testing environment, skip PDF generation and storage to avoid heavy processing and potential view errors.
         if (app()->environment('testing') || app()->runningUnitTests()) {
             // Determine tujuan and perihal based on jenis_surat
@@ -400,6 +428,7 @@ if ($validated['nomor_mode'] === 'manual') {
                 'uuid' => $uuid,
                 'document_hash' => $hash,
                 'nomor_surat' => $validated['nomor_surat'],
+                'tanggal_surat' => $date,
                 'tujuan' => $db_tujuan,
                 'perihal' => $db_perihal,
                 'builder_data' => $validated,
@@ -448,6 +477,7 @@ if ($validated['nomor_mode'] === 'manual') {
             'uuid' => $uuid,
             'document_hash' => $hash,
             'nomor_surat' => $validated['nomor_surat'],
+            'tanggal_surat' => $date,
             'tujuan' => $db_tujuan,
             'perihal' => $db_perihal,
             'builder_data' => $validated,
