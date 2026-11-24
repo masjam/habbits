@@ -170,6 +170,18 @@ const exportExcel = () => {
     router.get(url, {}, { preserveState: true, preserveScroll: true })
 }
 
+// Ekspor ke file PDF (.pdf)
+const exportPdf = () => {
+    const params = new URLSearchParams({
+        type: activeTab.value,
+        month: selectedMonth.value,
+        date: selectedDate.value,
+        division: selectedDivision.value || '',
+    })
+    const url = `${route('admin.attendance.export-pdf')}?${params.toString()}`
+    window.open(url, '_blank')
+}
+
 // Ekspor laporan Tugas Luar khusus
 const exportTugasLuar = () => {
     const params = new URLSearchParams({
@@ -363,8 +375,9 @@ const deleteAttendanceRecord = async () => {
 }
 
 // Helper Style Cell Matriks per Tanggal
-const getCellClass = (record, isWeekend, isFuture) => {
+const getCellClass = (record, isWeekend, isFuture, isSpecial = false) => {
     if (!record) {
+        if (isSpecial) return 'bg-violet-200/60 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 font-bold'
         if (isWeekend) return 'bg-slate-100/50 dark:bg-slate-900/30 text-slate-300 dark:text-slate-600'
         if (isFuture) return 'bg-card-subtle/30 text-slate-300 dark:text-slate-600'
         return 'bg-card-subtle/40 text-slate-400 hover:bg-slate-100/60'
@@ -525,6 +538,20 @@ const submitLeaveForm = () => {
                         </svg>
                         <span class="hidden sm:inline">Input Ketidakhadiran</span>
                         <span class="sm:hidden">Izin/Sakit</span>
+                    </button>
+
+                    <!-- Tombol Ekspor PDF -->
+                    <button
+                        type="button"
+                        @click="exportPdf"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md hover:shadow-rose-600/20 active:scale-95 transition-all cursor-pointer"
+                        :title="activeTab === 'monthly' ? 'Ekspor Matriks Bulanan (.pdf)' : 'Ekspor Detail Harian (.pdf)'"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span class="hidden sm:inline">Ekspor PDF</span>
+                        <span class="sm:hidden">PDF</span>
                     </button>
 
                     <!-- Tombol Ekspor Excel -->
@@ -865,19 +892,19 @@ const submitLeaveForm = () => {
                                     :key="d.day"
                                     @click="selectDateAndSwitch(d.date)"
                                     :class="[
-                                        'py-1 sm:py-2 px-0.5 sm:px-1 text-center min-w-[34px] sm:min-w-[54px] max-w-[40px] sm:max-w-[62px] border-r border-subtle/70 transition-colors cursor-pointer select-none group',
-                                        d.is_today ? 'bg-emerald-100/60 dark:bg-emerald-950/50' : 
-                                        d.is_special ? 'bg-violet-100/90 dark:bg-violet-950/70 border-b-2 border-b-violet-500' :
-                                        d.is_weekend ? 'bg-slate-100/50 dark:bg-slate-800/30' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                                        'py-1 sm:py-2 px-0.5 sm:px-1 text-center min-w-[34px] sm:min-w-[54px] max-w-[40px] sm:max-w-[62px] border-r transition-colors cursor-pointer select-none group',
+                                        d.is_today ? 'bg-emerald-100/60 dark:bg-emerald-950/50 border-r-subtle/70' : 
+                                        d.is_special ? 'bg-violet-600 text-white border-b-4 border-b-violet-800 border-x-2 border-violet-700 shadow-xs' :
+                                        d.is_weekend ? 'bg-slate-100/50 dark:bg-slate-800/30 border-r-subtle/70' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-r-subtle/70'
                                     ]"
                                     :title="d.is_special ? `⭐ Tanggal Khusus: ${d.special_name} (${d.special_time_in || '07:00'} - ${d.special_time_out || '15:00'})` : `Klik untuk melihat rekap detail tanggal ${d.date}`"
                                 >
                                     <div class="flex flex-col items-center justify-center relative">
-                                        <span v-if="d.is_special" class="text-[8px] leading-none text-violet-600 dark:text-violet-400 font-extrabold mb-0.5" title="Jadwal Khusus Aktif">✨</span>
-                                        <span :class="['text-[9px] uppercase font-bold tracking-tight', d.is_special ? 'text-violet-700 dark:text-violet-300 font-black' : d.is_weekend ? 'text-rose-500' : 'text-slate-400 group-hover:text-emerald-600']">
+                                        <span v-if="d.is_special" class="text-[8px] leading-none text-yellow-300 font-extrabold mb-0.5" title="Jadwal Khusus Aktif">✨</span>
+                                        <span :class="['text-[9px] uppercase font-bold tracking-tight', d.is_special ? 'text-violet-100 font-black' : d.is_weekend ? 'text-rose-500' : 'text-slate-400 group-hover:text-emerald-600']">
                                             {{ d.day_name }}
                                         </span>
-                                        <span :class="['text-xs font-black leading-none mt-0.5', d.is_today ? 'text-emerald-700 dark:text-emerald-400 underline decoration-2' : d.is_special ? 'text-violet-900 dark:text-violet-100 font-black' : 'text-slate-800 dark:text-slate-100']">
+                                        <span :class="['text-xs font-black leading-none mt-0.5', d.is_today ? 'text-emerald-700 dark:text-emerald-400 underline decoration-2' : d.is_special ? 'text-white font-black' : 'text-slate-800 dark:text-slate-100']">
                                             {{ d.day }}
                                         </span>
                                     </div>
@@ -922,17 +949,17 @@ const submitLeaveForm = () => {
                                     :key="d.day"
                                     @click="openCellDetail(user, d, user.daily_records?.[d.day])"
                                     :class="[
-                                        'py-1 sm:py-1.5 px-0.5 text-center border-r border-subtle/60 transition-all cursor-pointer select-none',
+                                        'py-1 sm:py-1.5 px-0.5 text-center transition-all cursor-pointer select-none',
+                                        d.is_special ? 'bg-violet-100/80 dark:bg-violet-950/70 border-x-2 border-violet-400/80 dark:border-violet-600/70 font-medium' : 'border-r border-subtle/60',
                                         d.is_today ? 'bg-emerald-50/20' : '',
-                                        d.is_special && !d.is_weekend ? 'bg-violet-50/30 dark:bg-violet-950/20' : '',
-                                        canEditAttendance && !user.daily_records?.[d.day] && !d.is_future ? 'hover:bg-emerald-100/50 dark:hover:bg-emerald-950/40' : ''
+                                        canEditAttendance && !user.daily_records?.[d.day] && !d.is_future ? (d.is_special ? 'hover:bg-violet-200 dark:hover:bg-violet-900/70' : 'hover:bg-emerald-100/50 dark:hover:bg-emerald-950/40') : ''
                                     ]"
                                     :title="canEditAttendance ? (user.daily_records?.[d.day] ? (!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status) ? `⚠️ Belum Absen Pulang (Tidak dihitung presensi) - Klik untuk lihat/koreksi (${user.name} - tgl ${d.day})` : `Klik untuk lihat/koreksi presensi (${user.name} - tgl ${d.day})`) : `Klik untuk input presensi (${user.name} - tgl ${d.day})`) : (user.daily_records?.[d.day] ? (!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status) ? '⚠️ Belum Absen Pulang (Tidak dihitung presensi)' : 'Klik untuk melihat detail presensi') : '')"
                                 >
                                     <div 
                                         :class="[
                                             'rounded-md sm:rounded-lg py-0.5 sm:py-1 px-0.5 sm:px-1 transition-all mx-auto max-w-[34px] sm:max-w-[56px]',
-                                            getCellClass(user.daily_records?.[d.day], d.is_weekend, d.is_future)
+                                            getCellClass(user.daily_records?.[d.day], d.is_weekend, d.is_future, d.is_special)
                                         ]"
                                     >
                                         <template v-if="user.daily_records?.[d.day]">

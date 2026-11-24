@@ -46,6 +46,7 @@ const form = useForm({
     is_tata_usaha: false,
     is_kepala_sekolah: false,
     is_kurikulum: false,
+    is_koperasi: false,
     nip: '',
     divisi: '',
     status_kehadiran: 'Aktif',
@@ -107,6 +108,7 @@ const openEditModal = (user) => {
     form.is_tata_usaha = user.roles.includes('tata_usaha')
     form.is_kepala_sekolah = user.roles.includes('kepala_sekolah')
     form.is_kurikulum = user.roles.includes('kurikulum')
+    form.is_koperasi = user.roles.includes('koperasi')
     form.password = '' // Don't prefill password
     
     // HR Features
@@ -345,9 +347,10 @@ const canEditUser = (user) => {
                                                   'bg-purple-100 text-purple-800': role === 'superadmin',
                                                   'bg-blue-100 text-blue-800': role === 'tata_usaha',
                                                   'bg-rose-100 text-rose-800': role === 'kepala_sekolah',
-                                                  'bg-indigo-100 text-indigo-800': role === 'kurikulum'
+                                                  'bg-indigo-100 text-indigo-800': role === 'kurikulum',
+                                                  'bg-teal-100 text-teal-800': role === 'koperasi'
                                               }">
-                                            {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : (role === 'kepala_sekolah' ? 'Kepala Sekolah' : (role === 'kurikulum' ? 'Kurikulum' : role))) }}
+                                            {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : (role === 'kepala_sekolah' ? 'Kepala Sekolah' : (role === 'kurikulum' ? 'Kurikulum' : (role === 'koperasi' ? 'Petugas Koperasi' : role)))) }}
                                         </span>
                                     </div>
                                 </td>
@@ -421,9 +424,10 @@ const canEditUser = (user) => {
                                           'bg-purple-100 text-purple-800': role === 'superadmin',
                                           'bg-blue-100 text-blue-800': role === 'tata_usaha',
                                           'bg-rose-100 text-rose-800': role === 'kepala_sekolah',
-                                          'bg-indigo-100 text-indigo-800': role === 'kurikulum'
+                                          'bg-indigo-100 text-indigo-800': role === 'kurikulum',
+                                          'bg-teal-100 text-teal-800': role === 'koperasi'
                                       }">
-                                    {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : (role === 'kepala_sekolah' ? 'Kepala Sekolah' : (role === 'kurikulum' ? 'Kurikulum' : role))) }}
+                                    {{ role === 'user' ? 'Pegawai' : (role === 'tata_usaha' ? 'Tata Usaha' : (role === 'kepala_sekolah' ? 'Kepala Sekolah' : (role === 'kurikulum' ? 'Kurikulum' : (role === 'koperasi' ? 'Petugas Koperasi' : role)))) }}
                                 </span>
                             </div>
                         </div>
@@ -553,6 +557,7 @@ const canEditUser = (user) => {
                                             <option value="admin">Admin</option>
                                             <option value="superadmin">Superadmin</option>
                                             <option value="kurikulum">Kurikulum</option>
+                                            <option value="koperasi">Petugas Koperasi</option>
                                         </select>
                                         <p v-if="form.errors.role" class="text-xs text-rose-500 mt-1">{{ form.errors.role }}</p>
                                     </div>
@@ -568,6 +573,10 @@ const canEditUser = (user) => {
                                         <div class="flex items-center gap-2 pt-2 border-t border-blue-100/50">
                                             <input type="checkbox" id="is_kurikulum" v-model="form.is_kurikulum" class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" />
                                             <label for="is_kurikulum" class="text-xs font-bold text-slate-700">Berikan Akses Kurikulum (Rekap Administrasi Guru)</label>
+                                        </div>
+                                        <div class="flex items-center gap-2 pt-2 border-t border-blue-100/50">
+                                            <input type="checkbox" id="is_koperasi" v-model="form.is_koperasi" class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500" />
+                                            <label for="is_koperasi" class="text-xs font-bold text-slate-700">Berikan Akses Petugas Koperasi (Kasir POS Voucher)</label>
                                         </div>
                                         <div class="flex items-center gap-2 pt-2 border-t border-blue-100/50">
                                             <input type="checkbox" id="can_multi_login" v-model="form.can_multi_login" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />

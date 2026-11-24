@@ -221,12 +221,22 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                         for ($d = 1; $d <= $this->daysInMonth; $d++) {
                             $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + $d);
                             
-                            // Jika hari ini tanggal khusus (dan bukan weekend), berikan latar ungu sangat muda
+                            // Jika hari ini tanggal khusus (dan bukan weekend), blok seluruh kolom dengan latar ungu muda dan border tegas
                             if (isset($specialColumns[$d]) && !isset($weekendColumns[$d])) {
                                 $sheet->getStyle("{$colLetter}{$rowIndex}")->applyFromArray([
                                     'fill' => [
                                         'fillType' => Fill::FILL_SOLID,
-                                        'startColor' => ['rgb' => 'F5F3FF'] // Violet 50
+                                        'startColor' => ['rgb' => 'EDE9FE'] // Violet 100
+                                    ],
+                                    'borders' => [
+                                        'left' => [
+                                            'borderStyle' => Border::BORDER_THIN,
+                                            'color' => ['rgb' => '8B5CF6'] // Violet 500
+                                        ],
+                                        'right' => [
+                                            'borderStyle' => Border::BORDER_THIN,
+                                            'color' => ['rgb' => '8B5CF6']
+                                        ],
                                     ]
                                 ]);
                             }
@@ -242,30 +252,36 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
 
                             $rec = $row['daily_records'][$d] ?? null;
                             if ($rec) {
-                                $color = 'E8F5E9'; // Hadir (Hijau muda)
+                                // Jika BUKAN tanggal khusus, terapkan warna status kehadiran biasa
+                                if (!isset($specialColumns[$d])) {
+                                    $color = 'E8F5E9'; // Hadir (Hijau muda)
 
-                                if ($rec['is_pulang_cepat']) {
-                                    $color = 'F3E5F5'; // Pulang cepat (Ungu muda)
-                                } elseif ($rec['status'] === 'terlambat') {
-                                    $color = 'FFF8E1'; // Terlambat (Kuning/Amber)
-                                } elseif ($rec['status'] === 'dinas_luar') {
-                                    $color = 'E3F2FD'; // Dinas Luar (Biru muda)
-                                } elseif ($rec['status'] === 'sakit') {
-                                    $color = 'E0E7FF'; // Sakit (Indigo muda)
-                                } elseif ($rec['status'] === 'izin') {
-                                    $color = 'EDE9FE'; // Izin (Violet muda)
-                                } elseif ($rec['status'] === 'cuti') {
-                                    $color = 'CCFBF1'; // Cuti (Teal muda)
-                                } elseif ($rec['status'] === 'alpa') {
-                                    $color = 'FFE4E6'; // Alpa (Rose muda)
+                                    if ($rec['is_pulang_cepat']) {
+                                        $color = 'F3E5F5'; // Pulang cepat (Ungu muda)
+                                    } elseif ($rec['status'] === 'terlambat') {
+                                        $color = 'FFF8E1'; // Terlambat (Kuning/Amber)
+                                    } elseif ($rec['status'] === 'dinas_luar') {
+                                        $color = 'E3F2FD'; // Dinas Luar (Biru muda)
+                                    } elseif ($rec['status'] === 'sakit') {
+                                        $color = 'E0E7FF'; // Sakit (Indigo muda)
+                                    } elseif ($rec['status'] === 'izin') {
+                                        $color = 'EDE9FE'; // Izin (Violet muda)
+                                    } elseif ($rec['status'] === 'cuti') {
+                                        $color = 'CCFBF1'; // Cuti (Teal muda)
+                                    } elseif ($rec['status'] === 'alpa') {
+                                        $color = 'FFE4E6'; // Alpa (Rose muda)
+                                    }
+
+                                    $sheet->getStyle("{$colLetter}{$rowIndex}")->applyFromArray([
+                                        'fill' => [
+                                            'fillType' => Fill::FILL_SOLID,
+                                            'startColor' => ['rgb' => $color]
+                                        ]
+                                    ]);
+                                } else {
+                                    // Tanggal khusus: Tetap terblok ungu muda ('EDE9FE'), teks dibuat tebal
+                                    $sheet->getStyle("{$colLetter}{$rowIndex}")->getFont()->setBold(true);
                                 }
-
-                                $sheet->getStyle("{$colLetter}{$rowIndex}")->applyFromArray([
-                                    'fill' => [
-                                        'fillType' => Fill::FILL_SOLID,
-                                        'startColor' => ['rgb' => $color]
-                                    ]
-                                ]);
                             }
                         }
                         $rowIndex++;

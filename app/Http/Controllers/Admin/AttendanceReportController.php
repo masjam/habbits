@@ -10,6 +10,7 @@ use App\Models\Division;
 use App\Models\Setting;
 use App\Models\SpecialSchedule;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -480,6 +481,263 @@ class AttendanceReportController extends Controller
         \App\Jobs\ProcessAttendanceExport::dispatch($type, $currentMonth, $date, $divisionFilter, $userToNotify);
 
         return redirect()->back()->with('success', 'Laporan sedang digenerate di background. Silakan cek menu Pesan/Notifikasi dalam beberapa menit untuk mengunduh.');
+    }
+
+    /**
+     * Ekspor rekap presensi ke file PDF (Matriks Bulanan & Detail Harian)
+     */
+    public function exportPdf(Request $request)
+    {
+        $type = $request->input('type', 'monthly'); // 'monthly' | 'daily'
+        $currentMonth = $request->input('month', Carbon::today()->format('Y-m'));
+        $date = $request->input('date', Carbon::today()->format('Y-m-d'));
+        $divisionFilter = $request->input('division');
+
+        try {
+            $monthCarbon = Carbon::parse($currentMonth . '-01');
+        } catch (\Exception $e) {
+            $currentMonth = Carbon::today()->format('Y-m');
+            $monthCarbon = Carbon::parse($currentMonth . '-01');
+        }
+
+        $startOfMonth = $monthCarbon->copy()->startOfMonth()->format('Y-m-d');
+        $endOfMonth = $monthCarbon->copy()->endOfMonth()->format('Y-m-d');
+        $daysInMonth = $monthCarbon->daysInMonth;
+
+        $formatDate = function ($d) {
+            if ($d instanceof \Carbon\Carbon) {
+                return $d->format('Y-m-d');
+            }
+            return substr((string) $d, 0, 10);
+        };
+
+        $userQuery = User::whereIn('id', User::getNonAdminUserIds());
+        if ($divisionFilter) {
+            $userQuery->where('divisi', $divisionFilter);
+        }
+        $allUsers = $userQuery->with('dutySchedules')->orderBy('name')->get();
+
+        $monthlyAttendances = Attendance::with('approver')->whereBetween('date', [$startOfMonth, $endOfMonth])
+            ->whereIn('user_id', $allUsers->pluck('id'))
+            ->get();
+
+        $activeSpecialSchedules = SpecialSchedule::getActiveCached();
+
+        if ($type === 'daily') {
+            $dailyAttendances = $monthlyAttendances->filter(fn($a) => $formatDate($a->date) === $date)->keyBy('user_id');
+            
+            $dailyReportData = $allUsers->map(function ($u) use ($dailyAttendances, $date) {
+                $att = $dailyAttendances->get($u->id);
+                $schedule = $u->getEffectiveWorkSchedule($date);
+
+                $isPulangCepat = false;
+                if ($att?->time_out && !empty($schedule['work_end'])) {
+                    $outTime = substr($att->time_out, 0, 5);
+                    $endTime = substr($schedule['work_end'], 0, 5);
+                    if ($outTime < $endTime) {
+                        $isPulangCepat = true;
+                    }
+                }
+
+                $notes = $att?->notes;
+                if ($att?->late_reason) {
+                    $lateText = "Terlambat: {$att->late_reason}";
+                    $notes = $notes ? "{$notes} | {$lateText}" : $lateText;
+                }
+                if ($att?->is_early_departure && $att?->early_departure_reason) {
+                    $edText = "Pulang Mendahului: {$att->early_departure_reason}";
+                    $notes = $notes ? "{$notes} | {$edText}" : $edText;
+                }
+
+                return [
+                    'name'            => $u->name,
+                    'nip'             => $u->nip,
+                    'divisi'          => $u->divisi,
+                    'work_schedule'   => ($schedule['work_start'] ?? '07:00') . ' - ' . ($schedule['work_end'] ?? '15:00'),
+                    'time_in'         => $att?->time_in ? substr($att->time_in, 0, 5) : null,
+                    'time_out'        => $att?->time_out ? substr($att->time_out, 0, 5) : null,
+                    'status'          => $att ? $att->status : 'belum_hadir',
+                    'is_pulang_cepat' => $isPulangCepat,
+                    'notes'           => $notes,
+                ];
+            });
+
+            // Cek jadwal khusus aktif pada tanggal terpilih
+            $selectedSpecial = $activeSpecialSchedules->first(function ($s) use ($date) {
+                $start = $s->start_date ? $s->start_date->format('Y-m-d') : null;
+                $end = $s->end_date ? $s->end_date->format('Y-m-d') : null;
+                return $start && $end && $date >= $start && $date <= $end;
+            });
+            $selectedDateSpecial = $selectedSpecial ? [
+                'name'           => $selectedSpecial->name,
+                'time_in'        => substr($selectedSpecial->time_in, 0, 5),
+                'time_out'       => substr($selectedSpecial->time_out, 0, 5),
+                'late_tolerance' => $selectedSpecial->late_tolerance,
+            ] : null;
+
+            $formattedDate = Carbon::parse($date)->locale('id')->isoFormat('dddd, D MMMM Y');
+
+            $pdf = Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true], true)
+                ->loadView('pdf.attendance-daily', [
+                    'dailyReportData'     => $dailyReportData,
+                    'formattedDate'       => $formattedDate,
+                    'selectedDateSpecial' => $selectedDateSpecial,
+                    'divisionFilter'      => $divisionFilter,
+                ]);
+            $pdf->setPaper('A4', 'portrait');
+
+            $fileName = "Rekap_Presensi_Harian_" . str_replace('-', '', $date) . ".pdf";
+            return $pdf->stream($fileName);
+        }
+
+        // Mode Rekap Bulanan Matriks (Default)
+        $today = Carbon::today();
+        $isCurrentMonth = ($today->format('Y-m') === $currentMonth);
+        $effectiveEndDay = $isCurrentMonth ? $today->day : $daysInMonth;
+
+        $workdaysCount = 0;
+        $daysList = [];
+        $specialSchedulesList = [];
+
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $dateObj = Carbon::parse($currentMonth . '-' . str_pad($d, 2, '0', STR_PAD_LEFT));
+            $isWeekend = $dateObj->isWeekend();
+            $isPastOrToday = ($d <= $effectiveEndDay);
+            $targetDateStr = $dateObj->format('Y-m-d');
+
+            $matchedSpecial = $activeSpecialSchedules->first(function ($s) use ($targetDateStr) {
+                $start = $s->start_date ? $s->start_date->format('Y-m-d') : null;
+                $end = $s->end_date ? $s->end_date->format('Y-m-d') : null;
+                return $start && $end && $targetDateStr >= $start && $targetDateStr <= $end;
+            });
+
+            if (!$isWeekend && $isPastOrToday) {
+                $workdaysCount++;
+            }
+
+            if ($matchedSpecial && !isset($specialSchedulesList[$matchedSpecial->id])) {
+                $specialSchedulesList[$matchedSpecial->id] = [
+                    'name'     => $matchedSpecial->name,
+                    'time_in'  => substr($matchedSpecial->time_in, 0, 5),
+                    'time_out' => substr($matchedSpecial->time_out, 0, 5),
+                ];
+            }
+
+            $daysList[] = [
+                'day'                    => $d,
+                'date'                   => $targetDateStr,
+                'day_name'               => $dateObj->locale('id')->isoFormat('dd'),
+                'is_weekend'             => $isWeekend,
+                'is_today'               => $dateObj->isToday(),
+                'is_special'             => (bool) $matchedSpecial,
+                'special_name'           => $matchedSpecial?->name,
+            ];
+        }
+
+        $effectiveWorkdays = max(1, $workdaysCount);
+
+        $monthlyReportData = $allUsers->map(function ($u) use ($monthlyAttendances, $effectiveWorkdays, $daysInMonth, $currentMonth, $formatDate) {
+            $userAtts = $monthlyAttendances->where('user_id', $u->id)->keyBy(fn($a) => $formatDate($a->date));
+            $schedule = $u->getEffectiveWorkSchedule();
+
+            $hadirCount = 0;
+            $terlambatCount = 0;
+            $dinasLuarCount = 0;
+            $pulangCepatCount = 0;
+            $pureOntimeCount = 0;
+            $sakitCount = 0;
+            $izinCount = 0;
+            $cutiCount = 0;
+            $alpaCount = 0;
+
+            $dailyRecords = [];
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                $dateKey = $currentMonth . '-' . str_pad($d, 2, '0', STR_PAD_LEFT);
+                $att = $userAtts->get($dateKey);
+
+                if ($att) {
+                    $hasBothTimes = !empty($att->time_in) && !empty($att->time_out);
+                    if ($hasBothTimes) {
+                        if ($att->status === 'hadir') $hadirCount++;
+                        elseif ($att->status === 'terlambat') $terlambatCount++;
+                        elseif ($att->status === 'dinas_luar') $dinasLuarCount++;
+                    }
+
+                    if ($att->status === 'sakit') $sakitCount++;
+                    elseif ($att->status === 'izin') $izinCount++;
+                    elseif ($att->status === 'cuti') $cutiCount++;
+                    elseif ($att->status === 'alpa') $alpaCount++;
+
+                    $daySchedule = $u->getEffectiveWorkSchedule($dateKey);
+                    $isPulangCepat = false;
+                    if ($att->time_out && !empty($daySchedule['work_end'])) {
+                        $outTime = substr($att->time_out, 0, 5);
+                        $endTime = substr($daySchedule['work_end'], 0, 5);
+                        if ($outTime < $endTime) {
+                            $isPulangCepat = true;
+                            if ($hasBothTimes) $pulangCepatCount++;
+                        }
+                    }
+
+                    $isPureOntime = false;
+                    if ($hasBothTimes && in_array($att->status, ['hadir', 'dinas_luar']) && $att->time_in && !empty($daySchedule['work_start'])) {
+                        $inTime = substr($att->time_in, 0, 5);
+                        $startTime = substr($daySchedule['work_start'], 0, 5);
+                        if ($inTime <= $startTime) {
+                            $isPureOntime = true;
+                            $pureOntimeCount++;
+                        }
+                    }
+
+                    $dailyRecords[$d] = [
+                        'status'          => $att->status,
+                        'time_in'         => $att->time_in ? substr($att->time_in, 0, 5) : null,
+                        'time_out'        => $att->time_out ? substr($att->time_out, 0, 5) : null,
+                        'is_complete'     => $hasBothTimes,
+                        'is_pulang_cepat' => $isPulangCepat,
+                        'is_pure_ontime'  => $isPureOntime,
+                    ];
+                } else {
+                    $dailyRecords[$d] = null;
+                }
+            }
+
+            $totalKehadiran = $hadirCount + $terlambatCount + $dinasLuarCount;
+            $rate = round(($totalKehadiran / $effectiveWorkdays) * 100);
+
+            return [
+                'name'               => $u->name,
+                'nip'                => $u->nip,
+                'divisi'             => $u->divisi,
+                'total_hadir'        => $hadirCount,
+                'total_terlambat'    => $terlambatCount,
+                'total_dinas_luar'   => $dinasLuarCount,
+                'total_pulang_cepat' => $pulangCepatCount,
+                'total_pure_ontime'  => $pureOntimeCount,
+                'total_sakit'        => $sakitCount,
+                'total_izin'         => $izinCount,
+                'total_cuti'         => $cutiCount,
+                'total_alpa'         => $alpaCount,
+                'total_kehadiran'    => $totalKehadiran,
+                'attendance_rate'    => min(100, $rate),
+                'daily_records'      => $dailyRecords,
+            ];
+        });
+
+        $monthName = $monthCarbon->locale('id')->isoFormat('MMMM Y');
+
+        $pdf = Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true], true)
+            ->loadView('pdf.attendance-monthly', [
+                'monthlyReportData'    => $monthlyReportData,
+                'daysList'             => $daysList,
+                'monthName'            => $monthName,
+                'divisionFilter'       => $divisionFilter,
+                'specialSchedulesList' => array_values($specialSchedulesList),
+            ]);
+        $pdf->setPaper('A4', 'landscape');
+
+        $fileName = "Rekap_Presensi_Bulanan_" . str_replace('-', '', $currentMonth) . ".pdf";
+        return $pdf->stream($fileName);
     }
 
     /**

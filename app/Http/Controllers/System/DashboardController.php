@@ -25,6 +25,11 @@ class DashboardController extends Controller
             return $this->adminDashboard($request);
         }
 
+        // Jika user murni bertugas sebagai Petugas Koperasi, arahkan ke POS Kasir
+        if ($user->hasRole('koperasi') && !$user->hasRole('user')) {
+            return redirect()->route('koperasi.pos');
+        }
+
         return $this->userDashboard($request, $user);
     }
 

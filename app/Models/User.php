@@ -43,6 +43,7 @@ class User extends Authenticatable
         'work_end',
         'late_tolerance',
         'rfid_uid',
+        'coop_balance',
         'fingerprint_id',
         'must_change_password',
     ];
@@ -67,12 +68,28 @@ class User extends Authenticatable
             'must_change_password' => 'boolean',
             'can_multi_login'   => 'boolean',
             'late_tolerance'    => 'integer',
+            'coop_balance'      => 'float',
         ];
     }
 
     public function habitLogs(): HasMany
     {
         return $this->hasMany(HabitLog::class);
+    }
+
+    public function habitVouchers(): HasMany
+    {
+        return $this->hasMany(HabitVoucher::class);
+    }
+
+    public function coopTransactions(): HasMany
+    {
+        return $this->hasMany(CoopTransaction::class, 'user_id');
+    }
+
+    public function coopBalanceLogs(): HasMany
+    {
+        return $this->hasMany(CoopBalanceLog::class, 'user_id');
     }
 
     public function attendances(): HasMany
@@ -253,6 +270,93 @@ class User extends Authenticatable
     {
         $this->loadMissing('roles');
         return $this->roles->contains('name', 'superadmin');
+    }
+
+    public function isKoperasi(): bool
+    {
+        return $this->hasRole('koperasi');
+    }
+
+    public function canAccessKoperasiPos(): bool
+    {
+        return $this->hasAnyRole(['koperasi', 'admin', 'superadmin']) || $this->isActualSuperadmin();
+    }
+
+    /**
+     * Tambah saldo kartu RFID Koperasi dan catat log mutasi.
+     */
+    public function addCoopBalance(float $amount, string $type, ?string $referenceId = null, ?string $description = null, ?User $operator = null): CoopBalanceLog
+    {
+        $amount = abs($amount);
+        $before = (float) $this->coop_balance;
+        $after  = $before + $amount;
+
+        $this->update(['coop_balance' => $after]);
+
+        return CoopBalanceLog::create([
+            'user_id'        => $this->id,
+            'type'           => $type,
+            'amount'         => $amount,
+            'balance_before' => $before,
+            'balance_after'  => $after,
+            'reference_id'   => $referenceId,
+            'description'    => $description,
+            'operator_id'    => $operator?->id,
+        ]);
+    }
+
+    /**
+     * Kurangi saldo kartu RFID Koperasi dan catat log mutasi.
+     */
+    public function deductCoopBalance(float $amount, string $type, ?string $referenceId = null, ?string $description = null, ?User $operator = null): CoopBalanceLog
+    {
+        $amount = abs($amount);
+        $before = (float) $this->coop_balance;
+        $after  = max(0.0, $before - $amount);
+
+        $this->update(['coop_balance' => $after]);
+
+        return CoopBalanceLog::create([
+            'user_id'        => $this->id,
+            'type'           => $type,
+            'amount'         => -$amount,
+            'balance_before' => $before,
+            'balance_after'  => $after,
+            'reference_id'   => $referenceId,
+            'description'    => $description,
+            'operator_id'    => $operator?->id,
+        ]);
+    }
+
+    /**
+     * Konversi voucher habit menjadi Saldo Kartu RFID (Kartu Presensi Guru).
+     */
+    public function convertVoucherToBalance(HabitVoucher $voucher, ?User $operator = null): bool
+    {
+        if ($voucher->user_id !== $this->id || $voucher->isRedeemed() || $voucher->isExpired()) {
+            return false;
+        }
+
+        $numericValue = $voucher->getRewardNumericValue();
+
+        $voucher->update([
+            'status'           => 'claimed',
+            'claimed_at'       => now(),
+            'redeemed_by'      => $operator?->id ?? $this->id,
+            'redemption_notes' => 'Dikonversi ke Saldo Kartu RFID Presensi Guru',
+            'discount_amount'  => $numericValue,
+            'transaction_code' => 'TOPUP-VCR-' . $voucher->voucher_code,
+        ]);
+
+        $this->addCoopBalance(
+            $numericValue,
+            'voucher_conversion',
+            $voucher->voucher_code,
+            "Konversi {$voucher->title} ({$voucher->reward_value}) ke Saldo Kartu RFID",
+            $operator
+        );
+
+        return true;
     }
 
     /**

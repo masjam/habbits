@@ -42,7 +42,9 @@ import {
     IconFiturHr,
     IconLogAkses,
     IconPemantauanSistem,
-    IconChevronDown
+    IconChevronDown,
+    IconVoucher,
+    IconKoperasi
 } from '@/Components/Icons'
 
 const props = defineProps({
@@ -79,6 +81,7 @@ const roleLabel = computed(() => {
     if (hasRole('kepala_sekolah')) return 'Kepala Sekolah'
     if (hasRole('kurikulum'))  return 'Kurikulum'
     if (hasRole('tata_usaha')) return 'Tata Usaha'
+    if (hasRole('koperasi'))   return 'Petugas Koperasi'
     return 'Pegawai'
 })
 
@@ -177,12 +180,14 @@ const featureEnabled = (key) => {
 const isFormHabitOpen = ref(
     isActive('habit.form') || 
     isActive('quran.recap') || 
-    isActive('kajian.index')
+    isActive('kajian.index') ||
+    isActive('habit.vouchers*')
 )
 
 const isRekapHabitOpen = ref(
     isActive('admin.laporan') || 
-    isActive('admin.laporan.unfilled')
+    isActive('admin.laporan.unfilled') ||
+    isActive('admin.vouchers.*')
 )
 
 const isManajemenUserOpen = ref(
@@ -405,6 +410,15 @@ const toggleAccordion = (type) => {
                                 <IconJurnalKajian :class="subIconClass('kajian.index')" />
                                 <span>Jurnal Kajian &amp; Hadits</span>
                             </Link>
+
+                            <Link
+                                :href="route('habit.vouchers')"
+                                :class="subNavLinkClass('habit.vouchers*')"
+                                @click="closeSidebar"
+                            >
+                                <IconVoucher :class="subIconClass('habit.vouchers*')" />
+                                <span>Voucher Habit</span>
+                            </Link>
                         </div>
                     </Transition>
                 </div>
@@ -520,6 +534,46 @@ const toggleAccordion = (type) => {
                 </Link>
             </template>
 
+            <!-- ── Section: Koperasi Sekolah ── -->
+            <template v-if="hasAnyRole(['koperasi', 'superadmin'])">
+                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
+                    Koperasi Sekolah
+                </p>
+
+                <!-- Kasir POS Voucher -->
+                <Link
+                    :href="route('koperasi.pos')"
+                    :class="navLinkClass('koperasi.pos*')"
+                    :title="!isOpen ? 'Kasir POS Voucher' : undefined"
+                    @click="closeSidebar"
+                >
+                    <IconKoperasi :class="iconClass('koperasi.pos*')" />
+                    <span v-show="isOpen" class="truncate">Kasir POS Voucher</span>
+                </Link>
+
+                <!-- Stok Opname -->
+                <Link
+                    :href="route('koperasi.stock-opname')"
+                    :class="navLinkClass('koperasi.stock-opname*')"
+                    :title="!isOpen ? 'Stok Opname' : undefined"
+                    @click="closeSidebar"
+                >
+                    <svg :class="iconClass('koperasi.stock-opname*')" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    <span v-show="isOpen" class="truncate">Stok Opname</span>
+                </Link>
+
+                <!-- Riwayat Transaksi -->
+                <Link
+                    :href="route('koperasi.history')"
+                    :class="navLinkClass('koperasi.history*')"
+                    :title="!isOpen ? 'Riwayat Transaksi' : undefined"
+                    @click="closeSidebar"
+                >
+                    <IconArsip :class="iconClass('koperasi.history*')" />
+                    <span v-show="isOpen" class="truncate">Riwayat Transaksi</span>
+                </Link>
+            </template>
+
             <!-- ── Section: Monitoring Guru / Kurikulum ── -->
             <template v-if="(hasRole('kepala_sekolah') || hasRole('kurikulum')) && !hasAnyRole(['admin', 'superadmin'])">
                 <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
@@ -600,6 +654,15 @@ const toggleAccordion = (type) => {
                             >
                                 <IconSemuaLaporan :class="subIconClass('admin.laporan')" />
                                 <span>Semua Laporan</span>
+                            </Link>
+
+                            <Link
+                                :href="route('admin.vouchers.index')"
+                                :class="subNavLinkClass('admin.vouchers.*')"
+                                @click="closeSidebar"
+                            >
+                                <IconVoucher :class="subIconClass('admin.vouchers.*')" />
+                                <span>Voucher Koperasi</span>
                             </Link>
 
                             <Link

@@ -45,6 +45,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/habit/form', [\App\Http\Controllers\Personal\FormHabitController::class, 'index'])->name('habit.form');
     Route::post('/habit/form', [\App\Http\Controllers\Personal\FormHabitController::class, 'store'])->name('habit.form.store');
+    Route::get('/habit/vouchers', [\App\Http\Controllers\Personal\HabitVoucherController::class, 'index'])->name('habit.vouchers');
+    Route::post('/habit/vouchers/{voucher}/claim', [\App\Http\Controllers\Personal\HabitVoucherController::class, 'claim'])->name('habit.vouchers.claim');
+    Route::post('/habit/vouchers/{voucher}/convert-to-rfid', [\App\Http\Controllers\Personal\HabitVoucherController::class, 'convertToRfid'])->name('habit.vouchers.convert-to-rfid');
     
     Route::get('/rekap-quran', [\App\Http\Controllers\Personal\QuranRecapController::class, 'index'])->name('quran.recap');
     
@@ -163,10 +166,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/presensi/leave', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'storeLeave'])->name('admin.attendance.store-leave');
         Route::delete('/presensi/record/{id}', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'deleteRecord'])->name('admin.attendance.delete-record');
         Route::get('/presensi/export', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'export'])->name('admin.attendance.export');
+        Route::get('/presensi/export-pdf', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'exportPdf'])->name('admin.attendance.export-pdf');
 
         Route::get('/laporan', [\App\Http\Controllers\Admin\LaporanController::class, 'index'])->name('admin.laporan');
         Route::get('/laporan/export', [\App\Http\Controllers\Admin\LaporanController::class, 'export'])->name('admin.laporan.export');
         Route::post('/laporan/target', [\App\Http\Controllers\Admin\LaporanController::class, 'updateTarget'])->name('admin.laporan.target');
+        
+        // Kelola & Penukaran Voucher Habit Koperasi Sekolah
+        Route::get('/vouchers', [\App\Http\Controllers\Admin\VoucherReportController::class, 'index'])->name('admin.vouchers.index');
+        Route::post('/vouchers/generate', [\App\Http\Controllers\Admin\VoucherReportController::class, 'generate'])->name('admin.vouchers.generate');
+        Route::post('/vouchers/redeem', [\App\Http\Controllers\Admin\VoucherReportController::class, 'redeem'])->name('admin.vouchers.redeem');
+        Route::post('/vouchers/{voucher}/unredeem', [\App\Http\Controllers\Admin\VoucherReportController::class, 'unredeem'])->name('admin.vouchers.unredeem');
+        Route::post('/vouchers/settings', [\App\Http\Controllers\Admin\VoucherReportController::class, 'updateSettings'])->name('admin.vouchers.settings');
         
         // Letakkan rute statis sebelum wildcard {user}
         Route::get('/laporan/unfilled', [\App\Http\Controllers\Admin\LaporanController::class, 'unfilled'])
@@ -281,6 +292,27 @@ Route::middleware('auth')->group(function () {
         Route::post('/disposisi', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'store'])->name('disposisi.store');
         Route::put('/disposisi/{disposisi}', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'update'])->name('disposisi.update');
         Route::delete('/disposisi/{disposisi}', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'destroy'])->name('disposisi.destroy');
+    });
+
+    // ─── Modul Petugas Koperasi (Sistem POS & Penukaran Voucher) ──────────────
+    Route::middleware('role:koperasi|superadmin')->prefix('koperasi')->name('koperasi.')->group(function () {
+        Route::get('/pos', [\App\Http\Controllers\Koperasi\PosController::class, 'index'])->name('pos');
+        Route::post('/pos/check', [\App\Http\Controllers\Koperasi\PosController::class, 'checkVoucher'])->name('pos.check');
+        Route::post('/pos/rfid-scan', [\App\Http\Controllers\Koperasi\PosController::class, 'scanRfid'])->name('pos.rfid-scan');
+        Route::post('/pos/convert-voucher', [\App\Http\Controllers\Koperasi\PosController::class, 'convertVoucherToRfid'])->name('pos.convert-voucher');
+        Route::post('/pos/checkout', [\App\Http\Controllers\Koperasi\PosController::class, 'checkout'])->name('pos.checkout');
+        Route::post('/pos/redeem', [\App\Http\Controllers\Koperasi\PosController::class, 'redeem'])->name('pos.redeem');
+        Route::post('/pos/cancel/{voucher}', [\App\Http\Controllers\Koperasi\PosController::class, 'cancel'])->name('pos.cancel');
+        Route::get('/history', [\App\Http\Controllers\Koperasi\PosController::class, 'history'])->name('history');
+        Route::get('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'products'])->name('products');
+        Route::post('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'storeProduct'])->name('products.store');
+        Route::post('/products/import', [\App\Http\Controllers\Koperasi\PosController::class, 'importProducts'])->name('products.import');
+        Route::get('/stock-opname', [\App\Http\Controllers\Koperasi\PosController::class, 'stockOpname'])->name('stock-opname');
+        Route::post('/stock-opname/adjust', [\App\Http\Controllers\Koperasi\PosController::class, 'adjustStock'])->name('stock-opname.adjust');
+        Route::post('/stock-opname/quick-batch', [\App\Http\Controllers\Koperasi\PosController::class, 'quickBatchOpname'])->name('stock-opname.quick-batch');
+        Route::get('/export/sales-monthly', [\App\Http\Controllers\Koperasi\PosController::class, 'exportMonthlySales'])->name('export.sales-monthly');
+        Route::get('/export/stock-opname', [\App\Http\Controllers\Koperasi\PosController::class, 'exportStockOpname'])->name('export.stock-opname');
+        Route::get('/export/product-template', [\App\Http\Controllers\Koperasi\PosController::class, 'exportTemplate'])->name('export.product-template');
     });
 });
 

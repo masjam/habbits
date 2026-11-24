@@ -1,12 +1,20 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useDarkMode } from '@/Composables/useDarkMode'
 import { useIslamicData } from '@/Composables/useIslamicData'
 
+const WHATSAPP_SUPPORT_URL = 'https://wa.link/bh9pkl'
+
+const FALLBACK_HADITH = {
+    text: 'Sebaik-baik manusia adalah yang paling bermanfaat bagi manusia lainnya.',
+    source: 'HR. Ath-Thabrani',
+}
+
 const { isDark, toggleDark } = useDarkMode()
-const { dailyHadith, isLoadingHadith } = useIslamicData()
+const { dailyHadith, isLoadingHadith, hijriDate, nextPrayerName, countdownText } = useIslamicData()
 const showPassword = ref(false)
+const isLocating = ref(false)
 
 const form = useForm({
     email: '',
@@ -14,6 +22,14 @@ const form = useForm({
     remember: false,
     latitude: null,
     longitude: null,
+})
+
+// Sapaan kontekstual sesuai jam login
+const greetingText = computed(() => {
+    const hour = new Date().getHours()
+    if (hour >= 3 && hour < 11) return 'Selamat Pagi, Ustad/Ustadzah & Karyawan SDAM'
+    if (hour >= 11 && hour < 15) return 'Selamat Siang, Ustad/Ustadzah & Karyawan SDAM'
+    return 'Selamat Malam, Ustad/Ustadzah & Karyawan SDAM'
 })
 
 // Hitung tanggal Masehi & Hijriah lokal untuk sisi visual
@@ -31,6 +47,9 @@ const currentDateMasehi = computed(() => {
 })
 
 const currentDateHijri = computed(() => {
+    if (hijriDate.value) {
+        return hijriDate.value
+    }
     try {
         const fmt = new Intl.DateTimeFormat('id-u-ca-islamic-umalqura', {
             day: 'numeric',
@@ -39,14 +58,14 @@ const currentDateHijri = computed(() => {
         })
         return fmt.format(new Date()) + ' H'
     } catch {
-        return '1447 H'
+        return ''
     }
 })
 
-// Ekstraksi teks matan (isi inti hadits) dan singkirkan rentetan sanad panjang
+// Ekstraksi teks matan (isi inti hadits) secara rapi tanpa sanad panjang
 const hadithMatn = computed(() => {
     const raw = dailyHadith.value?.text
-    if (!raw) return 'Sebaik-baik manusia adalah yang paling bermanfaat bagi manusia lainnya.'
+    if (!raw) return FALLBACK_HADITH.text
 
     let text = raw.trim()
 
@@ -92,44 +111,54 @@ const hadithMatn = computed(() => {
     return text.replace(/^["“'‘\s]+|["”'’\s]+$/g, '').trim()
 })
 
-onMounted(() => {
-    // Opsional: Rekam koordinat GPS perangkat secara aman jika diizinkan oleh pengguna/browser
-    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                form.latitude = pos.coords.latitude
-                form.longitude = pos.coords.longitude
-            },
-            () => {
-                // Abaikan jika user menolak izin lokasi atau tidak didukung
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 5000,
-                maximumAge: 60000,
-            }
-        )
-    }
+const hadithSource = computed(() => {
+    return dailyHadith.value?.source || FALLBACK_HADITH.source
 })
 
+// Minta lokasi perangkat saat tombol Masuk ditekan (bukan saat halaman pertama kali dibuka)
 const submit = () => {
-    form.post(route('login.attempt'), {
-        onFinish: () => form.reset('password'),
-    })
+    const send = () => {
+        isLocating.value = false
+        form.post(route('login.attempt'), {
+            onFinish: () => form.reset('password'),
+        })
+    }
+
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+        return send()
+    }
+
+    isLocating.value = true
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            form.latitude = pos.coords.latitude
+            form.longitude = pos.coords.longitude
+            send()
+        },
+        () => {
+            // Jika user menolak izin lokasi atau timeout: tetap lanjutkan login
+            send()
+        },
+        {
+            timeout: 4000,
+            maximumAge: 60000,
+            enableHighAccuracy: true,
+        }
+    )
 }
 </script>
 
 <template>
     <Head title="Login - SAHABAT SDAM" />
 
-    <div class="min-h-screen w-full flex flex-col lg:flex-row bg-slate-50 dark:bg-slate-950 relative overflow-hidden selection:bg-emerald-500 selection:text-white">
+    <div class="min-h-dvh w-full flex flex-col lg:flex-row bg-slate-50 dark:bg-slate-950 relative overflow-hidden selection:bg-emerald-500 selection:text-white">
         
         <!-- ═══════════════════════════════════════════════════════════ -->
         <!-- BACKGROUND DECORATIONS FOR MOBILE (Soft-UI VR Wallpaper)   -->
         <!-- ═══════════════════════════════════════════════════════════ -->
         <div class="lg:hidden absolute inset-0 z-0 pointer-events-none">
             <img 
-                src="/img/vr-nature-bg.jpg" 
+                src="/img/vr-nature-bg.webp" 
                 alt="" 
                 class="w-full h-full object-cover object-center filter blur-[2px] scale-105 opacity-40 dark:opacity-20"
                 aria-hidden="true"
@@ -163,7 +192,7 @@ const submit = () => {
         <!-- SISI KIRI: FORMULIR LOGIN                                  -->
         <!-- (Desktop: Clean Split-Screen | Mobile: Floating Glass Card) -->
         <!-- ═══════════════════════════════════════════════════════════ -->
-        <div class="w-full lg:w-[48%] xl:w-[45%] flex flex-col justify-between min-h-screen p-5 sm:p-8 lg:p-12 xl:p-16 z-10 relative">
+        <div class="w-full lg:w-[48%] xl:w-[45%] flex flex-col justify-between min-h-dvh p-5 sm:p-8 lg:p-12 xl:p-16 z-10 relative">
             
             <!-- Header Brand -->
             <div class="flex items-center justify-between mb-6 lg:mb-0">
@@ -178,7 +207,8 @@ const submit = () => {
                             SAHABAT SDAM
                         </span>
                         <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 tracking-wide">
-                                                    Sistem Absensi, Habit, Administrasi & Buku Tugas SD Al Mujahidin Wonosari
+                            <span class="hidden sm:inline">Sistem Absensi, Habit, Administrasi &amp; Buku Tugas SD Al Mujahidin</span>
+                            <!-- <span class="sm:hidden">Sistem Absensi &amp; Kepegawaian SDAM</span> -->
                         </span>
                     </div>
                 </Link>
@@ -193,33 +223,41 @@ const submit = () => {
                     <div class="mb-7">
                         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200/70 dark:border-emerald-800/70 mb-3">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 motion-safe:animate-pulse"></span>
-                            Portal Resmi Kepegawaian
+                            Portal Sahabat SDAM
                         </div>
                         <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                            Selamat Datang
+                            {{ greetingText }}
                         </h1>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
                             Silakan masuk dengan akun Anda untuk mengakses presensi, habit, dan administrasi sekolah.
                         </p>
                     </div>
 
-                    <!-- Alert Error jika Login Gagal -->
-                    <div 
-                        v-if="form.errors.email || form.errors.password" 
-                        class="mb-6 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3 shadow-xs animate-in fade-in duration-200"
+                    <!-- Alert Error jika Login Gagal (A11y role="alert") -->
+                    <Transition
+                        enter-active-class="transition duration-200 ease-out"
+                        enter-from-class="opacity-0 -translate-y-1"
+                        enter-to-class="opacity-100 translate-y-0"
                     >
-                        <div class="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
+                        <div 
+                            v-if="form.errors.email || form.errors.password" 
+                            role="alert"
+                            aria-live="assertive"
+                            class="mb-6 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3 shadow-xs"
+                        >
+                            <div class="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-bold text-rose-800 dark:text-rose-300">Autentikasi Gagal</p>
+                                <p class="text-xs text-rose-600 dark:text-rose-400 mt-0.5 leading-relaxed">
+                                    {{ form.errors.email || form.errors.password }}
+                                </p>
+                            </div>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs font-bold text-rose-800 dark:text-rose-300">Autentikasi Gagal</p>
-                            <p class="text-xs text-rose-600 dark:text-rose-400 mt-0.5 leading-relaxed">
-                                {{ form.errors.email || form.errors.password }}
-                            </p>
-                        </div>
-                    </div>
+                    </Transition>
 
                     <!-- Formulir Utama -->
                     <form @submit.prevent="submit" class="space-y-5">
@@ -242,6 +280,7 @@ const submit = () => {
                                     required 
                                     autofocus 
                                     autocomplete="username"
+                                    :aria-invalid="!!form.errors.email"
                                     class="block w-full pl-11 pr-4 py-3 text-sm bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all outline-none"
                                     placeholder="nama@sdam.sch.id"
                                 />
@@ -255,8 +294,9 @@ const submit = () => {
                                     Kata Sandi
                                 </label>
                                 <a 
-                                    href="https://wa.link/bh9pkl" 
+                                    :href="WHATSAPP_SUPPORT_URL" 
                                     target="_blank"
+                                    rel="noopener noreferrer"
                                     class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline transition-colors"
                                 >
                                     Lupa sandi?
@@ -274,6 +314,7 @@ const submit = () => {
                                     v-model="form.password" 
                                     required 
                                     autocomplete="current-password"
+                                    :aria-invalid="!!form.errors.password"
                                     class="block w-full pl-11 pr-11 py-3 text-sm bg-slate-50/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15 transition-all outline-none"
                                     placeholder="••••••••"
                                 />
@@ -315,24 +356,30 @@ const submit = () => {
                             </label>
                         </div>
 
-                        <!-- Tombol Submit Utama -->
+                        <!-- Tombol Submit Utama (Memiliki class group untuk animasi panah) -->
                         <div class="pt-2">
                             <button 
                                 type="submit" 
-                                :disabled="form.processing"
-                                class="w-full inline-flex justify-center items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] rounded-xl font-bold text-white shadow-lg shadow-emerald-700/20 hover:shadow-emerald-700/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer text-sm"
+                                :disabled="form.processing || isLocating"
+                                class="group w-full inline-flex justify-center items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] rounded-xl font-bold text-white shadow-lg shadow-emerald-700/20 hover:shadow-emerald-700/30 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer text-sm"
                             >
-                                <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
+                                <svg v-if="form.processing || isLocating" class="animate-spin -ml-1 mr-2 w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <span v-if="form.processing">Memproses Masuk...</span>
+                                <span v-if="isLocating">Memverifikasi Lokasi...</span>
+                                <span v-else-if="form.processing">Memproses Masuk...</span>
                                 <span v-else>Masuk ke Akun</span>
                                 
-                                <svg v-if="!form.processing" class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <svg v-if="!form.processing && !isLocating" class="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                                 </svg>
                             </button>
+
+                            <!-- Catatan Penggunaan Lokasi -->
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center mt-2.5">
+                                Lokasi perangkat digunakan untuk validasi presensi otomatis saat masuk.
+                            </p>
                         </div>
 
                     </form>
@@ -341,19 +388,20 @@ const submit = () => {
 
             </div>
 
-            <!-- Footer Bantuan Waka SDM -->
-            <div class="pt-6 border-t border-slate-200/60 dark:border-slate-800/60 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <!-- Footer Bantuan Waka SDM (Kontras WCAG slate-500) -->
+            <div class="pt-6 border-t border-slate-200/60 dark:border-slate-800/60 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
                 <p>
                     Guru/Karyawan baru? 
                     <a 
-                        href="https://wa.link/bh9pkl" 
+                        :href="WHATSAPP_SUPPORT_URL" 
                         target="_blank"
+                        rel="noopener noreferrer"
                         class="font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline transition-colors ml-1"
                     >
                         Hubungi Waka SDM &rarr;
                     </a>
                 </p>
-                <p class="text-[11px] text-slate-400 dark:text-slate-500">
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">
                     &copy; {{ new Date().getFullYear() }} SD Al Mujahidin  || by @blue_core21
                 </p>
             </div>
@@ -363,13 +411,14 @@ const submit = () => {
         <!-- ═══════════════════════════════════════════════════════════ -->
         <!-- SISI KANAN: SHOWCASE VISUAL ASIMETRIS (KHUSUS DESKTOP)       -->
         <!-- ═══════════════════════════════════════════════════════════ -->
-        <div class="hidden lg:flex lg:w-[52%] xl:w-[55%] relative min-h-screen flex-col justify-between p-10 xl:p-14 2xl:p-16 overflow-hidden bg-emerald-950">
+        <div class="hidden lg:flex lg:w-[52%] xl:w-[55%] relative min-h-dvh flex-col justify-between p-10 xl:p-14 2xl:p-16 overflow-hidden bg-emerald-950">
             
-            <!-- Foto Wallpaper Lanskap Alam Soft-UI -->
+            <!-- Foto Wallpaper Lanskap Alam Soft-UI (Format WebP 96KB, alt="" dekoratif) -->
             <div class="absolute inset-0 z-0">
                 <img 
-                    src="/img/vr-nature-bg.jpg" 
-                    alt="Panorama Alam SD Al Mujahidin" 
+                    src="/img/vr-nature-bg.webp" 
+                    alt="" 
+                    aria-hidden="true"
                     class="w-full h-full object-cover object-center scale-105 filter blur-[0.5px] transform transition-transform duration-1000"
                 />
                 <!-- Gradient Overlay yang Sejuk & Elegan -->
@@ -380,17 +429,11 @@ const submit = () => {
             <!-- Bagian Atas Sisi Kanan: Penanda Tanggal & Waktu Islami -->
             <div class="relative z-10 flex items-center justify-between">
                 <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white/15 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-lg">
-                    <!-- <svg class="w-4 h-4 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg> -->
                     <span>{{ currentDateMasehi }}</span>
-                    <span class="text-white/40">•</span>
-                    <span class="text-amber-200 font-bold">{{ currentDateHijri }}</span>
+                    <span v-if="currentDateHijri" class="text-white/40">•</span>
+                    <span v-if="currentDateHijri" class="text-amber-200 font-bold">{{ currentDateHijri }}</span>
+                    <span v-if="nextPrayerName" class="text-emerald-200 font-bold ml-1">• Menuju {{ nextPrayerName }} {{ countdownText }}</span>
                 </div>
-
-                <!-- <div class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-200 text-xs font-bold tracking-wide uppercase">
-                    Terakreditasi A
-                </div> -->
             </div>
 
             <!-- Bagian Tengah/Bawah: Kartu Kaca Melayang (Hadis & Pesan Inspirasi) -->
@@ -405,21 +448,27 @@ const submit = () => {
                         </svg>
                     </div>
 
-                    <!-- Kutipan Hadits Harian Dinamis (Acak Tiap Hari via useIslamicData) -->
+                    <!-- Kutipan Hadits Harian Dinamis (Tanpa line-clamp agar tidak memotong makna) -->
                     <div v-if="isLoadingHadith && !dailyHadith" class="space-y-2.5 py-1">
                         <div class="h-4 bg-white/20 rounded-md animate-pulse w-full"></div>
                         <div class="h-4 bg-white/20 rounded-md animate-pulse w-5/6"></div>
                         <div class="h-4 bg-white/20 rounded-md animate-pulse w-4/6"></div>
                     </div>
-                    <blockquote v-else class="text-base xl:text-lg font-bold leading-relaxed text-white drop-shadow-sm font-sans line-clamp-4">
+                    <blockquote 
+                        v-else 
+                        :class="[
+                            'font-bold text-white drop-shadow-sm font-sans',
+                            hadithMatn.length > 160 ? 'text-sm sm:text-base leading-relaxed' : 'text-base xl:text-lg leading-relaxed'
+                        ]"
+                    >
                         “{{ hadithMatn }}”
                     </blockquote>
 
-                    <!-- Sumber & Identitas Sekolah -->
+                    <!-- Sumber & Identitas Sekolah (Sumber dan Matan Selalu Berpasangan) -->
                     <div class="pt-4 border-t border-white/20 flex items-center justify-between gap-3">
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-bold text-amber-300 uppercase tracking-wider truncate">
-                                {{ dailyHadith?.source || 'HR. Ahmad & Ath-Thabrani' }}
+                                {{ hadithSource }}
                             </p>
                             <p class="text-xs text-emerald-100/90 mt-0.5 truncate">
                                 Hadits Harian &amp; Pengingat Ibadah
@@ -439,7 +488,7 @@ const submit = () => {
                         <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
-                        <!-- Sistem Terenkripsi &amp; Terverifikasi -->
+                        <span>Sistem Terenkripsi &amp; Terverifikasi</span>
                     </span>
                     <span class="text-emerald-300/40">•</span>
                     <span>Presensi, Habits, Administrasi &amp; File Server</span>

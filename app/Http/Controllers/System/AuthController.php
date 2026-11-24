@@ -113,6 +113,11 @@ class AuthController extends Controller
             // Dispatch async location resolution in background
             \App\Jobs\ResolveLoginLocationJob::dispatch($loginLog->id, $ip, $lat, $lon, $source);
 
+            // Jika user adalah Petugas Koperasi murni, arahkan langsung ke Sistem POS
+            if ($user->hasRole('koperasi') && !$user->hasAnyRole(['admin', 'superadmin'])) {
+                return redirect()->intended(route('koperasi.pos'));
+            }
+
             return redirect()->intended(route('dashboard'));
         }
 
