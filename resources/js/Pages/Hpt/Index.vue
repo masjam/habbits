@@ -57,7 +57,7 @@ const openTopic = (query) => {
     <Head title="Himpunan Putusan Tarjih (HPT)" />
 
     <AuthenticatedLayout>
-        <div class="py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-6">
+        <div class="w-full space-y-6">
             
             <!-- Hero Banner Card -->
             <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-800 via-teal-800 to-emerald-950 text-white shadow-xl p-6 sm:p-10 border border-emerald-700/40">

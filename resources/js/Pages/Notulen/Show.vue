@@ -18,7 +18,7 @@ const printNotulen = () => {
     <AuthenticatedLayout>
         <Head :title="`Preview: ${notulen.judul_rapat}`" />
 
-        <div class="w-full mx-auto pb-12 max-w-5xl">
+        <div class="w-full mx-auto pb-12 max-w-6xl">
             <!-- Header Aksi (Sembunyi saat diprint) -->
             <div class="flex items-center justify-between mb-6 print:hidden">
                 <div class="flex items-center gap-4">

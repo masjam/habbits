@@ -881,7 +881,7 @@ onUnmounted(() => {
     <Head title="Presensi GPS" />
 
     <AuthenticatedLayout>
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="w-full space-y-6">
             
             <div v-if="!($page.props.global_settings?.attendance_mode_gps === '1' || $page.props.global_settings?.attendance_mode_gps === 'true')" class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3">
                 <div class="text-amber-500 mt-0.5 text-xl">💡</div>

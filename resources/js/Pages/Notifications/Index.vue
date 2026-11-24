@@ -212,7 +212,7 @@ const markAllAsRead = () => {
             </div>
         </template>
 
-        <div class="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div class="w-full space-y-6">
             <div class="bg-sidebar rounded-3xl border border-theme shadow-xs overflow-hidden">
                 <div v-if="notifications.data.length === 0" class="p-12 text-center">
                     <div class="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">

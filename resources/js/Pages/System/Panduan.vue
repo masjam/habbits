@@ -22,7 +22,7 @@ const toggleFaq = (id) => {
     <AuthenticatedLayout>
         <Head title="Buku Panduan Penggunaan" />
 
-        <div class="max-w-6xl mx-auto space-y-6">
+        <div class="w-full space-y-6">
             <!-- Header Section -->
             <div class="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-800 rounded-3xl p-8 md:p-12 text-white shadow-lg">
                 <div class="relative z-10">

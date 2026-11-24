@@ -27,6 +27,7 @@ Homestead.yaml
 Thumbs.db
 *.md
 !docs/*.md
+.rnd
 
 # ═══ AI Coding Agents & Skills ═════════════════════════════════
 /.agents/
