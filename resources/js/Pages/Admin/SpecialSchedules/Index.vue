@@ -2,6 +2,7 @@
 import { ref, nextTick, watch } from 'vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useToast } from '@/Composables/useToast';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -9,6 +10,7 @@ const props = defineProps({
     schedules: { type: Array, default: () => [] },
 });
 
+const toast = useToast();
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
 
@@ -28,21 +30,27 @@ const form = useForm({
 
 const openModal = (schedule = null) => {
     isEditMode.value = !!schedule;
+    form.clearErrors();
     if (schedule) {
         form.id = schedule.id;
-        form.name = schedule.name;
-        form.start_date = schedule.start_date.split('T')[0];
-        form.end_date = schedule.end_date.split('T')[0];
-        form.time_in = schedule.time_in.substring(0, 5);
-        form.time_out = schedule.time_out.substring(0, 5);
-        form.late_tolerance = schedule.late_tolerance;
-        form.latitude = schedule.latitude;
-        form.longitude = schedule.longitude;
-        form.radius = schedule.radius;
-        form.is_active = schedule.is_active;
+        form.name = schedule.name || '';
+        const startStr = String(schedule.start_date || '');
+        const endStr = String(schedule.end_date || '');
+        form.start_date = startStr.includes('T') ? startStr.split('T')[0] : startStr;
+        form.end_date = endStr.includes('T') ? endStr.split('T')[0] : endStr;
+        form.time_in = schedule.time_in ? schedule.time_in.substring(0, 5) : '';
+        form.time_out = schedule.time_out ? schedule.time_out.substring(0, 5) : '';
+        form.late_tolerance = schedule.late_tolerance ?? 0;
+        form.latitude = schedule.latitude ?? '';
+        form.longitude = schedule.longitude ?? '';
+        form.radius = schedule.radius ?? 100;
+        form.is_active = Boolean(schedule.is_active);
     } else {
         form.reset();
         form.id = null;
+        form.late_tolerance = 0;
+        form.radius = 100;
+        form.is_active = true;
     }
     isModalOpen.value = true;
     nextTick(() => {
@@ -166,19 +174,39 @@ const handleManualCoords = () => {
 const closeModal = () => {
     isModalOpen.value = false;
     form.reset();
+    form.clearErrors();
 };
 
 const submit = () => {
+    if (form.time_in && form.time_in.length > 5) {
+        form.time_in = form.time_in.substring(0, 5);
+    }
+    if (form.time_out && form.time_out.length > 5) {
+        form.time_out = form.time_out.substring(0, 5);
+    }
+
     if (isEditMode.value) {
         form.put(route('admin.special-schedules.update', form.id), {
+            preserveScroll: true,
             onSuccess: () => {
                 closeModal();
+                toast.success('Jadwal khusus berhasil diperbarui.');
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                toast.error(firstError || 'Gagal menyimpan perubahan jadwal khusus.');
             },
         });
     } else {
         form.post(route('admin.special-schedules.store'), {
+            preserveScroll: true,
             onSuccess: () => {
                 closeModal();
+                toast.success('Jadwal khusus berhasil ditambahkan.');
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                toast.error(firstError || 'Gagal menambahkan jadwal khusus.');
             },
         });
     }
@@ -186,7 +214,15 @@ const submit = () => {
 
 const deleteSchedule = (id) => {
     if (confirm('Anda yakin ingin menghapus jadwal khusus ini? Tindakan ini tidak dapat dibatalkan.')) {
-        router.delete(route('admin.special-schedules.destroy', id));
+        router.delete(route('admin.special-schedules.destroy', id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Jadwal khusus berhasil dihapus.');
+            },
+            onError: () => {
+                toast.error('Gagal menghapus jadwal khusus.');
+            }
+        });
     }
 };
 </script>
@@ -310,16 +346,19 @@ const deleteSchedule = (id) => {
                     <div class="space-y-1">
                         <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Nama Kegiatan</label>
                         <input type="text" v-model="form.name" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" required />
+                        <p v-if="form.errors.name" class="text-xs text-rose-500 font-semibold">{{ form.errors.name }}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Tanggal Mulai</label>
                             <input type="date" v-model="form.start_date" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" required />
+                            <p v-if="form.errors.start_date" class="text-xs text-rose-500 font-semibold">{{ form.errors.start_date }}</p>
                         </div>
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Tanggal Selesai</label>
                             <input type="date" v-model="form.end_date" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" required />
+                            <p v-if="form.errors.end_date" class="text-xs text-rose-500 font-semibold">{{ form.errors.end_date }}</p>
                         </div>
                     </div>
 
@@ -327,14 +366,17 @@ const deleteSchedule = (id) => {
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Jam Masuk</label>
                             <input type="time" v-model="form.time_in" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" required />
+                            <p v-if="form.errors.time_in" class="text-xs text-rose-500 font-semibold">{{ form.errors.time_in }}</p>
                         </div>
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Jam Pulang</label>
                             <input type="time" v-model="form.time_out" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" required />
+                            <p v-if="form.errors.time_out" class="text-xs text-rose-500 font-semibold">{{ form.errors.time_out }}</p>
                         </div>
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Toleransi (Mnt)</label>
                             <input type="number" v-model="form.late_tolerance" min="0" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" />
+                            <p v-if="form.errors.late_tolerance" class="text-xs text-rose-500 font-semibold">{{ form.errors.late_tolerance }}</p>
                         </div>
                     </div>
 
@@ -342,10 +384,12 @@ const deleteSchedule = (id) => {
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Latitude Lokasi</label>
                             <input type="text" v-model="form.latitude" @input="handleManualCoords" placeholder="Contoh: -7.7956" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" />
+                            <p v-if="form.errors.latitude" class="text-xs text-rose-500 font-semibold">{{ form.errors.latitude }}</p>
                         </div>
                         <div class="space-y-1">
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Longitude Lokasi</label>
                             <input type="text" v-model="form.longitude" @input="handleManualCoords" placeholder="Contoh: 110.3695" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" />
+                            <p v-if="form.errors.longitude" class="text-xs text-rose-500 font-semibold">{{ form.errors.longitude }}</p>
                         </div>
                     </div>
                     <div class="space-y-1">
@@ -354,6 +398,7 @@ const deleteSchedule = (id) => {
                             <input type="range" v-model="form.radius" min="10" max="1000" step="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600" />
                             <input type="number" v-model="form.radius" min="10" max="5000" class="w-24 text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100 text-center font-bold" />
                         </div>
+                        <p v-if="form.errors.radius" class="text-xs text-rose-500 font-semibold">{{ form.errors.radius }}</p>
                         <p class="text-[11px] text-slate-400">Kosongkan latitude/longitude jika tidak menggunakan batas lokasi khusus.</p>
                     </div>
 

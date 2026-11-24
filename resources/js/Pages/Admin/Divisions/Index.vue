@@ -83,7 +83,7 @@ const deleteDivision = (id) => {
     <Head title="Manajemen Divisi" />
 
     <AuthenticatedLayout>
-        <div class="max-w-4xl mx-auto">
+        <div class="w-full mx-auto">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <!-- Toolbar -->
                 <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">

@@ -112,7 +112,7 @@ const submitDailyWork = () => {
     <Head title="Pengaturan Jadwal Piket Pegawai" />
 
     <AuthenticatedLayout>
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="w-full mx-auto space-y-6">
 
             <!-- ── Header & Breadcrumbs ──────────────────────────────────────── -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

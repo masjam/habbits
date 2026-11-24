@@ -301,7 +301,7 @@ onMounted(() => {
 
             <!-- Main Content Canvas (Material 3 / Soft-UI tonal surface) -->
             <main class="flex-1 overflow-y-auto bg-transparent px-3 py-4 sm:px-5 sm:py-6 lg:px-6">
-                <div class="w-full max-w-[1850px] mx-auto">
+                <div class="w-full mx-auto">
                     <slot />
                 </div>
             </main>

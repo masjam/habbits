@@ -88,12 +88,20 @@ class ProcessAttendanceExport implements ShouldQueue
                 ];
             });
 
+            $activeSpecialSchedules = \App\Models\SpecialSchedule::getActiveCached();
+            $matchedSpecial = $activeSpecialSchedules->first(function ($s) use ($date) {
+                $start = $s->start_date ? $s->start_date->format('Y-m-d') : null;
+                $end = $s->end_date ? $s->end_date->format('Y-m-d') : null;
+                return $start && $end && $date >= $start && $date <= $end;
+            });
+            $specialInfo = $matchedSpecial ? "{$matchedSpecial->name} (" . substr($matchedSpecial->time_in, 0, 5) . " - " . substr($matchedSpecial->time_out, 0, 5) . ")" : null;
+
             $formattedDate = \Carbon\Carbon::parse($date)->locale('id')->isoFormat('dddd, D MMMM Y');
             $fileName = "Rekap_Presensi_Harian_" . str_replace('-', '', $date) . "_" . \Illuminate\Support\Str::uuid() . ".xlsx";
             $filePath = "exports/" . $fileName;
 
             \Maatwebsite\Excel\Facades\Excel::store(
-                new \App\Exports\AttendanceDailyExport($dailyReportData, $formattedDate),
+                new \App\Exports\AttendanceDailyExport($dailyReportData, $formattedDate, $specialInfo),
                 $filePath,
                 'private'
             );

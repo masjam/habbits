@@ -164,13 +164,44 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                     $sheet->getStyle("{$startDateCol}5:{$endDateCol}{$totalRows}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                     $sheet->getStyle("{$startDateCol}5:{$endDateCol}{$totalRows}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
-                    // Menentukan kolom weekend
+                    // Menentukan kolom weekend & tanggal khusus
                     $weekendColumns = [];
+                    $specialColumns = [];
+                    $activeSpecialSchedules = \App\Models\SpecialSchedule::getActiveCached();
+
                     if ($this->currentMonth) {
                         for ($d = 1; $d <= $this->daysInMonth; $d++) {
-                            $dateObj = \Carbon\Carbon::parse($this->currentMonth . '-' . str_pad($d, 2, '0', STR_PAD_LEFT));
-                            if ($dateObj->isWeekend()) {
-                                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + $d);
+                            $dateStr = $this->currentMonth . '-' . str_pad($d, 2, '0', STR_PAD_LEFT);
+                            $dateObj = \Carbon\Carbon::parse($dateStr);
+                            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + $d);
+
+                            // Cek jadwal khusus aktif pada tanggal ini
+                            $matchedSpecial = $activeSpecialSchedules->first(function ($s) use ($dateStr) {
+                                $start = $s->start_date ? $s->start_date->format('Y-m-d') : null;
+                                $end = $s->end_date ? $s->end_date->format('Y-m-d') : null;
+                                return $start && $end && $dateStr >= $start && $dateStr <= $end;
+                            });
+
+                            if ($matchedSpecial) {
+                                $specialColumns[$d] = [
+                                    'col'      => $colLetter,
+                                    'name'     => $matchedSpecial->name,
+                                    'time_in'  => $matchedSpecial->time_in,
+                                    'time_out' => $matchedSpecial->time_out,
+                                ];
+                                
+                                // Warnai header tanggal khusus menjadi Ungu / Violet khas
+                                $sheet->getStyle("{$colLetter}4")->applyFromArray([
+                                    'fill' => [
+                                        'fillType' => Fill::FILL_SOLID,
+                                        'startColor' => ['rgb' => '7C3AED'] // Violet 600
+                                    ],
+                                    'font' => [
+                                        'bold' => true,
+                                        'color' => ['rgb' => 'FFFFFF']
+                                    ]
+                                ]);
+                            } elseif ($dateObj->isWeekend()) {
                                 $weekendColumns[$d] = $colLetter;
                                 
                                 // Warnai header untuk weekend menjadi merah
@@ -190,8 +221,17 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                         for ($d = 1; $d <= $this->daysInMonth; $d++) {
                             $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(5 + $d);
                             
+                            // Jika hari ini tanggal khusus (dan bukan weekend), berikan latar ungu sangat muda
+                            if (isset($specialColumns[$d]) && !isset($weekendColumns[$d])) {
+                                $sheet->getStyle("{$colLetter}{$rowIndex}")->applyFromArray([
+                                    'fill' => [
+                                        'fillType' => Fill::FILL_SOLID,
+                                        'startColor' => ['rgb' => 'F5F3FF'] // Violet 50
+                                    ]
+                                ]);
+                            }
                             // Jika hari ini weekend, berikan warna latar belakang abu-abu kemerahan
-                            if (isset($weekendColumns[$d])) {
+                            elseif (isset($weekendColumns[$d])) {
                                 $sheet->getStyle("{$colLetter}{$rowIndex}")->applyFromArray([
                                     'fill' => [
                                         'fillType' => Fill::FILL_SOLID,
@@ -235,6 +275,20 @@ class AttendanceMonthlyExport implements FromCollection, WithHeadings, WithMappi
                     $summaryStartCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(6 + $this->daysInMonth);
                     $sheet->getStyle("{$summaryStartCol}5:{$lastColumnLetter}{$totalRows}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                     $sheet->getStyle("{$summaryStartCol}5:{$lastColumnLetter}{$totalRows}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+
+                    // Legend / Keterangan Penanda Warna di Bawah Tabel
+                    $legendRow = $totalRows + 2;
+                    $sheet->setCellValue("A{$legendRow}", "Keterangan Warna Header Tanggal:");
+                    $sheet->getStyle("A{$legendRow}")->getFont()->setBold(true)->setSize(10);
+
+                    $legendDetailRow = $legendRow + 1;
+                    $legendText = "■ Hijau: Hari Kerja Reguler    |    ■ Merah: Akhir Pekan (Weekend)    |    ■ Ungu: Tanggal Khusus (Jadwal Khusus Aktif)";
+                    if (count($specialColumns) > 0) {
+                        $uniqueSpecials = collect($specialColumns)->pluck('name')->unique()->implode(', ');
+                        $legendText .= "  [Jadwal Khusus Terdeteksi: {$uniqueSpecials}]";
+                    }
+                    $sheet->setCellValue("A{$legendDetailRow}", $legendText);
+                    $sheet->getStyle("A{$legendDetailRow}")->getFont()->setSize(9)->getColor()->setRGB('4B5563');
                 }
             }
         ];

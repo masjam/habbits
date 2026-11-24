@@ -8,9 +8,9 @@ const props = defineProps({
 })
 
 const sizeClasses = {
-    md: 'max-w-5xl',
-    lg: 'max-w-7xl',
-    xl: 'w-full max-w-[1850px]',
+    md: 'w-full',
+    lg: 'w-full',
+    xl: 'w-full',
     full: 'w-full',
 }
 </script>

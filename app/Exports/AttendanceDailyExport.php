@@ -17,12 +17,14 @@ class AttendanceDailyExport implements FromCollection, WithHeadings, WithMapping
 {
     protected Collection $reportData;
     protected string $formattedDate;
+    protected ?string $specialScheduleInfo;
     protected int $rowNumber = 0;
 
-    public function __construct(Collection $reportData, string $formattedDate)
+    public function __construct(Collection $reportData, string $formattedDate, ?string $specialScheduleInfo = null)
     {
         $this->reportData = $reportData;
         $this->formattedDate = $formattedDate;
+        $this->specialScheduleInfo = $specialScheduleInfo;
     }
 
     public function collection(): Collection
@@ -32,9 +34,14 @@ class AttendanceDailyExport implements FromCollection, WithHeadings, WithMapping
 
     public function headings(): array
     {
+        $dateText = 'Tanggal: ' . $this->formattedDate;
+        if ($this->specialScheduleInfo) {
+            $dateText .= ' (⭐ JADWAL KHUSUS: ' . $this->specialScheduleInfo . ')';
+        }
+
         return [
             ['REKAP PRESENSI HARIAN PEGAWAI'],
-            ['Tanggal: ' . $this->formattedDate],
+            [$dateText],
             [''],
             [
                 'No',
@@ -82,6 +89,7 @@ class AttendanceDailyExport implements FromCollection, WithHeadings, WithMapping
 
                 // Style Header Tabel (Baris 4)
                 $headerRange = 'A4:K4';
+                $headerColor = $this->specialScheduleInfo ? '7C3AED' : '059669'; // Violet 600 jika Jadwal Khusus, Emerald 600 default
                 $sheet->getStyle($headerRange)->applyFromArray([
                     'font' => [
                         'bold' => true,
@@ -89,13 +97,17 @@ class AttendanceDailyExport implements FromCollection, WithHeadings, WithMapping
                     ],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
-                        'startColor' => ['rgb' => '059669'] // Emerald 600
+                        'startColor' => ['rgb' => $headerColor]
                     ],
                     'alignment' => [
                         'horizontal' => Alignment::HORIZONTAL_CENTER,
                         'vertical' => Alignment::VERTICAL_CENTER,
                     ]
                 ]);
+
+                if ($this->specialScheduleInfo) {
+                    $sheet->getStyle('A2')->getFont()->setBold(true)->getColor()->setRGB('7C3AED');
+                }
 
                 // Border dan alignment baris data
                 $totalRows = 4 + count($this->reportData);

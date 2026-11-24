@@ -113,7 +113,7 @@ const diskColor = computed(() => getUsageColor(storage.value.disk?.used_percent 
     <Head title="Pemantauan Sistem (System Monitor)" />
 
     <AuthenticatedLayout>
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="w-full mx-auto space-y-6">
 
             <!-- ─── HEADER BAR ───────────────────────────────────────────────────────── -->
             <div class="bg-surface rounded-2xl p-5 sm:p-6 border border-theme shadow-xs">

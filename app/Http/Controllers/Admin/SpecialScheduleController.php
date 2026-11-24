@@ -19,6 +19,14 @@ class SpecialScheduleController extends Controller
 
     public function store(Request $request)
     {
+        // Pastikan format jam masuk & keluar dipotong ke HH:mm jika menyertakan detik
+        if ($request->filled('time_in') && strlen($request->time_in) > 5) {
+            $request->merge(['time_in' => substr($request->time_in, 0, 5)]);
+        }
+        if ($request->filled('time_out') && strlen($request->time_out) > 5) {
+            $request->merge(['time_out' => substr($request->time_out, 0, 5)]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'start_date' => 'required|date',
@@ -39,22 +47,26 @@ class SpecialScheduleController extends Controller
 
     public function update(Request $request, SpecialSchedule $specialSchedule)
     {
+        // Pastikan format jam masuk & keluar dipotong ke HH:mm jika menyertakan detik
+        if ($request->filled('time_in') && strlen($request->time_in) > 5) {
+            $request->merge(['time_in' => substr($request->time_in, 0, 5)]);
+        }
+        if ($request->filled('time_out') && strlen($request->time_out) > 5) {
+            $request->merge(['time_out' => substr($request->time_out, 0, 5)]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'time_in' => 'required|date_format:H:i|nullable',
-            'time_out' => 'required|date_format:H:i|nullable',
+            'time_in' => 'required|date_format:H:i',
+            'time_out' => 'required|date_format:H:i',
             'late_tolerance' => 'nullable|integer|min:0',
             'latitude' => 'nullable|string',
             'longitude' => 'nullable|string',
             'radius' => 'nullable|integer|min:10',
             'is_active' => 'boolean',
         ]);
-
-        // Fix date_format parsing issues by checking if length is 5
-        if (strlen($validated['time_in']) > 5) $validated['time_in'] = substr($validated['time_in'], 0, 5);
-        if (strlen($validated['time_out']) > 5) $validated['time_out'] = substr($validated['time_out'], 0, 5);
 
         $specialSchedule->update($validated);
 

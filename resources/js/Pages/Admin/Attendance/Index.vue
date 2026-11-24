@@ -16,6 +16,7 @@ const props = defineProps({
     pendingApprovals: Array,
     daysList: Array,
     daysInMonth: Number,
+    selectedDateSpecial: Object,
     officeLocation: Object,
     filters: Object,
     formattedMonth: String,
@@ -840,6 +841,9 @@ const submitLeaveForm = () => {
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-yellow-50 text-yellow-800 border border-yellow-200 dark:bg-yellow-950/60 dark:text-yellow-300 dark:border-yellow-800" title="Tidak menggunakan toleransi keterlambatan">
                             <span>⭐</span> Tepat Waktu Murni
                         </span>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-violet-50 text-violet-800 border border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800" title="Hari dengan pengaturan jadwal khusus yang aktif">
+                            <span class="w-1.5 h-1.5 rounded-full bg-violet-600 animate-pulse" /> Tanggal Khusus
+                        </span>
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-400" /> Weekend / Libur
                         </span>
@@ -863,15 +867,17 @@ const submitLeaveForm = () => {
                                     :class="[
                                         'py-1 sm:py-2 px-0.5 sm:px-1 text-center min-w-[34px] sm:min-w-[54px] max-w-[40px] sm:max-w-[62px] border-r border-subtle/70 transition-colors cursor-pointer select-none group',
                                         d.is_today ? 'bg-emerald-100/60 dark:bg-emerald-950/50' : 
+                                        d.is_special ? 'bg-violet-100/90 dark:bg-violet-950/70 border-b-2 border-b-violet-500' :
                                         d.is_weekend ? 'bg-slate-100/50 dark:bg-slate-800/30' : 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                                     ]"
-                                    :title="`Klik untuk melihat rekap detail tanggal ${d.date}`"
+                                    :title="d.is_special ? `⭐ Tanggal Khusus: ${d.special_name} (${d.special_time_in || '07:00'} - ${d.special_time_out || '15:00'})` : `Klik untuk melihat rekap detail tanggal ${d.date}`"
                                 >
-                                    <div class="flex flex-col items-center justify-center">
-                                        <span :class="['text-[9px] uppercase font-bold tracking-tight', d.is_weekend ? 'text-rose-500' : 'text-slate-400 group-hover:text-emerald-600']">
+                                    <div class="flex flex-col items-center justify-center relative">
+                                        <span v-if="d.is_special" class="text-[8px] leading-none text-violet-600 dark:text-violet-400 font-extrabold mb-0.5" title="Jadwal Khusus Aktif">✨</span>
+                                        <span :class="['text-[9px] uppercase font-bold tracking-tight', d.is_special ? 'text-violet-700 dark:text-violet-300 font-black' : d.is_weekend ? 'text-rose-500' : 'text-slate-400 group-hover:text-emerald-600']">
                                             {{ d.day_name }}
                                         </span>
-                                        <span :class="['text-xs font-black leading-none mt-0.5', d.is_today ? 'text-emerald-700 dark:text-emerald-400 underline decoration-2' : 'text-slate-800 dark:text-slate-100']">
+                                        <span :class="['text-xs font-black leading-none mt-0.5', d.is_today ? 'text-emerald-700 dark:text-emerald-400 underline decoration-2' : d.is_special ? 'text-violet-900 dark:text-violet-100 font-black' : 'text-slate-800 dark:text-slate-100']">
                                             {{ d.day }}
                                         </span>
                                     </div>
@@ -918,6 +924,7 @@ const submitLeaveForm = () => {
                                     :class="[
                                         'py-1 sm:py-1.5 px-0.5 text-center border-r border-subtle/60 transition-all cursor-pointer select-none',
                                         d.is_today ? 'bg-emerald-50/20' : '',
+                                        d.is_special && !d.is_weekend ? 'bg-violet-50/30 dark:bg-violet-950/20' : '',
                                         canEditAttendance && !user.daily_records?.[d.day] && !d.is_future ? 'hover:bg-emerald-100/50 dark:hover:bg-emerald-950/40' : ''
                                     ]"
                                     :title="canEditAttendance ? (user.daily_records?.[d.day] ? (!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status) ? `⚠️ Belum Absen Pulang (Tidak dihitung presensi) - Klik untuk lihat/koreksi (${user.name} - tgl ${d.day})` : `Klik untuk lihat/koreksi presensi (${user.name} - tgl ${d.day})`) : `Klik untuk input presensi (${user.name} - tgl ${d.day})`) : (user.daily_records?.[d.day] ? (!user.daily_records[d.day].is_complete && !['izin', 'sakit'].includes(user.daily_records[d.day].status) ? '⚠️ Belum Absen Pulang (Tidak dihitung presensi)' : 'Klik untuk melihat detail presensi') : '')"
@@ -1129,6 +1136,28 @@ const submitLeaveForm = () => {
                             <span>← Kembali ke Matriks Bulanan</span>
                         </button>
                     </div>
+                </div>
+
+                <!-- Banner Informasi Jadwal Khusus jika Tanggal Terpilih adalah Tanggal Khusus -->
+                <div v-if="selectedDateSpecial" class="mx-4 my-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-600/15 via-purple-500/10 to-indigo-500/15 border border-violet-300 dark:border-violet-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center font-black text-base shadow-sm shrink-0">
+                            ✨
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-black uppercase tracking-wider text-violet-700 dark:text-violet-300">Tanggal Khusus Aktif</span>
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-100">({{ selectedDateSpecial.name }})</span>
+                            </div>
+                            <p class="text-[11px] text-slate-600 dark:text-slate-300">
+                                Jam Kerja Khusus: <strong class="font-bold text-violet-700 dark:text-violet-300">{{ selectedDateSpecial.time_in }} - {{ selectedDateSpecial.time_out }}</strong> 
+                                <span v-if="selectedDateSpecial.late_tolerance" class="text-slate-400 ml-1">(Toleransi Keterlambatan: {{ selectedDateSpecial.late_tolerance }} menit)</span>
+                            </p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700 self-start sm:self-center">
+                        Jadwal Khusus
+                    </span>
                 </div>
 
                 <div class="overflow-x-auto">

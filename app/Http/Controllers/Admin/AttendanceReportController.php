@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Division;
 use App\Models\Setting;
+use App\Models\SpecialSchedule;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -76,6 +77,8 @@ class AttendanceReportController extends Controller
         $isCurrentMonth = ($today->format('Y-m') === $currentMonth);
         $effectiveEndDay = $isCurrentMonth ? $today->day : $daysInMonth;
 
+        $activeSpecialSchedules = SpecialSchedule::getActiveCached();
+
         $workdaysCount = 0;
         $daysList = [];
         for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -83,6 +86,13 @@ class AttendanceReportController extends Controller
             $isWeekend = $dateObj->isWeekend();
             $isPastOrToday = ($d <= $effectiveEndDay);
             $targetDateStr = $dateObj->format('Y-m-d');
+
+            // Cek apakah tanggal ini masuk dalam rentang jadwal khusus yang aktif
+            $matchedSpecial = $activeSpecialSchedules->first(function ($s) use ($targetDateStr) {
+                $start = $s->start_date ? $s->start_date->format('Y-m-d') : null;
+                $end = $s->end_date ? $s->end_date->format('Y-m-d') : null;
+                return $start && $end && $targetDateStr >= $start && $targetDateStr <= $end;
+            });
             
             if (!$isWeekend && $isPastOrToday) {
                 $workdaysCount++;
@@ -96,13 +106,18 @@ class AttendanceReportController extends Controller
                     && !empty($a->time_out);
             });
             $daysList[] = [
-                'day'         => $d,
-                'date'        => $targetDateStr,
-                'day_name'    => $dateObj->locale('id')->isoFormat('dd'),
-                'is_weekend'  => $isWeekend,
-                'is_today'    => $dateObj->isToday(),
-                'is_future'   => $isCurrentMonth && ($d > $today->day),
-                'total_hadir' => $dayAtts->count(),
+                'day'                    => $d,
+                'date'                   => $targetDateStr,
+                'day_name'               => $dateObj->locale('id')->isoFormat('dd'),
+                'is_weekend'             => $isWeekend,
+                'is_today'               => $dateObj->isToday(),
+                'is_future'              => $isCurrentMonth && ($d > $today->day),
+                'is_special'             => (bool) $matchedSpecial,
+                'special_name'           => $matchedSpecial?->name,
+                'special_time_in'        => $matchedSpecial?->time_in ? substr($matchedSpecial->time_in, 0, 5) : null,
+                'special_time_out'       => $matchedSpecial?->time_out ? substr($matchedSpecial->time_out, 0, 5) : null,
+                'special_late_tolerance' => $matchedSpecial?->late_tolerance,
+                'total_hadir'            => $dayAtts->count(),
             ];
         }
 
@@ -409,15 +424,29 @@ class AttendanceReportController extends Controller
             'late_tolerance' => (int) ($settings['presensi_late_tolerance'] ?? 15),
         ];
 
+        // Cek apakah tanggal terpilih merupakan Jadwal Khusus
+        $selectedSpecial = $activeSpecialSchedules->first(function ($s) use ($selectedDate) {
+            $start = $s->start_date ? $s->start_date->format('Y-m-d') : null;
+            $end = $s->end_date ? $s->end_date->format('Y-m-d') : null;
+            return $start && $end && $selectedDate >= $start && $selectedDate <= $end;
+        });
+        $selectedDateSpecial = $selectedSpecial ? [
+            'name'           => $selectedSpecial->name,
+            'time_in'        => $selectedSpecial->time_in ? substr($selectedSpecial->time_in, 0, 5) : null,
+            'time_out'       => $selectedSpecial->time_out ? substr($selectedSpecial->time_out, 0, 5) : null,
+            'late_tolerance' => $selectedSpecial->late_tolerance,
+        ] : null;
+
         return Inertia::render('Admin/Attendance/Index', [
-            'monthlyReportData' => $monthlyReportData,
-            'dailyReportData'   => $dailyReportData,
-            'monthlyStats'      => $monthlyStats,
-            'dailyStats'        => $dailyStats,
-            'pendingApprovals'  => $pendingApprovals,
-            'daysList'          => $daysList,
-            'daysInMonth'       => $daysInMonth,
-            'officeLocation'    => $officeLocation,
+            'monthlyReportData'   => $monthlyReportData,
+            'dailyReportData'     => $dailyReportData,
+            'monthlyStats'        => $monthlyStats,
+            'dailyStats'          => $dailyStats,
+            'pendingApprovals'    => $pendingApprovals,
+            'daysList'            => $daysList,
+            'daysInMonth'         => $daysInMonth,
+            'selectedDateSpecial' => $selectedDateSpecial,
+            'officeLocation'      => $officeLocation,
             'filters'           => [
                 'month'     => $currentMonth,
                 'date'      => $selectedDate,

@@ -3,7 +3,7 @@
 //  Strategi: Cache-first (aset), Network-first (halaman)
 // ============================================================
 
-const CACHE_VERSION   = 'v13';
+const CACHE_VERSION   = 'v15';
 const STATIC_CACHE    = `habit-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE   = `habit-dynamic-${CACHE_VERSION}`;
 const OFFLINE_URL     = '/offline.html';
