@@ -96,18 +96,17 @@ const userAvatarUrl = computed(() => {
     return null
 })
 
-// ─── Active Route Helper (via Ziggy dengan per-URL Cache) ───────────────────
+// ─── Active Route Helper (computed cache per-URL via Ziggy) ──────────────────
 const page = usePage()
-const routeActiveCache = new Map()
-let lastPageUrl = ''
+const routeActiveCache = computed(() => {
+    void page.url
+    return new Map()
+})
 
 const isActive = (routeName) => {
-    if (page.url !== lastPageUrl) {
-        routeActiveCache.clear()
-        lastPageUrl = page.url
-    }
-    if (routeActiveCache.has(routeName)) {
-        return routeActiveCache.get(routeName)
+    const cache = routeActiveCache.value
+    if (cache.has(routeName)) {
+        return cache.get(routeName)
     }
     let res = false
     try {
@@ -117,55 +116,11 @@ const isActive = (routeName) => {
     } catch {
         res = false
     }
-    routeActiveCache.set(routeName, res)
+    cache.set(routeName, res)
     return res
 }
 
-// ─── Dynamic Classes (Responsive Desktop Rail vs Expanded Drawer) ───────────
-const navLinkClass = (routeName) => [
-    'group relative flex items-center rounded-2xl text-sm font-medium transition-all duration-200 ease-out select-none cursor-pointer',
-    props.isOpen
-        ? 'w-full gap-3.5 px-4 py-2.5'
-        : 'w-11 h-11 p-2.5 mx-auto justify-center',
-    isActive(routeName)
-        ? (props.isOpen
-            ? 'bg-gradient-to-r from-primary-500/20 via-primary-500/10 to-transparent text-primary-950 dark:text-primary-100 font-bold shadow-xs translate-x-1 border-l-4 border-primary-500'
-            : 'bg-primary-500/20 text-primary-700 dark:text-primary-300 font-bold shadow-xs ring-2 ring-primary-500/40 scale-105')
-        : (props.isOpen
-            ? 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1.5'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:scale-110')
-]
-
-const subNavLinkClass = (routeName) => [
-    'group flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200 ease-out w-full select-none cursor-pointer',
-    isActive(routeName)
-        ? 'bg-primary-100/80 dark:bg-primary-900/50 text-primary-900 dark:text-primary-100 font-bold shadow-xs translate-x-1'
-        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1'
-]
-
-const accordionButtonClass = (isOpenState) => [
-    'group flex items-center rounded-2xl text-sm font-medium transition-all duration-200 select-none cursor-pointer',
-    props.isOpen
-        ? 'w-full gap-3.5 px-4 py-2.5 rounded-full'
-        : 'w-11 h-11 p-2.5 mx-auto justify-center',
-    isOpenState
-        ? 'bg-slate-200/60 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-semibold'
-        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100' + (!props.isOpen ? ' hover:scale-110' : '')
-]
-
-const iconClass = (routeName) => [
-    'w-5 h-5 flex-shrink-0 transition-colors',
-    isActive(routeName)
-        ? 'text-primary-600 dark:text-primary-400'
-        : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400'
-]
-
-const subIconClass = (routeName) => [
-    'w-4 h-4 flex-shrink-0 transition-colors',
-    isActive(routeName)
-        ? 'text-primary-600 dark:text-primary-400'
-        : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400'
-]
+const isAnyActive = (routePatterns = []) => routePatterns.some((r) => isActive(r))
 
 // ─── Feature Flags (dari global_settings yang di-share via Inertia) ─────────
 const featureEnabled = (key) => {
@@ -176,41 +131,571 @@ const featureEnabled = (key) => {
     return val === '1' || val === 'true' || val === true
 }
 
-// ─── Menu Toggle States & Mini Rail Click Behavior ──────────────────────────
-const isFormHabitOpen = ref(
-    isActive('habit.form') || 
-    isActive('quran.recap') || 
-    isActive('kajian.index') ||
-    isActive('habit.vouchers*')
+const featureJurnalEnabled = computed(() => {
+    const val = page.props.global_settings?.feature_jurnal
+    return val !== 'false' && val !== '0'
+})
+
+const isVisible = (cond) => (typeof cond === 'function' ? cond() : cond !== false)
+
+// ─── Direct Menu Items (tanpa grup, untuk Pegawai & semua role) ─────────────
+const directMenus = computed(() => {
+    const items = [
+        {
+            key: 'dashboard',
+            label: 'Dashboard',
+            icon: IconDashboard,
+            route: 'dashboard',
+            activeRoutes: ['dashboard'],
+        },
+        {
+            key: 'presensiku',
+            label: 'Presensiku',
+            icon: IconPresensi,
+            route: 'attendance.index',
+            activeRoutes: ['attendance.index'],
+            roles: ['user'],
+            visible: () => featureEnabled('feature_presensi'),
+        },
+        {
+            key: 'input-habit',
+            label: 'Input Habit Harian',
+            icon: IconInputHabit,
+            route: 'habit.form',
+            activeRoutes: ['habit.form'],
+            roles: ['user'],
+            visible: () => featureEnabled('feature_habit'),
+        },
+    ]
+
+    return items.filter((item) => {
+        if (item.roles && !hasAnyRole(item.roles)) return false
+        return isVisible(item.visible)
+    })
+})
+
+// ─── Menu Groups (Struktur Data Berbasis Fungsi & Middleware Rute) ───────────
+const rawMenuGroups = computed(() => [
+    {
+        key: 'ibadah',
+        label: 'Ibadah & Keislaman',
+        icon: IconQuranHadis,
+        items: [
+            {
+                key: 'quran-hadis',
+                label: "Al-Qur'an & Hadis",
+                icon: IconQuranHadis,
+                route: 'quran.hadis',
+                activeRoutes: ['quran.hadis'],
+            },
+            {
+                key: 'dzikir',
+                label: 'Dzikir Pagi & Petang',
+                icon: IconDzikir,
+                route: 'dzikir.index',
+                activeRoutes: ['dzikir.index'],
+            },
+            {
+                key: 'hpt',
+                label: 'HPT Online',
+                icon: IconHpt,
+                route: 'hpt.index',
+                activeRoutes: ['hpt.*'],
+            },
+            {
+                key: 'qiblat',
+                label: 'Arah Kiblat',
+                icon: IconDzikir, // TODO: ganti dengan IconQibla jika sudah tersedia di @/Components/Icons
+                route: 'qiblat.index',
+                activeRoutes: ['qiblat.index'],
+            },
+        ],
+    },
+    {
+        key: 'capaian-catatan',
+        label: 'Capaian & Catatan',
+        icon: IconFormHabit,
+        roles: ['user'],
+        items: [
+            {
+                key: 'rekap-quran',
+                label: 'Rekap Al-Quran',
+                icon: IconRekapQuran,
+                route: 'quran.recap',
+                activeRoutes: ['quran.recap'],
+                roles: ['user'],
+                visible: () => featureEnabled('feature_habit'),
+            },
+            {
+                key: 'kajian',
+                label: 'Jurnal Kajian & Hadits',
+                icon: IconJurnalKajian,
+                route: 'kajian.index',
+                activeRoutes: ['kajian.index'],
+                roles: ['user'],
+                visible: () => featureEnabled('feature_habit'),
+            },
+            {
+                key: 'voucher-habit',
+                label: 'Voucher Habit',
+                icon: IconVoucher,
+                route: 'habit.vouchers',
+                activeRoutes: ['habit.vouchers*'],
+                roles: ['user'],
+                visible: () => featureEnabled('feature_habit'),
+            },
+            {
+                key: 'haid',
+                label: 'Catatan Haid',
+                icon: IconHaid,
+                route: 'haid.index',
+                activeRoutes: ['haid.index'],
+                roles: ['user'],
+                visible: () => isFemale.value,
+                badge: 'Aktif',
+            },
+        ],
+    },
+    {
+        key: 'pekerjaan-kepegawaian',
+        label: 'Pekerjaan & Kepegawaian',
+        icon: IconAdministrasiGuru,
+        roles: ['user'],
+        visible: () => !hasAnyRole(['admin', 'superadmin']),
+        items: [
+            {
+                key: 'jurnal-guru',
+                label: 'Jurnal Harian Guru',
+                icon: IconJurnalGuru,
+                route: 'teacher-journals.index',
+                activeRoutes: ['teacher-journals.index'],
+                roles: ['user'],
+                visible: () => featureJurnalEnabled.value,
+            },
+            {
+                key: 'administrasi-guru',
+                label: 'Administrasi Guru',
+                icon: IconAdministrasiGuru,
+                route: 'teacher-administrations.index',
+                activeRoutes: ['teacher-administrations.*'],
+                roles: ['user'],
+                visible: () => featureEnabled('feature_administrasi_guru'),
+            },
+            {
+                key: 'arsip-kepegawaian',
+                label: 'Arsip Kepegawaian',
+                icon: IconArsip,
+                route: 'employee-documents.index',
+                activeRoutes: ['employee-documents.*'],
+                roles: ['user'],
+                visible: () => featureEnabled('feature_arsip'),
+            },
+            {
+                key: 'rapor-kpi',
+                label: 'Rapor Kinerja (KPI)',
+                icon: IconKpi,
+                route: 'performance.index',
+                activeRoutes: ['performance.*'],
+                roles: ['user'],
+                visible: () => featureEnabled('feature_kpi'),
+            },
+        ],
+    },
+    {
+        key: 'komunikasi',
+        label: 'Komunikasi & Rapat',
+        icon: IconChat,
+        items: [
+            {
+                key: 'notifikasi',
+                label: 'Pesan & Notifikasi',
+                icon: IconNotification,
+                route: 'notifications.index',
+                activeRoutes: ['notifications.index'],
+                isUnreadBadge: true,
+            },
+            {
+                key: 'chat',
+                label: 'Chat Pegawai',
+                icon: IconChat,
+                route: 'chat.index',
+                activeRoutes: ['chat.*'],
+            },
+            {
+                key: 'notulen',
+                label: 'Notulen Rapat',
+                icon: IconNotulen,
+                route: 'notulen.index',
+                activeRoutes: ['notulen.*'],
+            },
+        ],
+    },
+    {
+        key: 'tata-usaha',
+        label: 'Tata Usaha',
+        icon: IconSuratMasuk,
+        roles: ['tata_usaha', 'kepala_sekolah', 'superadmin'],
+        items: [
+            {
+                key: 'surat-masuk',
+                label: 'Surat Masuk',
+                icon: IconSuratMasuk,
+                route: 'tata-usaha.surat-masuk.index',
+                activeRoutes: ['tata-usaha.surat-masuk.*'],
+                roles: ['tata_usaha', 'kepala_sekolah', 'superadmin'],
+            },
+            {
+                key: 'surat-keluar',
+                label: 'Surat Keluar',
+                icon: IconSuratKeluar,
+                route: 'tata-usaha.surat-keluar.index',
+                activeRoutes: ['tata-usaha.surat-keluar.*'],
+                roles: ['tata_usaha', 'kepala_sekolah', 'superadmin'],
+            },
+            {
+                key: 'disposisi',
+                label: 'Disposisi',
+                icon: IconDisposisi,
+                route: 'tata-usaha.disposisi.index',
+                activeRoutes: ['tata-usaha.disposisi.*'],
+                roles: ['tata_usaha', 'kepala_sekolah', 'superadmin'],
+            },
+            {
+                key: 'pengaturan-surat',
+                label: 'Pengaturan Surat',
+                icon: IconPengaturanSurat,
+                route: 'tata-usaha.settings.index',
+                activeRoutes: ['tata-usaha.settings.*'],
+                roles: ['tata_usaha', 'kepala_sekolah', 'superadmin'],
+            },
+        ],
+    },
+    {
+        key: 'koperasi',
+        label: 'Koperasi Sekolah',
+        icon: IconKoperasi,
+        roles: ['koperasi', 'superadmin'],
+        items: [
+            {
+                key: 'koperasi-pos',
+                label: 'Kasir POS Voucher',
+                icon: IconKoperasi,
+                route: 'koperasi.pos',
+                activeRoutes: ['koperasi.pos*'],
+                roles: ['koperasi', 'superadmin'],
+            },
+            {
+                key: 'koperasi-products',
+                label: 'Katalog Barang',
+                icon: IconDaftarDivisi,
+                route: 'koperasi.products',
+                activeRoutes: ['koperasi.products*'],
+                roles: ['koperasi', 'superadmin'],
+            },
+            {
+                key: 'koperasi-stock-opname',
+                label: 'Stok Opname',
+                icon: IconVerifikasiArsip,
+                route: 'koperasi.stock-opname',
+                activeRoutes: ['koperasi.stock-opname*'],
+                roles: ['koperasi', 'superadmin'],
+            },
+            {
+                key: 'koperasi-history',
+                label: 'Riwayat Transaksi',
+                icon: IconArsip,
+                route: 'koperasi.history',
+                activeRoutes: ['koperasi.history*'],
+                roles: ['koperasi', 'superadmin'],
+            },
+        ],
+    },
+    {
+        key: 'monitoring-guru',
+        label: hasRole('kurikulum') && !hasAnyRole(['kepala_sekolah', 'admin', 'superadmin'])
+            ? 'Kurikulum'
+            : 'Monitoring Guru',
+        icon: IconRekapAdministrasiGuru,
+        roles: ['admin', 'superadmin', 'kepala_sekolah', 'kurikulum'],
+        items: [
+            {
+                key: 'rekap-administrasi-guru',
+                label: 'Rekap Administrasi Guru',
+                icon: IconRekapAdministrasiGuru,
+                route: 'admin.teacher-administrations.index',
+                activeRoutes: ['admin.teacher-administrations.*'],
+                roles: ['admin', 'superadmin', 'kepala_sekolah', 'kurikulum'],
+                visible: () => featureEnabled('feature_administrasi_guru'),
+            },
+            {
+                key: 'rekap-jurnal-guru',
+                label: 'Rekap Jurnal Guru',
+                icon: IconRekapJurnalGuru,
+                route: hasAnyRole(['admin', 'superadmin']) ? 'admin.teacher-journals.index' : 'teacher-journals.index',
+                activeRoutes: hasAnyRole(['admin', 'superadmin']) ? ['admin.teacher-journals.index'] : ['teacher-journals.index'],
+                roles: ['admin', 'superadmin', 'kepala_sekolah'],
+            },
+        ],
+    },
+    {
+        key: 'presensi-jadwal',
+        label: 'Presensi & Jadwal',
+        icon: IconRekapPresensi,
+        roles: ['admin', 'superadmin'],
+        visible: () => featureEnabled('feature_presensi'),
+        items: [
+            {
+                key: 'rekap-presensi',
+                label: 'Rekap Presensi',
+                icon: IconRekapPresensi,
+                route: 'admin.attendance.index',
+                activeRoutes: ['admin.attendance.index'],
+                roles: ['admin', 'superadmin'],
+            },
+            {
+                key: 'jadwal-piket',
+                label: 'Jam Kerja Harian & Piket',
+                icon: IconJadwalPiket,
+                route: 'admin.duty-schedules.index',
+                activeRoutes: ['admin.duty-schedules.index'],
+                roles: ['admin', 'superadmin'],
+            },
+            {
+                key: 'jadwal-khusus',
+                label: 'Jadwal Khusus Tertentu',
+                icon: IconJadwalKhusus,
+                route: 'admin.special-schedules.index',
+                activeRoutes: ['admin.special-schedules.index'],
+                roles: ['admin', 'superadmin'],
+            },
+        ],
+    },
+    {
+        key: 'habit-voucher',
+        label: 'Habit & Voucher',
+        icon: IconRekapHabit,
+        roles: ['admin', 'superadmin'],
+        visible: () => featureEnabled('feature_habit'),
+        items: [
+            {
+                key: 'semua-laporan',
+                label: 'Semua Laporan Habit',
+                icon: IconSemuaLaporan,
+                route: 'admin.laporan',
+                activeRoutes: ['admin.laporan'],
+                roles: ['admin', 'superadmin'],
+            },
+            {
+                key: 'belum-isi-habit',
+                label: 'Cek Belum Isi Habit',
+                icon: IconBelumIsiHabit,
+                route: 'admin.laporan.unfilled',
+                activeRoutes: ['admin.laporan.unfilled'],
+                roles: ['superadmin'],
+            },
+            {
+                key: 'voucher-koperasi',
+                label: 'Voucher Koperasi',
+                icon: IconVoucher,
+                route: 'admin.vouchers.index',
+                activeRoutes: ['admin.vouchers.*'],
+                roles: ['admin', 'superadmin'],
+            },
+            {
+                key: 'master-habit',
+                label: 'Master Data Habit',
+                icon: IconMasterHabit,
+                route: 'admin.habits.index',
+                activeRoutes: ['admin.habits.index'],
+                roles: ['admin', 'superadmin'],
+            },
+        ],
+    },
+    {
+        key: 'kepegawaian',
+        label: 'Kepegawaian',
+        icon: IconManajemenUser,
+        roles: ['admin', 'superadmin'],
+        items: [
+            {
+                key: 'daftar-user',
+                label: 'Daftar User',
+                icon: IconDaftarUser,
+                route: 'admin.users.index',
+                activeRoutes: ['admin.users.index'],
+                roles: ['admin', 'superadmin'],
+            },
+            {
+                key: 'daftar-divisi',
+                label: 'Daftar Divisi',
+                icon: IconDaftarDivisi,
+                route: 'admin.divisions.index',
+                activeRoutes: ['admin.divisions.index'],
+                roles: ['admin', 'superadmin'],
+                visible: () => featureEnabled('feature_divisi'),
+            },
+            {
+                key: 'verifikasi-arsip',
+                label: 'Verifikasi Arsip Pegawai',
+                icon: IconVerifikasiArsip,
+                route: 'admin.employee-documents.index',
+                activeRoutes: ['admin.employee-documents.index'],
+                roles: ['admin', 'superadmin'],
+                visible: () => featureEnabled('feature_arsip'),
+            },
+            {
+                key: 'evaluasi-kpi',
+                label: 'Evaluasi Kinerja (KPI)',
+                icon: IconEvaluasiKpi,
+                route: 'admin.performance.index',
+                activeRoutes: ['admin.performance.index'],
+                roles: ['admin', 'superadmin'],
+                visible: () => featureEnabled('feature_kpi'),
+            },
+        ],
+    },
+    {
+        key: 'pengaturan-sistem',
+        label: 'Pengaturan & Sistem',
+        icon: IconPengaturanSistem,
+        roles: ['admin', 'superadmin'],
+        items: [
+            {
+                key: 'settings',
+                label: 'Pengaturan Sistem',
+                icon: IconPengaturanSistem,
+                route: 'admin.settings',
+                activeRoutes: ['admin.settings'],
+                roles: ['admin', 'superadmin'],
+            },
+            {
+                key: 'settings-hr',
+                label: 'Fitur HR & Lanjutan',
+                icon: IconFiturHr,
+                route: 'admin.settings.hr',
+                activeRoutes: ['admin.settings.hr'],
+                roles: ['superadmin'],
+            },
+            {
+                key: 'login-logs',
+                label: 'Log Akses Login',
+                icon: IconLogAkses,
+                route: 'admin.login-logs',
+                activeRoutes: ['admin.login-logs'],
+                roles: ['superadmin'],
+            },
+            {
+                key: 'system-monitor',
+                label: 'Pemantauan Sistem',
+                icon: IconPemantauanSistem,
+                route: 'admin.system.monitor',
+                activeRoutes: ['admin.system.monitor'],
+                roles: ['superadmin'],
+            },
+        ],
+    },
+])
+
+const menuGroups = computed(() => {
+    return rawMenuGroups.value
+        .filter((group) => {
+            if (group.roles && !hasAnyRole(group.roles)) return false
+            return isVisible(group.visible)
+        })
+        .map((group) => {
+            const visibleItems = group.items.filter((item) => {
+                if (item.roles && !hasAnyRole(item.roles)) return false
+                return isVisible(item.visible)
+            })
+            return {
+                ...group,
+                items: visibleItems,
+                activeRoutes: visibleItems.flatMap((i) => i.activeRoutes),
+                hasUnreadDot: visibleItems.some((i) => i.isUnreadBadge),
+            }
+        })
+        .filter((group) => group.items.length > 0)
+})
+
+// ─── Collapsible Group States (Dihitung Otomatis dari Items Aktif) ───────────
+const openGroups = ref(
+    Object.fromEntries(
+        menuGroups.value.map((g) => [g.key, isAnyActive(g.activeRoutes)])
+    )
 )
 
-const isRekapHabitOpen = ref(
-    isActive('admin.laporan') || 
-    isActive('admin.laporan.unfilled') ||
-    isActive('admin.vouchers.*')
-)
-
-const isManajemenUserOpen = ref(
-    isActive('admin.users.*') || 
-    isActive('admin.employee-documents.*') || 
-    isActive('admin.performance.*') ||
-    isActive('admin.duty-schedules.*') ||
-    isActive('admin.special-schedules.*') ||
-    isActive('admin.divisions.*')
-)
-
-const toggleAccordion = (type) => {
+const toggleGroup = (key) => {
     if (!props.isOpen) {
         emit('expand')
         emit('toggle')
-        if (type === 'formHabit') isFormHabitOpen.value = true
-        if (type === 'rekapHabit') isRekapHabitOpen.value = true
-        if (type === 'manajemenUser') isManajemenUserOpen.value = true
+        openGroups.value[key] = true
         return
     }
-    if (type === 'formHabit') isFormHabitOpen.value = !isFormHabitOpen.value
-    if (type === 'rekapHabit') isRekapHabitOpen.value = !isRekapHabitOpen.value
-    if (type === 'manajemenUser') isManajemenUserOpen.value = !isManajemenUserOpen.value
+    openGroups.value[key] = !openGroups.value[key]
+}
+
+// ─── Dynamic Classes (Responsive Desktop Rail vs Expanded Drawer) ───────────
+const navLinkClass = (routePatterns) => {
+    const patterns = Array.isArray(routePatterns) ? routePatterns : [routePatterns]
+    const active = isAnyActive(patterns)
+    return [
+        'group relative flex items-center rounded-2xl text-sm font-medium transition-all duration-200 ease-out select-none cursor-pointer',
+        props.isOpen
+            ? 'w-full gap-3.5 px-4 py-2.5'
+            : 'w-11 h-11 p-2.5 mx-auto justify-center',
+        active
+            ? (props.isOpen
+                ? 'bg-gradient-to-r from-primary-500/20 via-primary-500/10 to-transparent text-primary-950 dark:text-primary-100 font-bold shadow-xs translate-x-1 border-l-4 border-primary-500'
+                : 'bg-primary-500/20 text-primary-700 dark:text-primary-300 font-bold shadow-xs ring-2 ring-primary-500/40 scale-105')
+            : (props.isOpen
+                ? 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1.5'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:scale-110')
+    ]
+}
+
+const subNavLinkClass = (routePatterns) => {
+    const patterns = Array.isArray(routePatterns) ? routePatterns : [routePatterns]
+    const active = isAnyActive(patterns)
+    return [
+        'group flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200 ease-out w-full select-none cursor-pointer',
+        active
+            ? 'bg-primary-100/80 dark:bg-primary-900/50 text-primary-900 dark:text-primary-100 font-bold shadow-xs translate-x-1'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-1'
+    ]
+}
+
+const accordionButtonClass = (group) => {
+    const isExpanded = !!openGroups.value[group.key]
+    const active = isAnyActive(group.activeRoutes)
+    return [
+        'group flex items-center rounded-2xl text-sm font-medium transition-all duration-200 select-none cursor-pointer',
+        props.isOpen
+            ? 'w-full gap-3.5 px-4 py-2.5 rounded-full'
+            : 'w-11 h-11 p-2.5 mx-auto justify-center',
+        active || isExpanded
+            ? 'bg-slate-200/60 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 font-semibold'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100' + (!props.isOpen ? ' hover:scale-110' : '')
+    ]
+}
+
+const iconClass = (routePatterns) => {
+    const patterns = Array.isArray(routePatterns) ? routePatterns : [routePatterns]
+    return [
+        'w-5 h-5 flex-shrink-0 transition-colors',
+        isAnyActive(patterns)
+            ? 'text-primary-600 dark:text-primary-400'
+            : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400'
+    ]
+}
+
+const subIconClass = (routePatterns) => {
+    const patterns = Array.isArray(routePatterns) ? routePatterns : [routePatterns]
+    return [
+        'w-4 h-4 flex-shrink-0 transition-colors',
+        isAnyActive(patterns)
+            ? 'text-primary-600 dark:text-primary-400'
+            : 'text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400'
+    ]
 }
 </script>
 
@@ -246,633 +731,112 @@ const toggleAccordion = (type) => {
 
         <!-- ── Navigation Links ──────────────────────────────── -->
         <nav class="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-4 space-y-1">
-            <!-- ── Section: Menu utama ── -->
-            <p v-show="isOpen" class="px-4 pt-1 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
-                Menu utama
-            </p>
 
-            <!-- Dashboard -->
+            <!-- Menu langsung (tanpa grup) -->
             <Link
-                :href="route('dashboard')"
-                :class="navLinkClass('dashboard')"
-                :title="!isOpen ? 'Dashboard' : undefined"
+                v-for="item in directMenus"
+                :key="item.key"
+                :href="route(item.route)"
+                :class="navLinkClass(item.activeRoutes)"
+                :title="!isOpen ? item.label : undefined"
                 @click="closeSidebar"
             >
-                <IconDashboard :class="iconClass('dashboard')" />
-                <span v-show="isOpen" class="truncate">Dashboard</span>
+                <component :is="item.icon" :class="iconClass(item.activeRoutes)" />
+                <span v-show="isOpen" class="truncate">{{ item.label }}</span>
             </Link>
 
-            <!-- Al-Qur'an & Hadis -->
-            <Link
-                :href="route('quran.hadis')"
-                :class="navLinkClass('quran.hadis')"
-                :title="!isOpen ? 'Al-Qur\'an & Hadis' : undefined"
-                @click="closeSidebar"
-            >
-                <IconQuranHadis :class="iconClass('quran.hadis')" />
-                <span v-show="isOpen" class="truncate">Al-Qur'an &amp; Hadis</span>
-            </Link>
-
-            <!-- Dzikir Pagi & Petang -->
-            <Link
-                :href="route('dzikir.index')"
-                :class="navLinkClass('dzikir.index')"
-                :title="!isOpen ? 'Dzikir Pagi & Petang' : undefined"
-                @click="closeSidebar"
-            >
-                <IconDzikir :class="iconClass('dzikir.index')" />
-                <span v-show="isOpen" class="truncate">Dzikir Pagi &amp; Petang</span>
-            </Link>
-
-            <!-- HPT Online -->
-            <Link
-                :href="route('hpt.index')"
-                :class="navLinkClass('hpt.*')"
-                :title="!isOpen ? 'HPT Online' : undefined"
-                @click="closeSidebar"
-            >
-                <IconHpt :class="iconClass('hpt.*')" />
-                <span v-show="isOpen" class="truncate">HPT Online</span>
-            </Link>
-
-            <!-- Pesan & Notifikasi -->
-            <Link
-                :href="route('notifications.index')"
-                :class="navLinkClass('notifications.index')"
-                :title="!isOpen ? 'Pesan & Notifikasi' : undefined"
-                @click="closeSidebar"
-            >
-                <div class="relative flex items-center justify-center">
-                    <IconNotification :class="iconClass('notifications.index')" />
+            <!-- Kelompok menu (collapsible accordion) -->
+            <div v-for="group in menuGroups" :key="group.key" class="space-y-1">
+                <button
+                    type="button"
+                    @click="toggleGroup(group.key)"
+                    :class="accordionButtonClass(group)"
+                    :title="!isOpen ? group.label : undefined"
+                >
+                    <div class="relative flex items-center justify-center">
+                        <component
+                            :is="group.icon"
+                            :class="[
+                                'w-5 h-5 flex-shrink-0 transition-colors',
+                                openGroups[group.key] || isAnyActive(group.activeRoutes)
+                                    ? 'text-primary-600 dark:text-primary-400'
+                                    : 'text-slate-400 dark:text-slate-500'
+                            ]"
+                        />
+                        <span
+                            v-if="!isOpen && group.hasUnreadDot && $page.props.notifications?.unread_count > 0"
+                            class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900"
+                        />
+                    </div>
+                    <span v-show="isOpen" class="truncate text-left flex-1">{{ group.label }}</span>
                     <span
-                        v-if="!isOpen && $page.props.notifications?.unread_count > 0"
-                        class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900"
-                    />
-                </div>
-                <span v-show="isOpen" class="flex-1 truncate">Pesan &amp; Notifikasi</span>
-                <span
-                    v-if="isOpen && $page.props.notifications?.unread_count > 0"
-                    class="ml-auto flex items-center justify-center px-2 py-0.5 text-xs font-bold bg-rose-500 text-white rounded-full flex-shrink-0"
-                >
-                    {{ $page.props.notifications.unread_count }}
-                </span>
-            </Link>
-
-            <!-- Chat Pegawai -->
-            <Link
-                :href="route('chat.index')"
-                :class="navLinkClass('chat.*')"
-                :title="!isOpen ? 'Chat Pegawai' : undefined"
-                @click="closeSidebar"
-            >
-                <IconChat :class="iconClass('chat.*')" />
-                <span v-show="isOpen" class="flex-1 truncate">Chat Pegawai</span>
-            </Link>
-
-            <!-- Notulen Rapat -->
-            <Link
-                :href="route('notulen.index')"
-                :class="navLinkClass('notulen.*')"
-                :title="!isOpen ? 'Notulen Rapat' : undefined"
-                @click="closeSidebar"
-            >
-                <IconNotulen :class="iconClass('notulen.*')" />
-                <span v-show="isOpen" class="truncate">Notulen Rapat</span>
-            </Link>
-
-            <!-- ── Section: Catatan ibadahku ── -->
-            <template v-if="hasRole('user')">
-                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
-                    Catatan ibadahku
-                </p>
-
-                <!-- Presensiku -->
-                <Link
-                    v-if="featureEnabled('feature_presensi')"
-                    :href="route('attendance.index')"
-                    :class="navLinkClass('attendance.index')"
-                    :title="!isOpen ? 'Presensiku' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconPresensi :class="iconClass('attendance.index')" />
-                    <span v-show="isOpen" class="truncate">Presensiku</span>
-                </Link>
-
-                <!-- Accordion: Form Isi Habit -->
-                <div class="space-y-1" v-if="featureEnabled('feature_habit')">
-                    <button
-                        type="button"
-                        @click="toggleAccordion('formHabit')"
-                        :class="accordionButtonClass(isFormHabitOpen)"
-                        :title="!isOpen ? 'Form Isi Habit' : undefined"
+                        v-if="isOpen && !openGroups[group.key] && group.hasUnreadDot && $page.props.notifications?.unread_count > 0"
+                        class="ml-auto flex items-center justify-center px-2 py-0.5 text-xs font-bold bg-rose-500 text-white rounded-full flex-shrink-0"
                     >
-                        <IconFormHabit :class="['w-5 h-5 flex-shrink-0 transition-colors', isFormHabitOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']" />
-                        <span v-show="isOpen" class="truncate">Form Isi Habit</span>
-                        <IconChevronDown
-                            v-show="isOpen"
-                            class="w-4 h-4 ml-auto transition-transform duration-200 text-slate-400"
-                            :class="{ 'rotate-180': isFormHabitOpen }"
-                        />
-                    </button>
-
-                    <Transition
-                        enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-                        enter-from-class="opacity-0 -translate-y-2 max-h-0"
-                        enter-to-class="opacity-100 translate-y-0 max-h-96"
-                        leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-                        leave-from-class="opacity-100 translate-y-0 max-h-96"
-                        leave-to-class="opacity-0 -translate-y-2 max-h-0"
-                    >
-                        <div v-show="isFormHabitOpen && isOpen" class="ml-4 pl-3 border-l-2 border-primary-500/30 space-y-1 pt-1">
-                            <Link
-                                :href="route('habit.form')"
-                                :class="subNavLinkClass('habit.form')"
-                                @click="closeSidebar"
-                            >
-                                <IconInputHabit :class="subIconClass('habit.form')" />
-                                <span>Input Habit Harian</span>
-                            </Link>
-
-                            <Link
-                                :href="route('quran.recap')"
-                                :class="subNavLinkClass('quran.recap')"
-                                @click="closeSidebar"
-                            >
-                                <IconRekapQuran :class="subIconClass('quran.recap')" />
-                                <span>Rekap Al-Quran</span>
-                            </Link>
-
-                            <Link
-                                :href="route('kajian.index')"
-                                :class="subNavLinkClass('kajian.index')"
-                                @click="closeSidebar"
-                            >
-                                <IconJurnalKajian :class="subIconClass('kajian.index')" />
-                                <span>Jurnal Kajian &amp; Hadits</span>
-                            </Link>
-
-                            <Link
-                                :href="route('habit.vouchers')"
-                                :class="subNavLinkClass('habit.vouchers*')"
-                                @click="closeSidebar"
-                            >
-                                <IconVoucher :class="subIconClass('habit.vouchers*')" />
-                                <span>Voucher Habit</span>
-                            </Link>
-                        </div>
-                    </Transition>
-                </div>
-
-                <!-- Catatan Haid -->
-                <Link
-                    v-if="isFemale"
-                    :href="route('haid.index')"
-                    :class="navLinkClass('haid.index')"
-                    :title="!isOpen ? 'Catatan Haid' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconHaid :class="iconClass('haid.index')" />
-                    <span v-show="isOpen" class="truncate">Catatan Haid</span>
-                    <span v-show="isOpen" class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 flex-shrink-0">
-                        Aktif
+                        {{ $page.props.notifications.unread_count }}
                     </span>
-                </Link>
+                    <IconChevronDown
+                        v-show="isOpen"
+                        class="w-4 h-4 ml-auto transition-transform duration-200 text-slate-400 flex-shrink-0"
+                        :class="{ 'rotate-180': openGroups[group.key] }"
+                    />
+                </button>
 
-                <!-- Jurnal Harian Guru -->
-                <Link
-                    v-if="!hasAnyRole(['admin', 'superadmin']) && page.props.global_settings?.feature_jurnal !== 'false' && page.props.global_settings?.feature_jurnal !== '0'"
-                    :href="route('teacher-journals.index')"
-                    :class="navLinkClass('teacher-journals.index')"
-                    :title="!isOpen ? 'Jurnal Harian Guru' : undefined"
-                    @click="closeSidebar"
+                <Transition
+                    enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+                    enter-from-class="opacity-0 -translate-y-2 max-h-0"
+                    enter-to-class="opacity-100 translate-y-0 max-h-96"
+                    leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+                    leave-from-class="opacity-100 translate-y-0 max-h-96"
+                    leave-to-class="opacity-0 -translate-y-2 max-h-0"
                 >
-                    <IconJurnalGuru :class="iconClass('teacher-journals.index')" />
-                    <span v-show="isOpen" class="truncate">Jurnal Harian Guru</span>
-                </Link>
-
-                <!-- Administrasi Guru -->
-                <Link
-                    v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_administrasi_guru')"
-                    :href="route('teacher-administrations.index')"
-                    :class="navLinkClass('teacher-administrations.*')"
-                    :title="!isOpen ? 'Administrasi Guru' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconAdministrasiGuru :class="iconClass('teacher-administrations.*')" />
-                    <span v-show="isOpen" class="truncate">Administrasi Guru</span>
-                </Link>
-
-                <!-- Arsip Kepegawaian -->
-                <Link
-                    v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_arsip')"
-                    :href="route('employee-documents.index')"
-                    :class="navLinkClass('employee-documents.*')"
-                    :title="!isOpen ? 'Arsip Kepegawaian' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconArsip :class="iconClass('employee-documents.*')" />
-                    <span v-show="isOpen" class="truncate">Arsip Kepegawaian</span>
-                </Link>
-
-                <!-- Rapor Kinerja (KPI) -->
-                <Link
-                    v-if="!hasAnyRole(['admin', 'superadmin']) && featureEnabled('feature_kpi')"
-                    :href="route('performance.index')"
-                    :class="navLinkClass('performance.*')"
-                    :title="!isOpen ? 'Rapor Kinerja (KPI)' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconKpi :class="iconClass('performance.*')" />
-                    <span v-show="isOpen" class="truncate">Rapor Kinerja (KPI)</span>
-                </Link>
-            </template>
-
-            <!-- ── Section: Tata usaha ── -->
-            <template v-if="hasAnyRole(['tata_usaha', 'kepala_sekolah', 'superadmin'])">
-                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
-                    Tata usaha
-                </p>
-                
-                <Link
-                    :href="route('tata-usaha.surat-masuk.index')"
-                    :class="navLinkClass('tata-usaha.surat-masuk.*')"
-                    :title="!isOpen ? 'Surat Masuk' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconSuratMasuk :class="iconClass('tata-usaha.surat-masuk.*')" />
-                    <span v-show="isOpen" class="truncate">Surat Masuk</span>
-                </Link>
-
-                <Link
-                    :href="route('tata-usaha.surat-keluar.index')"
-                    :class="navLinkClass('tata-usaha.surat-keluar.*')"
-                    :title="!isOpen ? 'Surat Keluar' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconSuratKeluar :class="iconClass('tata-usaha.surat-keluar.*')" />
-                    <span v-show="isOpen" class="truncate">Surat Keluar</span>
-                </Link>
-
-                <Link
-                    :href="route('tata-usaha.disposisi.index')"
-                    :class="navLinkClass('tata-usaha.disposisi.*')"
-                    :title="!isOpen ? 'Disposisi' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconDisposisi :class="iconClass('tata-usaha.disposisi.*')" />
-                    <span v-show="isOpen" class="truncate">Disposisi</span>
-                </Link>
-
-                <Link
-                    :href="route('tata-usaha.settings.index')"
-                    :class="navLinkClass('tata-usaha.settings.*')"
-                    :title="!isOpen ? 'Pengaturan Surat' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconPengaturanSurat :class="iconClass('tata-usaha.settings.*')" />
-                    <span v-show="isOpen" class="truncate">Pengaturan Surat</span>
-                </Link>
-            </template>
-
-            <!-- ── Section: Koperasi Sekolah ── -->
-            <template v-if="hasAnyRole(['koperasi', 'superadmin'])">
-                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
-                    Koperasi Sekolah
-                </p>
-
-                <!-- Kasir POS Voucher -->
-                <Link
-                    :href="route('koperasi.pos')"
-                    :class="navLinkClass('koperasi.pos*')"
-                    :title="!isOpen ? 'Kasir POS Voucher' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconKoperasi :class="iconClass('koperasi.pos*')" />
-                    <span v-show="isOpen" class="truncate">Kasir POS Voucher</span>
-                </Link>
-
-                <!-- Stok Opname -->
-                <Link
-                    :href="route('koperasi.stock-opname')"
-                    :class="navLinkClass('koperasi.stock-opname*')"
-                    :title="!isOpen ? 'Stok Opname' : undefined"
-                    @click="closeSidebar"
-                >
-                    <svg :class="iconClass('koperasi.stock-opname*')" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                    <span v-show="isOpen" class="truncate">Stok Opname</span>
-                </Link>
-
-                <!-- Riwayat Transaksi -->
-                <Link
-                    :href="route('koperasi.history')"
-                    :class="navLinkClass('koperasi.history*')"
-                    :title="!isOpen ? 'Riwayat Transaksi' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconArsip :class="iconClass('koperasi.history*')" />
-                    <span v-show="isOpen" class="truncate">Riwayat Transaksi</span>
-                </Link>
-            </template>
-
-            <!-- ── Section: Monitoring Guru / Kurikulum ── -->
-            <template v-if="(hasRole('kepala_sekolah') || hasRole('kurikulum')) && !hasAnyRole(['admin', 'superadmin'])">
-                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
-                    {{ hasRole('kurikulum') && !hasRole('kepala_sekolah') ? 'Kurikulum' : 'Monitoring guru' }}
-                </p>
-
-                <Link
-                    v-if="featureEnabled('feature_administrasi_guru')"
-                    :href="route('admin.teacher-administrations.index')"
-                    :class="navLinkClass('admin.teacher-administrations.*')"
-                    :title="!isOpen ? 'Rekap Administrasi Guru' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconRekapAdministrasiGuru :class="iconClass('admin.teacher-administrations.*')" />
-                    <span v-show="isOpen" class="truncate">Rekap Administrasi Guru</span>
-                </Link>
-
-                <Link
-                    v-if="hasRole('kepala_sekolah')"
-                    :href="route('admin.teacher-journals.index')"
-                    :class="navLinkClass('admin.teacher-journals.index')"
-                    :title="!isOpen ? 'Rekap Jurnal Guru' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconRekapJurnalGuru :class="iconClass('admin.teacher-journals.index')" />
-                    <span v-show="isOpen" class="truncate">Rekap Jurnal Guru</span>
-                </Link>
-            </template>
-
-            <!-- ── Section: Administrasi (Admin & Superadmin) ── -->
-            <template v-if="hasAnyRole(['admin', 'superadmin'])">
-                <p v-show="isOpen" class="px-4 pt-4 pb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-normal transition-opacity duration-200">
-                    Administrasi
-                </p>
-
-                <!-- Rekap Presensi GPS -->
-                <Link
-                    v-if="featureEnabled('feature_presensi')"
-                    :href="route('admin.attendance.index')"
-                    :class="navLinkClass('admin.attendance.index')"
-                    :title="!isOpen ? 'Rekap Presensi' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconRekapPresensi :class="iconClass('admin.attendance.index')" />
-                    <span v-show="isOpen" class="truncate">Rekap Presensi</span>
-                </Link>
-
-                <!-- Accordion: Rekap Habits -->
-                <div class="space-y-1" v-if="featureEnabled('feature_habit')">
-                    <button
-                        type="button"
-                        @click="toggleAccordion('rekapHabit')"
-                        :class="accordionButtonClass(isRekapHabitOpen)"
-                        :title="!isOpen ? 'Rekap Habits' : undefined"
-                    >
-                        <IconRekapHabit :class="['w-5 h-5 flex-shrink-0 transition-colors', isRekapHabitOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']" />
-                        <span v-show="isOpen" class="truncate">Rekap Habits</span>
-                        <IconChevronDown
-                            v-show="isOpen"
-                            class="w-4 h-4 ml-auto transition-transform duration-200 text-slate-400"
-                            :class="{ 'rotate-180': isRekapHabitOpen }"
-                        />
-                    </button>
-
-                    <Transition
-                        enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-                        enter-from-class="opacity-0 -translate-y-2 max-h-0"
-                        enter-to-class="opacity-100 translate-y-0 max-h-96"
-                        leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-                        leave-from-class="opacity-100 translate-y-0 max-h-96"
-                        leave-to-class="opacity-0 -translate-y-2 max-h-0"
-                    >
-                        <div v-show="isRekapHabitOpen && isOpen" class="ml-4 pl-3 border-l-2 border-primary-500/30 space-y-1 pt-1">
-                            <Link
-                                :href="route('admin.laporan')"
-                                :class="subNavLinkClass('admin.laporan')"
-                                @click="closeSidebar"
+                    <div v-show="openGroups[group.key] && isOpen" class="ml-4 pl-3 border-l-2 border-primary-500/30 space-y-1 pt-1">
+                        <Link
+                            v-for="item in group.items"
+                            :key="item.key"
+                            :href="route(item.route)"
+                            :class="subNavLinkClass(item.activeRoutes)"
+                            @click="closeSidebar"
+                        >
+                            <component :is="item.icon" :class="subIconClass(item.activeRoutes)" />
+                            <span class="flex-1 truncate">{{ item.label }}</span>
+                            <span
+                                v-if="item.isUnreadBadge && $page.props.notifications?.unread_count > 0"
+                                class="ml-auto flex items-center justify-center px-2 py-0.5 text-xs font-bold bg-rose-500 text-white rounded-full flex-shrink-0"
                             >
-                                <IconSemuaLaporan :class="subIconClass('admin.laporan')" />
-                                <span>Semua Laporan</span>
-                            </Link>
-
-                            <Link
-                                :href="route('admin.vouchers.index')"
-                                :class="subNavLinkClass('admin.vouchers.*')"
-                                @click="closeSidebar"
+                                {{ $page.props.notifications.unread_count }}
+                            </span>
+                            <span
+                                v-else-if="item.badge"
+                                class="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 flex-shrink-0"
                             >
-                                <IconVoucher :class="subIconClass('admin.vouchers.*')" />
-                                <span>Voucher Koperasi</span>
-                            </Link>
-
-                            <Link
-                                v-if="hasRole('superadmin')"
-                                :href="route('admin.laporan.unfilled')"
-                                :class="subNavLinkClass('admin.laporan.unfilled')"
-                                @click="closeSidebar"
-                            >
-                                <IconBelumIsiHabit :class="subIconClass('admin.laporan.unfilled')" />
-                                <span>Cek Belum Isi Habit</span>
-                            </Link>
-                        </div>
-                    </Transition>
-                </div>
-
-                <!-- Rekap Jurnal Guru -->
-                <Link
-                    :href="route('admin.teacher-journals.index')"
-                    :class="navLinkClass('admin.teacher-journals.index')"
-                    :title="!isOpen ? 'Rekap Jurnal Guru' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconRekapJurnalGuru :class="iconClass('admin.teacher-journals.index')" />
-                    <span v-show="isOpen" class="truncate">Rekap Jurnal Guru</span>
-                </Link>
-
-                <!-- Rekap Administrasi Guru -->
-                <Link
-                    v-if="featureEnabled('feature_administrasi_guru')"
-                    :href="route('admin.teacher-administrations.index')"
-                    :class="navLinkClass('admin.teacher-administrations.*')"
-                    :title="!isOpen ? 'Rekap Administrasi Guru' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconRekapAdministrasiGuru :class="iconClass('admin.teacher-administrations.*')" />
-                    <span v-show="isOpen" class="truncate">Rekap Administrasi Guru</span>
-                </Link>
-
-                <!-- Master Data Habit -->
-                <Link
-                    v-if="featureEnabled('feature_habit')"
-                    :href="route('admin.habits.index')"
-                    :class="navLinkClass('admin.habits.index')"
-                    :title="!isOpen ? 'Master Data Habit' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconMasterHabit :class="iconClass('admin.habits.index')" />
-                    <span v-show="isOpen" class="truncate">Master Data Habit</span>
-                </Link>
-
-                <!-- Accordion: Manajemen User -->
-                <div class="space-y-1">
-                    <button
-                        type="button"
-                        @click="toggleAccordion('manajemenUser')"
-                        :class="accordionButtonClass(isManajemenUserOpen)"
-                        :title="!isOpen ? 'Manajemen User' : undefined"
-                    >
-                        <IconManajemenUser :class="['w-5 h-5 flex-shrink-0 transition-colors', isManajemenUserOpen ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500']" />
-                        <span v-show="isOpen" class="truncate">Manajemen User</span>
-                        <IconChevronDown
-                            v-show="isOpen"
-                            class="w-4 h-4 ml-auto transition-transform duration-200 text-slate-400"
-                            :class="{ 'rotate-180': isManajemenUserOpen }"
-                        />
-                    </button>
-
-                    <Transition
-                        enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-                        enter-from-class="opacity-0 -translate-y-2 max-h-0"
-                        enter-to-class="opacity-100 translate-y-0 max-h-[32rem]"
-                        leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-                        leave-from-class="opacity-100 translate-y-0 max-h-[32rem]"
-                        leave-to-class="opacity-0 -translate-y-2 max-h-0"
-                    >
-                        <div v-show="isManajemenUserOpen && isOpen" class="ml-4 pl-3 border-l-2 border-primary-500/30 space-y-1 pt-1">
-                            <!-- Submenu Daftar User -->
-                            <Link
-                                :href="route('admin.users.index')"
-                                :class="subNavLinkClass('admin.users.index')"
-                                @click="closeSidebar"
-                            >
-                                <IconDaftarUser :class="subIconClass('admin.users.index')" />
-                                <span>Daftar User</span>
-                            </Link>
-
-                            <!-- Submenu Verifikasi Arsip Pegawai -->
-                            <Link
-                                v-if="featureEnabled('feature_arsip')"
-                                :href="route('admin.employee-documents.index')"
-                                :class="subNavLinkClass('admin.employee-documents.index')"
-                                @click="closeSidebar"
-                            >
-                                <IconVerifikasiArsip :class="subIconClass('admin.employee-documents.index')" />
-                                <span>Verifikasi Arsip Pegawai</span>
-                            </Link>
-
-                            <!-- Submenu Evaluasi Kinerja (KPI) -->
-                            <Link
-                                v-if="featureEnabled('feature_kpi')"
-                                :href="route('admin.performance.index')"
-                                :class="subNavLinkClass('admin.performance.index')"
-                                @click="closeSidebar"
-                            >
-                                <IconEvaluasiKpi :class="subIconClass('admin.performance.index')" />
-                                <span>Evaluasi Kinerja (KPI)</span>
-                            </Link>
-
-                            <!-- Submenu Jadwal Piket -->
-                            <Link
-                                v-if="featureEnabled('feature_presensi')"
-                                :href="route('admin.duty-schedules.index')"
-                                :class="subNavLinkClass('admin.duty-schedules.index')"
-                                @click="closeSidebar"
-                            >
-                                <IconJadwalPiket :class="subIconClass('admin.duty-schedules.index')" />
-                                <span>Jam Kerja Harian &amp; Piket</span>
-                            </Link>
-                            
-                            <!-- Submenu Jadwal Khusus -->
-                            <Link
-                                v-if="featureEnabled('feature_presensi')"
-                                :href="route('admin.special-schedules.index')"
-                                :class="subNavLinkClass('admin.special-schedules.index')"
-                                @click="closeSidebar"
-                            >
-                                <IconJadwalKhusus :class="subIconClass('admin.special-schedules.index')" />
-                                <span>Jadwal Khusus Tertentu</span>
-                            </Link>
-
-                            <!-- Submenu Daftar Divisi -->
-                            <Link
-                                v-if="featureEnabled('feature_divisi')"
-                                :href="route('admin.divisions.index')"
-                                :class="subNavLinkClass('admin.divisions.index')"
-                                @click="closeSidebar"
-                            >
-                                <IconDaftarDivisi :class="subIconClass('admin.divisions.index')" />
-                                <span>Daftar Divisi</span>
-                            </Link>
-                        </div>
-                    </Transition>
-                </div>
-
-                <!-- Pengaturan Sistem -->
-                <Link
-                    :href="route('admin.settings')"
-                    :class="navLinkClass('admin.settings')"
-                    :title="!isOpen ? 'Pengaturan Sistem' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconPengaturanSistem :class="iconClass('admin.settings')" />
-                    <span v-show="isOpen" class="truncate">Pengaturan Sistem</span>
-                </Link>
-
-                <!-- Buku Panduan -->
-                <Link
-                    :href="route('panduan')"
-                    :class="navLinkClass('panduan')"
-                    :title="!isOpen ? 'Buku Panduan' : undefined"
-                    @click="closeSidebar"
-                >
-                    <IconPanduan :class="iconClass('panduan')" />
-                    <span v-show="isOpen" class="truncate">Buku Panduan</span>
-                </Link>
-                
-                <template v-if="hasRole('superadmin')">
-                    <!-- Fitur HR & Lanjutan -->
-                    <Link
-                        :href="route('admin.settings.hr')"
-                        :class="navLinkClass('admin.settings.hr')"
-                        :title="!isOpen ? 'Fitur HR & Lanjutan' : undefined"
-                        @click="closeSidebar"
-                    >
-                        <IconFiturHr :class="iconClass('admin.settings.hr')" />
-                        <span v-show="isOpen" class="truncate">Fitur HR &amp; Lanjutan</span>
-                    </Link>
-
-                    <!-- Log Akses Login -->
-                    <Link
-                        :href="route('admin.login-logs')"
-                        :class="navLinkClass('admin.login-logs')"
-                        :title="!isOpen ? 'Log Akses Login' : undefined"
-                        @click="closeSidebar"
-                    >
-                        <IconLogAkses :class="iconClass('admin.login-logs')" />
-                        <span v-show="isOpen" class="truncate">Log Akses Login</span>
-                    </Link>
-
-                    <!-- Pemantauan Sistem -->
-                    <Link
-                        :href="route('admin.system.monitor')"
-                        :class="navLinkClass('admin.system.monitor')"
-                        :title="!isOpen ? 'Pemantauan Sistem' : undefined"
-                        @click="closeSidebar"
-                    >
-                        <IconPemantauanSistem :class="iconClass('admin.system.monitor')" />
-                        <span v-show="isOpen" class="truncate">Pemantauan Sistem</span>
-                    </Link>
-                </template>
-            </template>
+                                {{ item.badge }}
+                            </span>
+                        </Link>
+                    </div>
+                </Transition>
+            </div>
         </nav>
 
-        <!-- ── Sidebar Footer (User Chip Card) ────────────────── -->
+        <!-- ── Sidebar Footer (Buku Panduan + User Chip Card) ───── -->
         <div
             :class="[
-                'flex-shrink-0 py-3.5 border-t border-white/40 dark:border-white/10 transition-all duration-300',
-                isOpen ? 'px-3.5' : 'px-2 flex justify-center'
+                'flex-shrink-0 py-3.5 border-t border-white/40 dark:border-white/10 space-y-2.5 transition-all duration-300',
+                isOpen ? 'px-3.5' : 'px-2 flex flex-col items-center'
             ]"
         >
+            <!-- Buku Panduan (tampil untuk semua role) -->
+            <Link
+                :href="route('panduan')"
+                :class="navLinkClass('panduan')"
+                :title="!isOpen ? 'Buku Panduan' : undefined"
+                @click="closeSidebar"
+            >
+                <IconPanduan :class="iconClass('panduan')" />
+                <span v-show="isOpen" class="truncate">Buku Panduan</span>
+            </Link>
+
+            <!-- User Chip Card -->
             <div
                 :class="[
                     'flex items-center rounded-2xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-white/60 dark:border-white/10 shadow-sm hover:shadow-md hover:bg-white/80 dark:hover:bg-slate-800/80 hover:-translate-y-0.5 transition-all duration-200 group cursor-pointer',
@@ -909,14 +873,5 @@ nav button:hover svg:first-child {
 nav a:active svg,
 nav button:active svg:first-child {
     transform: scale(0.95);
-}
-@media (prefers-reduced-motion: reduce) {
-    nav a,
-    nav button,
-    nav a svg,
-    nav button svg {
-        transition: none !important;
-        transform: none !important;
-    }
 }
 </style>
