@@ -1,21 +1,446 @@
 <script setup>
-import { ref } from 'vue'
-import { Head } from '@inertiajs/vue3'
+import { ref, computed, watch } from 'vue'
+import { Head, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
-const activeTab = ref('admin')
+const page = usePage()
+const userRoles = computed(() => page.props.auth?.roles ?? [])
+const hasRole = (role) => userRoles.value.includes(role)
 
-const tabs = [
-    { id: 'admin', name: 'Admin (Superadmin)', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-    { id: 'tu', name: 'Tata Usaha (TU)', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-    { id: 'pegawai', name: 'Pegawai / Guru', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' }
+// ─── Data Panduan Lengkap per Role & Menu (Sinkron dengan Sidebar) ─────────
+const roleGuides = [
+    {
+        id: 'superadmin',
+        role: 'superadmin',
+        name: 'Superadmin',
+        summary: 'Akses penuh seluruh modul aplikasi (Pegawai, Tata Usaha, Koperasi, Monitoring Guru, Admin) beserta kontrol sistem tingkat lanjut.',
+        sections: [
+            {
+                group: 'Khusus Superadmin',
+                items: [
+                    {
+                        menu: 'Cek Belum Isi Habit',
+                        path: 'Habit & Voucher → Cek Belum Isi Habit',
+                        detail: 'Memantau daftar pegawai yang belum mengisi form habit pada tanggal tertentu secara real-time, lengkap dengan ekspor data untuk tindak lanjut pembinaan.',
+                    },
+                    {
+                        menu: 'Fitur HR & Lanjutan',
+                        path: 'Pengaturan & Sistem → Fitur HR & Lanjutan',
+                        detail: 'Mengaktifkan atau menonaktifkan modul aplikasi secara global (Presensi, Habit, Jurnal Guru, Administrasi Guru, Arsip, KPI, Divisi) serta membersihkan foto presensi lama untuk menghemat penyimpanan server.',
+                    },
+                    {
+                        menu: 'Log Akses Login',
+                        path: 'Pengaturan & Sistem → Log Akses Login',
+                        detail: 'Audit keamanan riwayat login pengguna: mencatat waktu masuk, alamat IP, perangkat/browser, dan koordinat lokasi.',
+                    },
+                    {
+                        menu: 'Pemantauan Sistem',
+                        path: 'Pengaturan & Sistem → Pemantauan Sistem',
+                        detail: 'Memeriksa kesehatan server, antrean pekerjaan (queue), status cache, dan performa aplikasi.',
+                    },
+                    {
+                        menu: 'Simulasi Role (Role Simulator)',
+                        path: 'Bar Atas Layar',
+                        detail: 'Menguji tampilan dan hak akses aplikasi sebagai role lain (Pegawai, Kepala Sekolah, Kurikulum, TU, Koperasi, atau Admin) tanpa harus keluar akun.',
+                    },
+                ],
+            },
+            {
+                group: 'Akses Lintas Modul',
+                items: [
+                    {
+                        menu: 'Seluruh Modul Admin, TU, Koperasi & Monitoring',
+                        path: 'Semua Grup Sidebar',
+                        detail: 'Superadmin dapat mengakses semua menu Admin (Presensi, Habit, Kepegawaian, Pengaturan), Tata Usaha (Persuratan & Disposisi), Koperasi (POS, Katalog, Stok Opname, Riwayat), serta Monitoring Guru. Gunakan tab peran lain di atas untuk membaca panduan teknis masing-masing modul.',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'admin',
+        role: 'admin',
+        name: 'Admin',
+        summary: 'Mengelola data kepegawaian, jadwal & rekap presensi, laporan habit, penerbitan voucher koperasi, serta pengaturan sekolah.',
+        sections: [
+            {
+                group: 'Monitoring Guru',
+                items: [
+                    {
+                        menu: 'Rekap Administrasi Guru',
+                        path: 'Monitoring Guru → Rekap Administrasi Guru',
+                        detail: 'Memeriksa perangkat pembelajaran yang diunggah guru, melakukan verifikasi atau memberi catatan revisi, serta mengunduh arsip per tahun ajaran.',
+                    },
+                    {
+                        menu: 'Rekap Jurnal Guru',
+                        path: 'Monitoring Guru → Rekap Jurnal Guru',
+                        detail: 'Memantau catatan aktivitas mengajar harian seluruh guru beserta dokumentasi fotonya.',
+                    },
+                ],
+            },
+            {
+                group: 'Presensi & Jadwal',
+                items: [
+                    {
+                        menu: 'Rekap Presensi',
+                        path: 'Presensi & Jadwal → Rekap Presensi',
+                        detail: 'Memantau kehadiran harian dan bulanan pegawai, menyetujui pengajuan izin/sakit/dinas luar, mengoreksi status kehadiran, serta mengunduh rekap Excel dan PDF (termasuk penanda warna jadwal khusus).',
+                    },
+                    {
+                        menu: 'Jam Kerja Harian & Piket',
+                        path: 'Presensi & Jadwal → Jam Kerja Harian & Piket',
+                        detail: 'Mengatur jam masuk dan jam pulang standar per hari serta menugaskan jadwal piket khusus untuk pegawai tertentu.',
+                    },
+                    {
+                        menu: 'Jadwal Khusus Tertentu',
+                        path: 'Presensi & Jadwal → Jadwal Khusus Tertentu',
+                        detail: 'Menetapkan jam kerja pengecualian pada tanggal atau rentang kegiatan tertentu (misal bulan Ramadan atau agenda khusus sekolah).',
+                    },
+                ],
+            },
+            {
+                group: 'Habit & Voucher',
+                items: [
+                    {
+                        menu: 'Semua Laporan Habit',
+                        path: 'Habit & Voucher → Semua Laporan Habit',
+                        detail: 'Melihat persentase capaian ibadah bulanan tiap pegawai, mengatur target minimal pencapaian voucher, melihat rincian harian per pegawai, dan ekspor Excel.',
+                    },
+                    {
+                        menu: 'Voucher Koperasi',
+                        path: 'Habit & Voucher → Voucher Koperasi',
+                        detail: 'Menerbitkan (generate) voucher apresiasi bagi pegawai yang mencapai target habit bulanan, memantau status penukaran (aktif/sudah ditukar), dan mengatur nominal reward voucher.',
+                    },
+                    {
+                        menu: 'Master Data Habit',
+                        path: 'Habit & Voucher → Master Data Habit',
+                        detail: 'Menambah, mengubah, mengurutkan ulang (reorder), dan mengaktifkan/menonaktifkan daftar pembiasaan ibadah yang muncul di form pegawai.',
+                    },
+                ],
+            },
+            {
+                group: 'Kepegawaian',
+                items: [
+                    {
+                        menu: 'Daftar User',
+                        path: 'Kepegawaian → Daftar User',
+                        detail: 'Menambah/mengedit data pegawai, menetapkan role (Pegawai, TU, Kurikulum, Kepala Sekolah, Koperasi), mengisi UID Kartu RFID presensi, reset password ke default, dan impor massal dari Excel.',
+                    },
+                    {
+                        menu: 'Daftar Divisi',
+                        path: 'Kepegawaian → Daftar Divisi',
+                        detail: 'Mengelola daftar divisi atau unit kerja di sekolah (aktif bila fitur divisi dinyalakan oleh Superadmin).',
+                    },
+                    {
+                        menu: 'Verifikasi Arsip Pegawai',
+                        path: 'Kepegawaian → Verifikasi Arsip Pegawai',
+                        detail: 'Memeriksa dan memverifikasi berkas kepegawaian digital (KTP, Ijazah, SK) yang diunggah oleh pegawai.',
+                    },
+                    {
+                        menu: 'Evaluasi Kinerja (KPI)',
+                        path: 'Kepegawaian → Evaluasi Kinerja (KPI)',
+                        detail: 'Mengisi penilaian kinerja periodik pegawai dan menerbitkan rapor KPI.',
+                    },
+                ],
+            },
+            {
+                group: 'Pengaturan & Sistem',
+                items: [
+                    {
+                        menu: 'Pengaturan Sistem',
+                        path: 'Pengaturan & Sistem → Pengaturan Sistem',
+                        detail: 'Mengatur profil instansi, titik koordinat & radius GPS presensi sekolah, tahun ajaran aktif & pengarsipan, serta token Kiosk RFID.',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'kepala_sekolah',
+        role: 'kepala_sekolah',
+        name: 'Kepala Sekolah',
+        summary: 'Memantau jurnal & perangkat administrasi guru, menyetujui surat keluar, serta menindaklanjuti disposisi surat masuk.',
+        sections: [
+            {
+                group: 'Monitoring Guru',
+                items: [
+                    {
+                        menu: 'Rekap Administrasi Guru',
+                        path: 'Monitoring Guru → Rekap Administrasi Guru',
+                        detail: 'Meninjau kelengkapan perangkat pembelajaran guru, memberikan status verifikasi atau catatan revisi, serta mengunduh arsip per tahun ajaran.',
+                    },
+                    {
+                        menu: 'Rekap Jurnal Guru',
+                        path: 'Monitoring Guru → Rekap Jurnal Guru',
+                        detail: 'Memantau seluruh jurnal aktivitas mengajar harian yang diisi oleh para guru di sekolah secara terpusat.',
+                    },
+                ],
+            },
+            {
+                group: 'Tata Usaha & Persuratan',
+                items: [
+                    {
+                        menu: 'Surat Masuk & Disposisi',
+                        path: 'Tata Usaha → Surat Masuk / Disposisi',
+                        detail: 'Membaca agenda dan file pindaian surat masuk, lalu memberikan disposisi arahan tindak lanjut kepada guru atau staf terkait.',
+                    },
+                    {
+                        menu: 'Persetujuan Surat Keluar',
+                        path: 'Tata Usaha → Surat Keluar',
+                        detail: 'Memeriksa konsep surat keluar yang dibuat TU dan melakukan persetujuan (Approve) sehingga surat sah dengan QR Code verifikasi.',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'kurikulum',
+        role: 'kurikulum',
+        name: 'Kurikulum',
+        summary: 'Memeriksa dan memverifikasi perangkat pembelajaran serta administrasi akademik para guru.',
+        sections: [
+            {
+                group: 'Kurikulum',
+                items: [
+                    {
+                        menu: 'Rekap Administrasi Guru',
+                        path: 'Kurikulum → Rekap Administrasi Guru',
+                        detail: 'Memantau progres pengumpulan perangkat pembelajaran (RPP/Modul Ajar, Silabus, Program Tahunan/Semester), memeriksa pratinjau dokumen, dan melakukan verifikasi atau meminta revisi.',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'tata_usaha',
+        role: 'tata_usaha',
+        name: 'Tata Usaha (TU)',
+        summary: 'Mengelola administrasi persuratan sekolah: surat masuk, pembuatan surat keluar, disposisi, dan pengaturan kop surat.',
+        sections: [
+            {
+                group: 'Tata Usaha',
+                items: [
+                    {
+                        menu: 'Surat Masuk',
+                        path: 'Tata Usaha → Surat Masuk',
+                        detail: 'Mencatat surat masuk eksternal beserta nomor agenda, pengirim, tanggal, dan mengunggah file pindaian (PDF/gambar) agar tersimpan rapi sebagai arsip digital.',
+                    },
+                    {
+                        menu: 'Surat Keluar',
+                        path: 'Tata Usaha → Surat Keluar',
+                        detail: 'Membuat surat resmi langsung menggunakan Builder template atau mengunggah file surat, kemudian mengajukan persetujuan Kepala Sekolah. Surat yang disetujui otomatis memiliki QR Code verifikasi keaslian.',
+                    },
+                    {
+                        menu: 'Disposisi',
+                        path: 'Tata Usaha → Disposisi',
+                        detail: 'Membuat dan meneruskan lembar disposisi surat masuk ke pimpinan atau pegawai terkait, mencetak lembar disposisi, serta memantau status penyelesaiannya.',
+                    },
+                    {
+                        menu: 'Pengaturan Surat',
+                        path: 'Tata Usaha → Pengaturan Surat',
+                        detail: 'Mengatur format kop surat, kode penomoran surat otomatis, serta data pejabat penandatangan resmi.',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'koperasi',
+        role: 'koperasi',
+        name: 'Petugas Koperasi',
+        summary: 'Mengoperasikan sistem kasir POS koperasi, validasi Voucher Habit, transaksi Kartu RFID guru, katalog barang, dan stock opname.',
+        sections: [
+            {
+                group: 'Sistem POS Koperasi',
+                items: [
+                    {
+                        menu: 'Kasir POS Voucher',
+                        path: 'Koperasi Sekolah → Kasir POS Voucher',
+                        detail: 'Melayani belanja dengan klik produk atau scan barcode. Scan kode Voucher Habit untuk potongan belanja (atau transfer nilainya ke saldo Kartu RFID), tap Kartu RFID presensi guru untuk bayar dengan saldo ATM koperasi, pilih metode Tunai / Kartu RFID / Split (RFID + Tunai) / QRIS, lalu cetak struk thermal.',
+                    },
+                    {
+                        menu: 'Katalog Barang',
+                        path: 'Koperasi Sekolah → Katalog Barang',
+                        detail: 'Menambah dan mengedit barang per kategori (Seragam Siswa, Sabun & Cuci, ATK & Buku, Minuman, Makanan & Snack, Sembako), mengunduh Template Excel, serta mengunggah katalog massal dari file Excel.',
+                    },
+                    {
+                        menu: 'Stok Opname',
+                        path: 'Koperasi Sekolah → Stok Opname',
+                        detail: 'Memantau total valuasi modal, stok menipis, dan barang habis; mengisi hitung fisik langsung di tabel (simpan massal sekaligus), menyesuaikan stok rusak/kadaluarsa/restock dengan riwayat audit, serta unduh Excel atau cetak lembar kerja audit.',
+                    },
+                    {
+                        menu: 'Riwayat Transaksi',
+                        path: 'Koperasi Sekolah → Riwayat Transaksi',
+                        detail: 'Melihat log seluruh penjualan & penukaran voucher, cetak ulang struk, pembatalan (Void) transaksi jika terjadi kesalahan input, serta mengunduh Laporan Penjualan Bulanan (Excel) dan Laporan Stock Opname (Excel).',
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'pegawai',
+        role: 'user',
+        name: 'Pegawai / Guru',
+        summary: 'Panduan aktivitas harian pegawai: presensi GPS, pengisian habit ibadah, bacaan Al-Qur\'an, voucher koperasi, jurnal guru, dan komunikasi.',
+        sections: [
+            {
+                group: 'Menu Utama & Harian',
+                items: [
+                    {
+                        menu: 'Dashboard',
+                        path: 'Dashboard',
+                        detail: 'Menampilkan ringkasan status presensi hari ini, persentase capaian habit bulan berjalan, jadwal kerja/piket aktif, dan pengingat penting.',
+                    },
+                    {
+                        menu: 'Presensiku',
+                        path: 'Presensiku',
+                        detail: 'Lakukan Clock In dan Clock Out saat berada di dalam radius GPS sekolah dengan swafoto kamera langsung. Jika terlambat atau berhalangan hadir, isi keterangan terlambat atau ajukan Izin/Sakit beserta lampiran surat.',
+                    },
+                    {
+                        menu: 'Input Habit Harian',
+                        path: 'Input Habit Harian',
+                        detail: 'Centang pembiasaan ibadah harian Anda. Mendukung mode offline PWA: data tetap tersimpan aman di perangkat dan otomatis terkirim saat koneksi internet kembali aktif.',
+                    },
+                ],
+            },
+            {
+                group: 'Ibadah & Keislaman',
+                items: [
+                    {
+                        menu: "Al-Qur'an & Hadis",
+                        path: "Ibadah & Keislaman → Al-Qur'an & Hadis",
+                        detail: 'Baca Al-Qur\'an dan hadis harian langsung dari aplikasi, lalu tekan tombol tandai baca agar sesi tilawah otomatis tercatat ke HabitLog harian Anda.',
+                    },
+                    {
+                        menu: 'Dzikir Pagi & Petang',
+                        path: 'Ibadah & Keislaman → Dzikir Pagi & Petang',
+                        detail: 'Panduan bacaan dzikir pagi dan petang lengkap dengan penghitung tasbih digital sebagai referensi ibadah.',
+                    },
+                    {
+                        menu: 'HPT Online',
+                        path: 'Ibadah & Keislaman → HPT Online',
+                        detail: 'Akses referensi Himpunan Putusan Tarjih Muhammadiyah untuk panduan tuntunan ibadah.',
+                    },
+                    {
+                        menu: 'Arah Kiblat',
+                        path: 'Ibadah & Keislaman → Arah Kiblat',
+                        detail: 'Penunjuk arah kiblat menggunakan kompas/sensor dan lokasi perangkat Anda.',
+                    },
+                ],
+            },
+            {
+                group: 'Capaian & Catatan',
+                items: [
+                    {
+                        menu: 'Rekap Al-Quran',
+                        path: 'Capaian & Catatan → Rekap Al-Quran',
+                        detail: 'Melihat riwayat dan statistik akumulasi bacaan Al-Qur\'an Anda berdasarkan catatan HabitLog.',
+                    },
+                    {
+                        menu: 'Jurnal Kajian & Hadits',
+                        path: 'Capaian & Catatan → Jurnal Kajian & Hadits',
+                        detail: 'Melihat ringkasan kajian dan catatan hadis yang telah diikuti/dibaca.',
+                    },
+                    {
+                        menu: 'Voucher Habit',
+                        path: 'Capaian & Catatan → Voucher Habit',
+                        detail: 'Apabila target habit bulanan tercapai dan voucher diterbitkan Admin, kode voucher muncul di sini. Voucher bisa langsung ditunjukkan di Kasir Koperasi atau ditransfer menjadi saldo Kartu RFID presensi Anda.',
+                    },
+                    {
+                        menu: 'Catatan Haid (Khusus Pegawai Wanita)',
+                        path: 'Capaian & Catatan → Catatan Haid',
+                        detail: 'Tandai masa haid agar item ibadah wajib tertentu otomatis menyesuaikan sehingga skor capaian habit bulanan Anda tetap adil.',
+                    },
+                ],
+            },
+            {
+                group: 'Pekerjaan & Kepegawaian',
+                items: [
+                    {
+                        menu: 'Jurnal Harian Guru',
+                        path: 'Pekerjaan & Kepegawaian → Jurnal Harian Guru',
+                        detail: 'Mencatat ringkasan kegiatan pembelajaran atau tugas harian guru disertai lampiran foto kegiatan.',
+                    },
+                    {
+                        menu: 'Administrasi Guru',
+                        path: 'Pekerjaan & Kepegawaian → Administrasi Guru',
+                        detail: 'Mengunggah dokumen perangkat pembelajaran (RPP/Modul Ajar, Silabus, dll.) dan memantau status verifikasi dari Kurikulum/Kepala Sekolah.',
+                    },
+                    {
+                        menu: 'Arsip Kepegawaian',
+                        path: 'Pekerjaan & Kepegawaian → Arsip Kepegawaian',
+                        detail: 'Menyimpan dokumen digital pribadi (KTP, Ijazah, SK, Sertifikat) dan melihat status verifikasinya.',
+                    },
+                    {
+                        menu: 'Rapor Kinerja (KPI)',
+                        path: 'Pekerjaan & Kepegawaian → Rapor Kinerja (KPI)',
+                        detail: 'Melihat hasil penilaian kinerja periodik yang telah diterbitkan oleh pimpinan/admin.',
+                    },
+                ],
+            },
+            {
+                group: 'Komunikasi & Rapat',
+                items: [
+                    {
+                        menu: 'Pesan & Notifikasi',
+                        path: 'Komunikasi & Rapat → Pesan & Notifikasi',
+                        detail: 'Melihat daftar pemberitahuan sistem (persetujuan izin, voucher terbit, disposisi surat, dll.) dan menandai sudah dibaca.',
+                    },
+                    {
+                        menu: 'Chat Pegawai',
+                        path: 'Komunikasi & Rapat → Chat Pegawai',
+                        detail: 'Berkirim pesan langsung maupun membuat grup diskusi kerja sesama pegawai sekolah.',
+                    },
+                    {
+                        menu: 'Notulen Rapat',
+                        path: 'Komunikasi & Rapat → Notulen Rapat',
+                        detail: 'Membuat notulen rapat, mencatat daftar hadir dengan tanda tangan digital, serta menyetujui hasil rapat.',
+                    },
+                ],
+            },
+        ],
+    },
 ]
 
-const openFaq = ref(null)
-const toggleFaq = (id) => {
-    openFaq.value = openFaq.value === id ? null : id
-}
+// ─── Tab yang Terbuka Sesuai Role Pengguna ──────────────────────────────────
+const visibleGuides = computed(() => {
+    if (hasRole('superadmin')) {
+        return roleGuides
+    }
+    const matched = roleGuides.filter((g) => hasRole(g.role))
+    return matched.length > 0 ? matched : [roleGuides[roleGuides.length - 1]]
+})
 
+const activeTab = ref(visibleGuides.value[0]?.id ?? 'pegawai')
+
+watch(visibleGuides, (list) => {
+    if (!list.some((g) => g.id === activeTab.value)) {
+        activeTab.value = list[0]?.id ?? 'pegawai'
+    }
+})
+
+// ─── Pencarian Cepat Menu Panduan ───────────────────────────────────────────
+const searchQuery = ref('')
+
+const currentGuide = computed(() => {
+    const guide = visibleGuides.value.find((g) => g.id === activeTab.value) || visibleGuides.value[0]
+    const q = searchQuery.value.trim().toLowerCase()
+    if (!q || !guide) return guide
+
+    const filteredSections = guide.sections
+        .map((sec) => ({
+            ...sec,
+            items: sec.items.filter(
+                (item) =>
+                    item.menu.toLowerCase().includes(q) ||
+                    item.path.toLowerCase().includes(q) ||
+                    item.detail.toLowerCase().includes(q)
+            ),
+        }))
+        .filter((sec) => sec.items.length > 0)
+
+    return { ...guide, sections: filteredSections }
+})
 </script>
 
 <template>
@@ -24,153 +449,97 @@ const toggleFaq = (id) => {
 
         <div class="w-full space-y-6">
             <!-- Header Section -->
-            <div class="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-800 rounded-3xl p-8 md:p-12 text-white shadow-lg">
-                <div class="relative z-10">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-sm font-bold tracking-widest uppercase mb-4 border border-white/30">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                        Manual Book
+            <div class="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-800 rounded-3xl p-7 md:p-10 text-white shadow-lg">
+                <div class="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold tracking-widest uppercase mb-3 border border-white/30">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <span>Buku Panduan • Sesuai Role Anda</span>
+                        </div>
+                        <h1 class="text-2xl md:text-4xl font-black mb-2 tracking-tight">Panduan Penggunaan Sistem</h1>
+                        <p class="text-emerald-50 text-sm md:text-base max-w-2xl font-medium">
+                            Penjelasan fungsi dan langkah penggunaan setiap menu yang tersedia untuk peran Anda di aplikasi SAHABAT SDAM.
+                        </p>
                     </div>
-                    <h1 class="text-3xl md:text-5xl font-black mb-4 tracking-tight drop-shadow-md">Buku Panduan<br>Penggunaan Sistem</h1>
-                    <p class="text-emerald-50 text-lg max-w-xl font-medium">Temukan panduan lengkap menggunakan aplikasi ini sesuai dengan peran (role) Anda di instansi.</p>
-                </div>
-                <!-- Decoration -->
-                <div class="absolute right-0 top-0 -mr-20 -mt-20 opacity-20 pointer-events-none">
-                    <svg class="w-96 h-96" fill="currentColor" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+
+                    <!-- Search Box -->
+                    <div class="w-full md:w-72 relative">
+                        <input
+                            v-model="searchQuery"
+                            type="text"
+                            placeholder="Cari menu atau fitur..."
+                            class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/95 text-slate-800 placeholder-slate-400 text-xs font-medium border border-white/50 focus:outline-none focus:ring-2 focus:ring-emerald-300 shadow-sm"
+                        />
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
                 </div>
             </div>
 
-            <!-- Tab Navigation -->
-            <div class="flex flex-wrap gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
-                <button 
-                    v-for="tab in tabs" 
+            <!-- Role Tabs (Hanya menampilkan tab sesuai role yang dimiliki) -->
+            <div v-if="visibleGuides.length > 1" class="flex flex-wrap gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <button
+                    v-for="tab in visibleGuides"
                     :key="tab.id"
+                    type="button"
                     @click="activeTab = tab.id"
-                    class="flex-1 min-w-[200px] flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold transition-all duration-300"
-                    :class="activeTab === tab.id ? 'bg-white text-emerald-600 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:bg-slate-200/50 hover:text-slate-700'"
+                    class="flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer"
+                    :class="activeTab === tab.id
+                        ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm border border-slate-200/70 dark:border-slate-700'
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 hover:text-slate-800 dark:hover:text-slate-200'"
                 >
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" :d="tab.icon" />
-                        <path v-if="tab.id === 'admin'" stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {{ tab.name }}
+                    <span>{{ tab.name }}</span>
                 </button>
             </div>
 
             <!-- Content Area -->
-            <div class="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-slate-200 min-h-[500px]">
-                
-                <!-- ADMIN CONTENT -->
-                <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0" leave-active-class="hidden">
-                    <div v-show="activeTab === 'admin'" class="space-y-8">
-                        <div>
-                            <h2 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
-                                <span class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg shadow-sm">1</span>
-                                Manajemen Pengguna (Data Pegawai)
-                            </h2>
-                            <div class="ml-13 space-y-4 text-slate-600">
-                                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 transition-colors">
-                                    <h4 class="font-bold text-slate-800 mb-1 flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg> Menambah Pegawai Baru</h4>
-                                    <p>Masuk ke menu <strong>Manajemen Pegawai</strong>, klik "Tambah Pegawai". Isi biodata lengkap, NIP, serta jam kerja (Work Start/End) agar sistem presensi dapat mengkalkulasi keterlambatan.</p>
-                                </div>
-                                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 transition-colors">
-                                    <h4 class="font-bold text-slate-800 mb-1 flex items-center gap-2"><svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg> Reset Password</h4>
-                                    <p>Jika ada pegawai yang lupa sandi, Admin dapat melakukan reset sandi menjadi *password default* (12345678) langsung dari profil pegawai tersebut melalui menu Manajemen Pegawai.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h2 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
-                                <span class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg shadow-sm">2</span>
-                                Pengaturan Presensi & Jadwal
-                            </h2>
-                            <div class="ml-13 space-y-4 text-slate-600">
-                                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-blue-200 transition-colors">
-                                    <h4 class="font-bold text-slate-800 mb-1">Jadwal Piket & Khusus</h4>
-                                    <p>Sistem ini memiliki fitur override jam kerja. Anda bisa membuat <strong>Jadwal Piket</strong> untuk pegawai tertentu di hari tertentu. Atau <strong>Jadwal Khusus</strong> untuk event massal seperti Ramadan, di mana jam masuk/pulang berlaku untuk seluruh instansi.</p>
-                                </div>
-                            </div>
-                        </div>
+            <div v-if="currentGuide" class="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-8">
+                <!-- Role Summary Banner -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                        <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 mb-1.5">
+                            Panduan Peran: {{ currentGuide.name }}
+                        </span>
+                        <p class="text-sm text-slate-600 dark:text-slate-300">{{ currentGuide.summary }}</p>
                     </div>
-                </transition>
+                </div>
 
-                <!-- TU CONTENT -->
-                <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0" leave-active-class="hidden">
-                    <div v-show="activeTab === 'tu'" class="space-y-8">
-                        <div>
-                            <h2 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
-                                <span class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-lg shadow-sm">1</span>
-                                Manajemen Persuratan & Disposisi
-                            </h2>
-                            <div class="ml-13 space-y-4 text-slate-600">
-                                <div class="bg-amber-50/50 rounded-2xl p-5 border border-amber-100 hover:border-amber-300 transition-colors">
-                                    <h4 class="font-bold text-slate-800 mb-1">Surat Masuk & Disposisi</h4>
-                                    <p>Catat setiap surat yang masuk dari pihak luar, unggah lampiran fisiknya, lalu <strong>Disposisikan</strong> kepada Kepala Sekolah atau Pegawai terkait untuk ditindaklanjuti. Anda bisa memantau apakah disposisi tersebut sudah dibaca atau belum melalui status disposisi.</p>
+                <!-- Menu Groups -->
+                <div v-if="currentGuide.sections.length > 0" class="space-y-8">
+                    <section v-for="(section, sIdx) in currentGuide.sections" :key="section.group" class="space-y-3.5">
+                        <h2 class="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm font-black flex-shrink-0">
+                                {{ sIdx + 1 }}
+                            </span>
+                            <span>{{ section.group }}</span>
+                        </h2>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 md:pl-11">
+                            <div
+                                v-for="item in section.items"
+                                :key="item.menu"
+                                class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/70 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors space-y-2"
+                            >
+                                <div class="flex items-start justify-between gap-2">
+                                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">{{ item.menu }}</h3>
+                                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0">
+                                        {{ item.path }}
+                                    </span>
                                 </div>
+                                <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    {{ item.detail }}
+                                </p>
                             </div>
                         </div>
+                    </section>
+                </div>
 
-                        <div>
-                            <h2 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
-                                <span class="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-lg shadow-sm">2</span>
-                                Rekapitulasi Laporan
-                            </h2>
-                            <div class="ml-13 space-y-4 text-slate-600">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-teal-200 transition-colors">
-                                        <h4 class="font-bold text-slate-800 mb-1">Laporan Presensi</h4>
-                                        <p>Unduh rekapitulasi kehadiran harian dan bulanan pegawai (termasuk status telat, izin, dan dinas luar) dalam format Excel yang rapi.</p>
-                                    </div>
-                                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-teal-200 transition-colors">
-                                        <h4 class="font-bold text-slate-800 mb-1">Arsip Dokumen Pegawai</h4>
-                                        <p>Kelola berkas-berkas digital Ijazah, KTP, dan SK milik seluruh pegawai dalam menu E-Filing Dokumen secara tersentralisasi.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </transition>
-
-                <!-- PEGAWAI CONTENT -->
-                <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0" leave-active-class="hidden">
-                    <div v-show="activeTab === 'pegawai'" class="space-y-8">
-                        <div>
-                            <h2 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
-                                <span class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-lg shadow-sm">1</span>
-                                Presensi (Absensi Harian)
-                            </h2>
-                            <div class="ml-13 space-y-4 text-slate-600">
-                                <div class="bg-purple-50/50 rounded-2xl p-5 border border-purple-100 hover:border-purple-300 transition-colors">
-                                    <ul class="space-y-3 list-disc pl-5">
-                                        <li><strong>Cara Melakukan Absen:</strong> Buka halaman dashboard utama, sistem akan otomatis membaca lokasi GPS Anda. Klik tombol <strong>Clock In</strong> jika Anda berada di dalam radius kantor.</li>
-                                        <li><strong>Verifikasi Foto:</strong> Semua absensi mewajibkan foto *selfie* langsung dari kamera untuk mencegah kecurangan *Fake GPS*.</li>
-                                        <li><strong>Pengajuan Izin:</strong> Gunakan menu <strong>Izin</strong> pada dashboard untuk melaporkan sakit/izin tanpa harus repot menghubungi TU/Admin. Lampirkan surat dokter jika ada.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h2 class="text-2xl font-black text-slate-800 mb-2 flex items-center gap-3">
-                                <span class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-lg shadow-sm">2</span>
-                                Pengisian Form Ibadah & Habit
-                            </h2>
-                            <div class="ml-13 space-y-4 text-slate-600">
-                                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 hover:border-rose-200 transition-colors">
-                                    <p class="mb-3">Sistem ini memantau kualitas diri pegawai melalui <strong>Log Habit</strong> harian. Anda wajib mengisi form log pembiasaan ibadah (seperti sholat wajib, rawatib, tahajud, dll).</p>
-                                    <p class="mb-3"><strong>Fitur Offline (PWA):</strong> Anda tidak memerlukan kuota internet setiap saat! Jika Anda sedang offline, isilah form habit seperti biasa. Sistem akan menyimpannya ke memori HP Anda sementara (IndexedDB). Data akan otomatis tersinkronisasi terkirim saat internet kembali menyala.</p>
-                                    <div class="flex items-start gap-3 mt-4 p-3 bg-rose-100/50 rounded-xl text-rose-800 border border-rose-200">
-                                        <svg class="w-6 h-6 mt-0.5 shrink-0 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                        <p class="text-sm"><strong>Bagi Pegawai Wanita:</strong> Terdapat fitur "Log Menstruasi". Ketika dalam masa haid, form kewajiban ibadah akan otomatis disembunyikan untuk menjaga skor bulanan Anda tidak turun secara tidak adil.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </transition>
-
+                <div v-else class="py-12 text-center text-sm text-slate-400">
+                    Tidak ada panduan menu yang cocok dengan kata kunci "{{ searchQuery }}".
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>
