@@ -35,7 +35,7 @@ class ReportController extends Controller
         $categories = CoopProduct::distinct()->pluck('category')->filter()->sort()->values()->all();
         $productsList = CoopProduct::orderBy('name')->get(['id', 'name', 'category']);
 
-        $userOptions = User::orderBy('name')->get(['id', 'name', 'nip'])->map(fn($u) => [
+        $userOptions = User::nonAdmin()->orderBy('name')->get(['id', 'name', 'nip'])->map(fn($u) => [
             'key'   => 'user:' . $u->id,
             'label' => $u->name . ($u->nip ? " ({$u->nip})" : ' (Pegawai)'),
         ]);

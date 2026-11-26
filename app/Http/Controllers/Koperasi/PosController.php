@@ -141,13 +141,16 @@ class PosController extends Controller
             ], 422);
         }
 
-        $user = User::where('rfid_uid', $input)
-            ->orWhere('nip', $input)
+        $user = User::nonAdmin()
+            ->where(function ($q) use ($input) {
+                $q->where('rfid_uid', $input)
+                  ->orWhere('nip', $input);
+            })
             ->first();
 
         // Jika belum ketemu, coba cari nama pegawai
         if (!$user && strlen($input) >= 3) {
-            $user = User::where('name', 'like', "%{$input}%")->first();
+            $user = User::nonAdmin()->where('name', 'like', "%{$input}%")->first();
         }
 
         if ($user) {
@@ -468,7 +471,7 @@ class PosController extends Controller
         if ($request->filled('customer_id')) {
             $customer = $customerType === 'member'
                 ? CoopMember::find($request->customer_id)
-                : User::find($request->customer_id);
+                : User::nonAdmin()->find($request->customer_id);
         }
 
         // 2. Pemrosesan Berdasarkan Metode Pembayaran

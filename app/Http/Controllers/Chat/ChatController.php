@@ -51,8 +51,9 @@ class ChatController extends Controller
             }
         }
 
-        // Contacts list for starting new direct chat (tanpa membocorkan NIP)
-        $contacts = User::whereNull('deleted_at')
+        // Contacts list for starting new direct chat (tanpa membocorkan NIP & tanpa admin/superadmin)
+        $contacts = User::nonAdmin()
+            ->whereNull('deleted_at')
             ->select(['id', 'name', 'email', 'avatar', 'gender', 'divisi'])
             ->orderBy('name')
             ->get()

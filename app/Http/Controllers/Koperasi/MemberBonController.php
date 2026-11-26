@@ -25,9 +25,9 @@ class MemberBonController extends Controller
 
         $rows = collect();
 
-        // 1. Pegawai / Guru (tabel users)
+        // 1. Pegawai / Guru (tabel users, tanpa admin & superadmin)
         if (in_array($type, ['all', 'pegawai'], true)) {
-            $userQuery = User::query()->orderBy('name');
+            $userQuery = User::nonAdmin()->orderBy('name');
             if ($search !== '') {
                 $userQuery->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -108,8 +108,8 @@ class MemberBonController extends Controller
         ));
 
         $stats = [
-            'total_members' => User::count() + CoopMember::where('is_active', true)->count(),
-            'total_balance' => (float) User::sum('coop_balance') + (float) CoopMember::where('is_active', true)->sum('coop_balance'),
+            'total_members' => User::nonAdmin()->count() + CoopMember::where('is_active', true)->count(),
+            'total_balance' => (float) User::nonAdmin()->sum('coop_balance') + (float) CoopMember::where('is_active', true)->sum('coop_balance'),
             'total_bon'     => (float) CoopTransaction::whereIn('bon_status', ['unpaid', 'partial'])
                 ->sum(DB::raw('bon_amount - bon_paid_amount')),
         ];

@@ -197,8 +197,8 @@ class TeacherAdministrationReviewController extends Controller
         $totalAll = $allSummaryDocs->count();
         $totalAllPending = $allSummaryDocs->where('status', 'menunggu_verifikasi')->count();
 
-        // Daftar Guru (Kecuali superadmin murni)
-        $teachers = User::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['superadmin']))
+        // Daftar Guru (kecuali admin & superadmin)
+        $teachers = User::nonAdmin()
             ->select('id', 'name', 'nip', 'divisi')
             ->orderBy('name')
             ->get();

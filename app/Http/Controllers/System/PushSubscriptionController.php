@@ -242,7 +242,7 @@ class PushSubscriptionController extends Controller
             $this->validateSafeNotificationUrl($validated['url']);
         }
 
-        $query = User::query();
+        $query = User::nonAdmin();
 
         if ($validated['target'] === 'division' && !empty($validated['division'])) {
             $query->where('divisi', $validated['division']);

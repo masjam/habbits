@@ -126,6 +126,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Scope query untuk menyembunyikan akun role admin & superadmin.
+     */
+    public function scopeNonAdmin($query)
+    {
+        return $query->whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']));
+    }
+
+    /**
      * Dapatkan daftar id pengguna non-admin (pegawai) ter-cache singkat.
      *
      * @return array<int>
@@ -133,7 +141,7 @@ class User extends Authenticatable
     public static function getNonAdminUserIds(): array
     {
         return \Illuminate\Support\Facades\Cache::remember('non_admin_user_ids', 120, function () {
-            return static::whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['admin', 'superadmin']))
+            return static::nonAdmin()
                 ->pluck('id')
                 ->toArray();
         });
