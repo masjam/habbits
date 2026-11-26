@@ -21,6 +21,8 @@ const form = useForm({
     end_date: '',
     time_in: '',
     time_out: '',
+    piket_time_in: '',
+    piket_time_out: '',
     late_tolerance: 0,
     latitude: '',
     longitude: '',
@@ -40,6 +42,8 @@ const openModal = (schedule = null) => {
         form.end_date = endStr.includes('T') ? endStr.split('T')[0] : endStr;
         form.time_in = schedule.time_in ? schedule.time_in.substring(0, 5) : '';
         form.time_out = schedule.time_out ? schedule.time_out.substring(0, 5) : '';
+        form.piket_time_in = schedule.piket_time_in ? schedule.piket_time_in.substring(0, 5) : '';
+        form.piket_time_out = schedule.piket_time_out ? schedule.piket_time_out.substring(0, 5) : '';
         form.late_tolerance = schedule.late_tolerance ?? 0;
         form.latitude = schedule.latitude ?? '';
         form.longitude = schedule.longitude ?? '';
@@ -284,8 +288,13 @@ const deleteSchedule = (id) => {
                                     {{ sched.start_date.split('T')[0] }} s/d {{ sched.end_date.split('T')[0] }}
                                 </td>
                                 <td class="px-6 py-4 text-sm font-mono">
-                                    <span class="text-emerald-600 font-bold">{{ sched.time_in.substring(0, 5) }}</span> - 
-                                    <span class="text-rose-600 font-bold">{{ sched.time_out.substring(0, 5) }}</span>
+                                    <div>
+                                        <span class="text-emerald-600 font-bold">{{ sched.time_in.substring(0, 5) }}</span> - 
+                                        <span class="text-rose-600 font-bold">{{ sched.time_out.substring(0, 5) }}</span>
+                                    </div>
+                                    <div v-if="sched.piket_time_in || sched.piket_time_out" class="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                                        Piket: {{ sched.piket_time_in ? sched.piket_time_in.substring(0, 5) : sched.time_in.substring(0, 5) }} - {{ sched.piket_time_out ? sched.piket_time_out.substring(0, 5) : sched.time_out.substring(0, 5) }}
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     <span
@@ -377,6 +386,25 @@ const deleteSchedule = (id) => {
                             <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Toleransi (Mnt)</label>
                             <input type="number" v-model="form.late_tolerance" min="0" class="w-full text-sm rounded-xl border border-theme bg-card-subtle px-3 py-2 text-slate-800 dark:text-slate-100" />
                             <p v-if="form.errors.late_tolerance" class="text-xs text-rose-500 font-semibold">{{ form.errors.late_tolerance }}</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 space-y-3">
+                        <div>
+                            <div class="text-xs font-black text-amber-900 dark:text-amber-200">Jam Khusus Petugas Piket (Opsional)</div>
+                            <p class="text-[11px] text-amber-800/80 dark:text-amber-300/80">Jika diisi, pegawai yang terjadwal piket pada hari tersebut memakai jam kedatangan &amp; kepulangan ini selama jadwal khusus berlaku.</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Jam Kedatangan Piket</label>
+                                <input type="time" v-model="form.piket_time_in" class="w-full text-sm rounded-xl border border-theme bg-white dark:bg-slate-900 px-3 py-2 text-slate-800 dark:text-slate-100" />
+                                <p v-if="form.errors.piket_time_in" class="text-xs text-rose-500 font-semibold">{{ form.errors.piket_time_in }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">Jam Kepulangan Piket</label>
+                                <input type="time" v-model="form.piket_time_out" class="w-full text-sm rounded-xl border border-theme bg-white dark:bg-slate-900 px-3 py-2 text-slate-800 dark:text-slate-100" />
+                                <p v-if="form.errors.piket_time_out" class="text-xs text-rose-500 font-semibold">{{ form.errors.piket_time_out }}</p>
+                            </div>
                         </div>
                     </div>
 

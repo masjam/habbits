@@ -94,7 +94,7 @@ class PosController extends Controller
                     'change_amount'    => (float) $t->change_amount,
                     'items_count'      => is_array($t->items) ? count($t->items) : 1,
                     'items'            => $t->items,
-                    'created_at'       => $t->created_at->format('d M Y, H:i'),
+                    'created_at'       => $t->created_at->locale('id')->isoFormat('D MMM YY, HH:mm'),
                     'time_only'        => $t->created_at->format('H:i:s'),
                     'cashier_name'     => $t->cashier?->name ?: 'Kasir',
                 ];
@@ -620,7 +620,7 @@ class PosController extends Controller
             // Siapkan payload struk thermal
             $receipt = [
                 'transaction_code' => $transactionCode,
-                'date_time'        => Carbon::now()->locale('id')->isoFormat('D MMMM Y, HH:mm:ss'),
+                'date_time'        => Carbon::now()->locale('id')->isoFormat('D MMM YY, HH:mm'),
                 'cashier_name'     => $cashier->name,
                 'customer_name'    => $customer?->name ?: 'Pelanggan Umum',
                 'customer_nip'     => $customer instanceof CoopMember ? $customer->member_code : ($customer?->nip ?: '-'),
@@ -707,7 +707,7 @@ class PosController extends Controller
         $receipt = [
             'transaction_code' => $transactionCode,
             'voucher_code'     => $voucher->voucher_code,
-            'date_time'        => Carbon::now()->locale('id')->isoFormat('D MMMM Y, HH:mm:ss'),
+            'date_time'        => Carbon::now()->locale('id')->isoFormat('D MMM YY, HH:mm'),
             'cashier_name'     => $cashier->name,
             'customer_name'    => $voucher->user?->name ?: 'Pegawai',
             'customer_nip'     => $voucher->user?->nip ?: '-',
@@ -862,7 +862,7 @@ class PosController extends Controller
                 'bon_paid_amount'  => (float) $t->bon_paid_amount,
                 'bon_status'       => $t->bon_status,
                 'items'            => $t->items,
-                'created_at'       => $t->created_at->format('d M Y, H:i'),
+                'created_at'       => $t->created_at->locale('id')->isoFormat('D MMM YY, HH:mm'),
                 'cashier_name'     => $t->cashier?->name ?: 'Kasir',
             ];
         });

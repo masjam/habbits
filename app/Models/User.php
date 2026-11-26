@@ -213,12 +213,16 @@ class User extends Authenticatable
             });
 
         if ($specialSchedule) {
+            $usePiketOverride = $piket && ($specialSchedule->piket_time_in || $specialSchedule->piket_time_out);
+
             return [
-                'work_start'     => $specialSchedule->time_in,
-                'work_end'       => $specialSchedule->time_out,
+                'work_start'     => $usePiketOverride ? ($specialSchedule->piket_time_in ?: $specialSchedule->time_in) : $specialSchedule->time_in,
+                'work_end'       => $usePiketOverride ? ($specialSchedule->piket_time_out ?: $specialSchedule->time_out) : $specialSchedule->time_out,
                 'late_tolerance' => $specialSchedule->late_tolerance !== null ? (int)$specialSchedule->late_tolerance : $globalTol,
                 'is_custom'      => true,
-                'is_piket'       => false,
+                'is_piket'       => (bool) $usePiketOverride,
+                'piket_name'     => $usePiketOverride ? $piket->name : null,
+                'piket_id'       => $usePiketOverride ? $piket->id : null,
                 'is_special'     => true,
                 'special_name'   => $specialSchedule->name,
                 'is_off_day'     => false,

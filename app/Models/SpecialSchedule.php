@@ -16,6 +16,8 @@ class SpecialSchedule extends Model
         'end_date',
         'time_in',
         'time_out',
+        'piket_time_in',
+        'piket_time_out',
         'late_tolerance',
         'latitude',
         'longitude',
