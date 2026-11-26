@@ -1,96 +1,93 @@
-# Habbits App
+# SAHABAT SDAM (Habbits App)
 
-Habbits adalah aplikasi manajemen dan pelacakan kebiasaan (habit tracker) yang dibangun menggunakan Laravel dan Vue.js. Aplikasi ini dirancang dengan antarmuka yang dinamis menggunakan Inertia.js dan dilengkapi dengan berbagai fitur analitik dan ekspor data.
-
-## 🚀 Tech Stack
-
-- **Backend:** [Laravel 13](https://laravel.com) (PHP 8.3)
-- **Frontend:** [Vue 3](https://vuejs.org/) & [Inertia.js](https://inertiajs.com/)
-- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Role & Permission:** [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission)
-- **Data Export:** [Laravel Excel](https://laravel-excel.com/) & [DOMPDF](https://github.com/barryvdh/laravel-dompdf)
-- **Charts:** [Chart.js](https://www.chartjs.org/) & Vue-chartjs
-- **Error Tracking:** [Sentry](https://sentry.io/)
+Aplikasi manajemen habit, presensi pegawai, administrasi sekolah, persuratan, komunikasi internal, dan POS koperasi berbasis web (PWA) dan JSON API. Dibangun dengan Laravel 13, Inertia.js, dan Vue 3.
 
 ## ✨ Fitur Utama
 
-- Autentikasi dan Manajemen Pengguna (Role & Permissions)
-- Visualisasi data statistik (Chart)
-- Editor teks kaya (Rich Text Editor - TinyMCE)
-- Drag and drop antarmuka pengguna
-- Ekspor data laporan ke dalam format PDF dan Excel
-- Pemantauan error secara real-time via Sentry
+- **Pelacakan Habit & Ibadah**: Pengisian form habit harian, voucher reward habit, rekap Qur'an & Hadis, dzikir, arah kiblat, HPT, kajian, serta catatan haid.
+- **Presensi & Kepegawaian (HR)**: Check-in/check-out berbasis geolokasi & foto selfie, pengajuan izin/cuti, Kiosk RFID, integrasi push mesin fingerprint (`/api/fingerprint/sync`), jadwal piket/jam kerja, e-filing arsip pegawai, penilaian kinerja (KPI), jurnal harian guru, dan perangkat pembelajaran (administrasi guru + arsip tahun ajaran).
+- **Tata Usaha & Persuratan**: Pengelolaan surat masuk, surat keluar (HTML builder + PDF + QR verifikasi publik), disposisi, serta notulen rapat dengan tanda tangan digital dan verifikasi publik.
+- **Koperasi Sekolah (POS)**: Kasir POS (tunai, QRIS, saldo kartu RFID, voucher habit, split payment, dan bon), manajemen member & top-up saldo, stok opname, serta laporan laba/rugi dan ekspor Excel.
+- **Komunikasi & Sistem**: Chat internal pegawai (direct, grup, dan channel divisi), real-time event via Laravel Reverb, Web Push Notification (VAPID), multi-account switching, audit login log, dan mode maintenance dengan simulasi role.
 
-## 🛠️ Prasyarat (Requirements)
+## 🚀 Tech Stack
 
-Sebelum memulai, pastikan Anda telah menginstal aplikasi berikut di sistem Anda:
-- PHP >= 8.3
+- **Backend:** [Laravel 13](https://laravel.com) (PHP ^8.3), [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission)
+- **Frontend:** [Vue 3](https://vuejs.org/), [Inertia.js](https://inertiajs.com/), [Tailwind CSS v4](https://tailwindcss.com/), [Vite 8](https://vite.dev/)
+- **Real-time & Notifikasi:** [Laravel Reverb](https://reverb.laravel.com/), Laravel Echo, Pusher JS, [WebPush](https://github.com/laravel-notification-channels/webpush)
+- **Dokumen, Ekspor & Keamanan Konten:** [Laravel Excel](https://laravel-excel.com/), [DOMPDF](https://github.com/barryvdh/laravel-dompdf), [Simple QrCode](https://www.simplesoftware.io/docs/simple-qrcode), [Purify (HTMLPurifier)](https://github.com/stevebauman/purify)
+- **UI & Utilitas:** Chart.js, Leaflet, TinyMCE, Signature Pad, VueDraggable, Ziggy
+- **Monitoring & Testing:** [Sentry](https://sentry.io/), PHPUnit 12
+
+## 🛠️ Prasyarat
+
+- PHP >= 8.3 (dengan ekstensi standar Laravel seperti `pdo_sqlite`/`pdo_mysql`, `mbstring`, `openssl`, `gd`/`zip`)
 - Composer
 - Node.js & NPM
-- Database (SQLite/MySQL/PostgreSQL)
+- Database (SQLite / MySQL / PostgreSQL)
 
-<!-- ## 💻 Panduan Instalasi (Instalasi Lokal)
+## 💻 Instalasi Lokal
 
-Ikuti langkah-langkah di bawah ini untuk menjalankan aplikasi di lingkungan pengembangan lokal Anda:
-
-1. **Clone repositori ini:**
+1. **Clone repositori:**
    ```bash
    git clone https://github.com/masjam/habbits
    cd habit
    ```
 
-2. **Instal dependensi PHP (Composer):**
+2. **Setup cepat via Composer (opsional):**
+   ```bash
+   composer setup
+   ```
+   Atau lakukan langkah manual berikut:
+
    ```bash
    composer install
-   ```
-
-3. **Salin file konfigurasi lingkungan dan hasilkan application key:**
-   ```bash
    cp .env.example .env
    php artisan key:generate
-   ```
-
-4. **Konfigurasi Database:**
-   Buka file `.env` dan sesuaikan kredensial database Anda (misalnya menggunakan SQLite atau MySQL).
-
-5. **Jalankan Migrasi Database (dan Seeder jika ada):**
-   ```bash
    php artisan migrate --seed
-   ```
-
-6. **Instal dependensi Node.js (Frontend):**
-   ```bash
    npm install
+   npm run build
    ```
 
-7. **Jalankan Development Server:**
-   Buka dua terminal terpisah dan jalankan perintah berikut:
-   
-   Terminal 1 (Menjalankan server PHP & Queue):
+3. **Konfigurasi Database & Storage:**
+   Sesuaikan koneksi database di `.env` (default `.env.example` menggunakan `sqlite` dengan session, cache, dan queue berbasis `database`). Jika menggunakan file publik di `storage/app/public`, jalankan:
    ```bash
-   php artisan serve
+   php artisan storage:link
    ```
-   
-   Terminal 2 (Menjalankan Vite untuk frontend):
-   ```bash
-   npm run dev
-   ```
-   Atau cukup jalankan perintah tunggal ini (jika didukung):
+
+4. **Jalankan Development Server:**
    ```bash
    composer dev
    ```
+   Perintah di atas menjalankan `php artisan serve`, `php artisan queue:listen`, `php artisan pail`, dan `npm run dev` secara bersamaan. Aplikasi dapat diakses di `http://localhost:8000`.
 
-8. **Akses Aplikasi:**
-   Buka browser Anda dan kunjungi: `http://localhost:8000` -->
+## ⚙️ Konfigurasi Lingkungan Tambahan (Opsional)
 
-## 🔒 Konfigurasi Sentry (Opsional)
+- **Sentry Error Tracking:**
+  ```env
+  SENTRY_LARAVEL_DSN="your-sentry-dsn-here"
+  VITE_SENTRY_DSN_PUBLIC="your-sentry-dsn-public-here"
+  ```
+- **Storage Eksternal Administrasi Guru:**
+  ```env
+  ADMINISTRASI_GURU_PATH=/mnt/dokumen_guru
+  ```
+- **Keamanan & Integrasi Lainnya:**
+  - `FINGERPRINT_STRICT_AUTH=true` untuk mewajibkan verifikasi `X-Device-Token` pada endpoint `/api/fingerprint/sync`.
+  - `TRUSTED_PROXIES` untuk daftar IP reverse proxy tepercaya (default `127.0.0.1,::1`).
+  - `REVERB_*` dan `VAPID_*` untuk WebSocket Laravel Reverb dan Web Push Notification.
 
-Untuk mengaktifkan tracking error, pastikan Anda menambahkan DSN Sentry di file `.env` Anda:
-```env
-SENTRY_LARAVEL_DSN="your-sentry-dsn-here"
-VITE_SENTRY_DSN_PUBLIC="your-sentry-dsn-public-here"
+## 🧪 Pengujian
+
+Jalankan test suite backend menggunakan PHPUnit:
+```bash
+composer test
+```
+Atau jalankan suite konsistensi UI secara terpisah:
+```bash
+php artisan test --testsuite=UI
 ```
 
-<!-- ## 📜 Lisensi
+## 📜 Lisensi
 
-Aplikasi ini adalah perangkat lunak open-source di bawah lisensi [MIT license](https://opensource.org/licenses/MIT). -->
+Perangkat lunak ini dirilis di bawah lisensi [MIT License](https://opensource.org/licenses/MIT).
