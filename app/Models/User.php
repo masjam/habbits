@@ -44,6 +44,7 @@ class User extends Authenticatable
         'late_tolerance',
         'rfid_uid',
         'coop_balance',
+        'coop_bon_limit',
         'fingerprint_id',
         'must_change_password',
     ];
@@ -69,6 +70,7 @@ class User extends Authenticatable
             'can_multi_login'   => 'boolean',
             'late_tolerance'    => 'integer',
             'coop_balance'      => 'float',
+            'coop_bon_limit'    => 'float',
         ];
     }
 

@@ -307,6 +307,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/members', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'members'])->name('members');
         Route::post('/members', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'storeMember'])->name('members.store');
         Route::post('/members/pegawai/{user}/topup', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'topupUser'])->name('members.topup-user');
+        Route::post('/members/pegawai/{user}/bon-limit', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'updateUserBonLimit'])->name('members.user-bon-limit');
         Route::post('/members/{member}/topup', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'topupMember'])->name('members.topup');
         Route::delete('/members/{member}', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'destroyMember'])->name('members.destroy');
         Route::get('/bon', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'bonIndex'])->name('bon');

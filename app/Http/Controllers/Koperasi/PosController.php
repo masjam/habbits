@@ -186,7 +186,7 @@ class PosController extends Controller
                     'rfid_uid'          => $user->rfid_uid ?: '-',
                     'coop_balance'      => (float) $user->coop_balance,
                     'formatted_balance' => 'Rp ' . number_format($user->coop_balance, 0, ',', '.'),
-                    'bon_limit'         => 0,
+                    'bon_limit'         => (float) ($user->coop_bon_limit ?? 0),
                     'current_bon'       => $currentBon,
                     'active_vouchers'   => $activeVouchers,
                 ],
@@ -480,13 +480,18 @@ class PosController extends Controller
                 return redirect()->back()->with('error', 'Pegawai atau Member wajib dipilih untuk transaksi BON / Kasbon.');
             }
 
-            if ($customer instanceof CoopMember && $customer->bon_limit > 0) {
-                $currentBon = (float) CoopTransaction::where('member_id', $customer->id)
+            $bonLimit = $customer instanceof CoopMember
+                ? (float) $customer->bon_limit
+                : (float) ($customer->coop_bon_limit ?? 0);
+
+            if ($bonLimit > 0) {
+                $ownerCol = $customer instanceof CoopMember ? 'member_id' : 'user_id';
+                $currentBon = (float) CoopTransaction::where($ownerCol, $customer->id)
                     ->whereIn('bon_status', ['unpaid', 'partial'])
                     ->sum(DB::raw('bon_amount - bon_paid_amount'));
 
-                if (($currentBon + $payableAfterVoucher) > $customer->bon_limit) {
-                    return redirect()->back()->with('error', "Transaksi melebihi batas BON {$customer->name} (Limit: Rp " . number_format($customer->bon_limit, 0, ',', '.') . ").");
+                if (($currentBon + $payableAfterVoucher) > $bonLimit) {
+                    return redirect()->back()->with('error', "Transaksi melebihi batas BON {$customer->name} (Limit: Rp " . number_format($bonLimit, 0, ',', '.') . ").");
                 }
             }
 

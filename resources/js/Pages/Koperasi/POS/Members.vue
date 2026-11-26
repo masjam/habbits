@@ -112,6 +112,27 @@ const removeMember = (m) => {
     if (!confirm(`Hapus / nonaktifkan member ${m.name}?`)) return
     router.delete(route('koperasi.members.destroy', m.id), { preserveScroll: true })
 }
+
+// ─── Modal Edit Limit BON Pegawai ───
+const bonLimitTarget = ref(null)
+const bonLimitForm = useForm({
+    bon_limit: 0,
+})
+
+const openBonLimitModal = (m) => {
+    bonLimitTarget.value = m
+    bonLimitForm.bon_limit = m.bon_limit || 0
+}
+
+const submitBonLimit = () => {
+    if (!bonLimitTarget.value) return
+    bonLimitForm.post(route('koperasi.members.user-bon-limit', bonLimitTarget.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            bonLimitTarget.value = null
+        },
+    })
+}
 </script>
 
 <template>
@@ -226,6 +247,9 @@ const removeMember = (m) => {
                                         <button type="button" @click="openTopupModal(m)" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px]">
                                             Topup
                                         </button>
+                                        <button v-if="m.source === 'user'" type="button" @click="openBonLimitModal(m)" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px]">
+                                            Limit BON
+                                        </button>
                                         <button v-if="m.source === 'member'" type="button" @click="openEditModal(m)" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px]">
                                             Edit
                                         </button>
@@ -331,6 +355,26 @@ const removeMember = (m) => {
                     <button type="button" @click="topupTarget = null" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Batal</button>
                     <button type="submit" :disabled="topupForm.processing" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs">
                         {{ topupForm.processing ? 'Memproses...' : 'Topup Saldo' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal Edit Limit BON Pegawai -->
+        <div v-if="bonLimitTarget" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" @click.self="bonLimitTarget = null">
+            <form @submit.prevent="submitBonLimit" class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+                <div>
+                    <h3 class="text-base font-black text-slate-900">Atur Limit BON Pegawai</h3>
+                    <p class="text-xs text-slate-500">{{ bonLimitTarget.name }} ({{ bonLimitTarget.type_label }})</p>
+                </div>
+                <div class="text-xs">
+                    <label class="block font-bold text-slate-600 mb-1">Batas Maksimal BON (Rp, 0 = tanpa batas)</label>
+                    <input v-model.number="bonLimitForm.bon_limit" type="number" min="0" step="10000" required class="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono text-base font-bold" />
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" @click="bonLimitTarget = null" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Batal</button>
+                    <button type="submit" :disabled="bonLimitForm.processing" class="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs">
+                        {{ bonLimitForm.processing ? 'Menyimpan...' : 'Simpan Limit' }}
                     </button>
                 </div>
             </form>

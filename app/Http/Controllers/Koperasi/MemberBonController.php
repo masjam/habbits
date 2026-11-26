@@ -53,7 +53,7 @@ class MemberBonController extends Controller
                 'phone'        => $u->phone ?? '-',
                 'rfid_uid'     => $u->rfid_uid,
                 'coop_balance' => (float) $u->coop_balance,
-                'bon_limit'    => 0,
+                'bon_limit'    => (float) ($u->coop_bon_limit ?? 0),
                 'active_bon'   => (float) ($userBonMap[$u->id] ?? 0),
                 'notes'        => null,
                 'is_active'    => true,
@@ -205,6 +205,22 @@ class MemberBonController extends Controller
         );
 
         return redirect()->back()->with('success', "Topup Rp " . number_format($amount, 0, ',', '.') . " untuk {$user->name} berhasil.");
+    }
+
+    /**
+     * Update Batas Maksimal BON (Piutang) Pegawai.
+     */
+    public function updateUserBonLimit(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'bon_limit' => 'required|numeric|min:0',
+        ]);
+
+        $limit = (float) $validated['bon_limit'];
+        $user->update(['coop_bon_limit' => $limit]);
+
+        $limitText = $limit > 0 ? 'Rp ' . number_format($limit, 0, ',', '.') : 'Tanpa batas';
+        return redirect()->back()->with('success', "Limit BON {$user->name} berhasil diubah menjadi {$limitText}.");
     }
 
     /**
