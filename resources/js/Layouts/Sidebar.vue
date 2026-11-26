@@ -417,6 +417,14 @@ const rawMenuGroups = computed(() => [
                 roles: ['koperasi', 'superadmin'],
             },
             {
+                key: 'koperasi-settings',
+                label: 'Identitas Koperasi',
+                icon: IconKoperasi,
+                route: 'koperasi.settings',
+                activeRoutes: ['koperasi.settings*'],
+                roles: ['koperasi', 'superadmin'],
+            },
+            {
                 key: 'koperasi-members',
                 label: 'Member Pegawai',
                 icon: IconDaftarDivisi,

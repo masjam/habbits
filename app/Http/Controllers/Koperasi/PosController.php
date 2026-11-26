@@ -32,6 +32,7 @@ class PosController extends Controller
     {
         return [
             'name'           => Setting::get('koperasi_name', 'Koperasi Rabbani'),
+            'tagline'        => Setting::get('koperasi_tagline', 'SD Muhammadiyah 1 Krian • Sistem Kasir & Penukaran Voucher Habit'),
             'address'        => Setting::get('koperasi_address', 'Jl. Raden Bagus No. 1, Krian, Sidoarjo, Jawa Timur'),
             'phone'          => Setting::get('koperasi_phone', '0812-3456-7890'),
             'receipt_footer' => Setting::get('koperasi_receipt_footer', "Terima kasih telah berbelanja di Koperasi Rabbani.\nSemoga berkah & bernilai ibadah."),
@@ -958,6 +959,44 @@ class PosController extends Controller
         $product->delete();
 
         return redirect()->back()->with('success', "Produk {$name} berhasil dihapus.");
+    }
+
+    /**
+     * Halaman Pengaturan Identitas Koperasi.
+     */
+    public function settings()
+    {
+        return Inertia::render('Koperasi/POS/Settings', [
+            'storeInfo' => $this->storeInfo(),
+        ]);
+    }
+
+    /**
+     * Simpan Pengaturan Identitas Koperasi.
+     */
+    public function updateSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'name'           => 'required|string|max:150',
+            'tagline'        => 'nullable|string|max:255',
+            'address'        => 'required|string|max:500',
+            'phone'          => 'nullable|string|max:50',
+            'receipt_footer' => 'nullable|string|max:500',
+        ]);
+
+        $map = [
+            'koperasi_name'           => $validated['name'],
+            'koperasi_tagline'        => $validated['tagline'] ?? '',
+            'koperasi_address'        => $validated['address'],
+            'koperasi_phone'          => $validated['phone'] ?? '',
+            'koperasi_receipt_footer' => $validated['receipt_footer'] ?? '',
+        ];
+
+        foreach ($map as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
+
+        return redirect()->back()->with('success', 'Identitas Koperasi berhasil diperbarui.');
     }
 
     /**

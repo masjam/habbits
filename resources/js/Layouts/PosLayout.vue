@@ -34,6 +34,7 @@ const sidebarGroups = computed(() => {
                 { icon: 'opname', label: 'Stok Opname', desc: 'Audit & penyesuaian stok fisik', routeName: 'koperasi.stock-opname', pattern: 'koperasi.stock-opname*' },
                 { icon: 'history', label: 'Riwayat Transaksi', desc: 'Arsip belanja, cetak struk & void', routeName: 'koperasi.history', pattern: 'koperasi.history*' },
                 { icon: 'reports', label: 'Laporan Koperasi', desc: 'Laba/rugi, perubahan stok & member', routeName: 'koperasi.reports', pattern: 'koperasi.reports*' },
+                { icon: 'settings', label: 'Identitas Koperasi', desc: 'Nama toko, alamat, telp & footer struk', routeName: 'koperasi.settings', pattern: 'koperasi.settings*' },
             ],
         },
         {
@@ -255,6 +256,11 @@ onUnmounted(() => {
                                 <circle cx="16.5" cy="16.5" r="3.5" fill="white" stroke="currentColor" />
                                 <path d="M16.5 15v3M15.3 16.5h2.4" />
                             </svg>
+                            <svg v-else-if="item.icon === 'settings'" class="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 9.5 12 4l8 5.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V9.5Z" fill="currentColor" fill-opacity="0.13" />
+                                <path d="M9.5 20.5V14h5v6.5" />
+                                <circle cx="12" cy="10" r="1.5" />
+                            </svg>
                             <svg v-else class="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3.5" y="3.5" width="7.5" height="9" rx="2" fill="currentColor" fill-opacity="0.16" />
                                 <rect x="13" y="3.5" width="7.5" height="5.5" rx="2" />
@@ -326,7 +332,7 @@ onUnmounted(() => {
                 type="button"
                 @click="toggleMobileSheet('manajemen')"
                 class="flex flex-col items-center justify-center gap-0.5 py-1 rounded-xl transition-colors"
-                :class="(activeMobileSheet === 'manajemen' || route().current('koperasi.products*') || route().current('koperasi.stock-opname*') || route().current('koperasi.history*') || route().current('koperasi.reports*')) ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-800'"
+                :class="(activeMobileSheet === 'manajemen' || route().current('koperasi.products*') || route().current('koperasi.stock-opname*') || route().current('koperasi.history*') || route().current('koperasi.reports*') || route().current('koperasi.settings*')) ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-800'"
             >
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                 <span class="text-[10px] font-bold">Manajemen</span>
