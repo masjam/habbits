@@ -418,7 +418,7 @@ const rawMenuGroups = computed(() => [
             },
             {
                 key: 'koperasi-members',
-                label: 'Member Non-Pegawai',
+                label: 'Member Pegawai',
                 icon: IconDaftarDivisi,
                 route: 'koperasi.members',
                 activeRoutes: ['koperasi.members*'],
