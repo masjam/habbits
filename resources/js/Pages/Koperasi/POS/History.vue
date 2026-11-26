@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import PosLayout from '@/Layouts/PosLayout.vue'
 import { IconKoperasi, IconArsip } from '@/Components/Icons'
+import { printReceiptElement } from '@/utils/printReceipt'
 
 const props = defineProps({
     transactions: {
@@ -11,11 +12,20 @@ const props = defineProps({
     },
     summary: {
         type: Object,
-        default: () => ({ total_transactions: 0, total_discount: 0, total_amount: 0 }),
+        default: () => ({ total_transactions: 0, total_sales: 0, total_vouchers: 0, total_rfid: 0 }),
     },
     filters: {
         type: Object,
         default: () => ({ start_date: '', end_date: '', search: '' }),
+    },
+    storeInfo: {
+        type: Object,
+        default: () => ({
+            name: 'Koperasi Rabbani',
+            address: 'Jl. Raden Bagus No. 1, Krian, Sidoarjo',
+            phone: '0812-3456-7890',
+            receipt_footer: "Terima kasih telah berbelanja di Koperasi Rabbani.\nSemoga berkah & bernilai ibadah.",
+        }),
     },
 })
 
@@ -62,36 +72,39 @@ const formatRupiah = (val) => {
 const activeReceipt = ref(null)
 
 const showReceipt = (trx) => {
+    const totalGross = Number(trx.total_amount) || 0
+    const voucherAmount = Number(trx.voucher_amount) || 0
+
     activeReceipt.value = {
-        transaction_code:   trx.transaction_code,
-        voucher_code:       trx.voucher_code,
-        date_time:          trx.claimed_at,
-        cashier_name:       trx.cashier_name,
-        customer_name:      trx.user_name,
-        customer_nip:       trx.user_nip,
-        customer_divisi:    trx.user_divisi,
-        reward_title:       trx.reward_title,
-        reward_value:       trx.reward_value,
-        transaction_amount: trx.transaction_amount,
-        discount_amount:    trx.discount_amount,
-        payable_amount:     Math.max(0, trx.transaction_amount - trx.discount_amount),
-        paid_amount:        trx.paid_amount,
-        change_amount:      trx.change_amount,
-        items_summary:      trx.items_summary,
-        store_name:         'Koperasi Surya Amanah SD Muhammadiyah 1 Krian',
-        store_address:      'Jl. Raden Bagus No. 1, Krian, Sidoarjo',
-        store_phone:        '0812-3456-7890',
-        receipt_footer:     "Terima kasih atas dedikasi ibadah Anda.\nBarang yang sudah dibeli tidak dapat ditukar/dikembalikan.",
+        transaction_code: trx.transaction_code,
+        voucher_code:     trx.voucher_code,
+        date_time:        trx.created_at,
+        cashier_name:     trx.cashier_name,
+        customer_name:    trx.customer_name || 'Pelanggan Umum',
+        customer_nip:     trx.customer_nip || '-',
+        customer_divisi:  trx.customer_divisi || '-',
+        payment_method:   trx.payment_method || 'cash',
+        items:            Array.isArray(trx.items) ? trx.items : [],
+        total_gross:      totalGross,
+        voucher_amount:   voucherAmount,
+        payable_amount:   Math.max(0, totalGross - voucherAmount),
+        rfid_paid_amount: Number(trx.rfid_paid_amount) || 0,
+        cash_paid_amount: Number(trx.cash_paid_amount) || 0,
+        change_amount:    Number(trx.change_amount) || 0,
+        store_name:       props.storeInfo?.name || 'Koperasi Rabbani',
+        store_address:    props.storeInfo?.address || 'Jl. Raden Bagus No. 1, Krian, Sidoarjo',
+        store_phone:      props.storeInfo?.phone || '0812-3456-7890',
+        receipt_footer:   props.storeInfo?.receipt_footer || "Terima kasih telah berbelanja di Koperasi Rabbani.\nSemoga berkah & bernilai ibadah.",
     }
 }
 
 const printReceipt = () => {
-    window.print()
+    printReceiptElement('receipt-print-area')
 }
 
 // ─── Void Transaction ───
 const cancelTransaction = (trx) => {
-    if (!confirm(`Batalkan transaksi ${trx.transaction_code} milik ${trx.user_name}? Voucher akan dikembalikan aktif.`)) {
+    if (!confirm(`Batalkan transaksi ${trx.transaction_code} milik ${trx.customer_name || 'Pelanggan Umum'}? Voucher/saldo akan dikembalikan.`)) {
         return
     }
     router.post(route('koperasi.pos.cancel', trx.id), {}, {
@@ -101,7 +114,7 @@ const cancelTransaction = (trx) => {
 </script>
 
 <template>
-    <Head title="Riwayat Transaksi POS — Koperasi Sekolah" />
+    <Head title="Riwayat Transaksi POS — Koperasi Rabbani" />
 
     <PosLayout>
         <div class="flex-1 py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 overflow-y-auto bg-slate-100/60">
@@ -167,11 +180,11 @@ const cancelTransaction = (trx) => {
                 </div>
                 <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
                     <p class="text-xs font-semibold text-slate-500">Total Potongan Voucher</p>
-                    <p class="text-2xl font-black text-emerald-600 mt-1">{{ formatRupiah(summary.total_discount) }}</p>
+                    <p class="text-2xl font-black text-emerald-600 mt-1">{{ formatRupiah(summary.total_vouchers) }}</p>
                 </div>
                 <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
                     <p class="text-xs font-semibold text-slate-500">Total Nilai Belanja</p>
-                    <p class="text-2xl font-black text-teal-600 mt-1">{{ formatRupiah(summary.total_amount) }}</p>
+                    <p class="text-2xl font-black text-teal-600 mt-1">{{ formatRupiah(summary.total_sales) }}</p>
                 </div>
             </div>
 
@@ -240,11 +253,11 @@ const cancelTransaction = (trx) => {
                             <tr v-for="trx in transactions.data" :key="trx.id" class="hover:bg-slate-50/70 transition-colors">
                                 <td class="px-4 py-3">
                                     <div class="font-bold text-slate-900 font-mono">{{ trx.transaction_code }}</div>
-                                    <div class="text-[11px] text-slate-400">{{ trx.claimed_at }}</div>
+                                    <div class="text-[11px] text-slate-400">{{ trx.created_at }}</div>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <div class="font-bold text-slate-800">{{ trx.user_name }}</div>
-                                    <div class="text-[11px] text-slate-400">NIP: {{ trx.user_nip }} • {{ trx.user_divisi }}</div>
+                                    <div class="font-bold text-slate-800">{{ trx.customer_name }}</div>
+                                    <div class="text-[11px] text-slate-400">NIP: {{ trx.customer_nip }} • {{ trx.customer_divisi }}</div>
                                 </td>
                                 <td class="px-4 py-3">
                                     <span v-if="trx.voucher_code" class="font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -253,10 +266,10 @@ const cancelTransaction = (trx) => {
                                     <span v-else class="text-slate-400 font-mono text-[11px]">-</span>
                                 </td>
                                 <td class="px-4 py-3 text-right font-black text-emerald-600">
-                                    {{ formatRupiah(trx.discount_amount) }}
+                                    {{ formatRupiah(trx.voucher_amount) }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-bold text-slate-800">
-                                    {{ formatRupiah(trx.transaction_amount) }}
+                                    {{ formatRupiah(trx.total_amount) }}
                                 </td>
                                 <td class="px-4 py-3 text-slate-500">
                                     {{ trx.cashier_name }}
@@ -346,6 +359,10 @@ const cancelTransaction = (trx) => {
                                 <span>Pelanggan:</span>
                                 <span class="font-bold">{{ activeReceipt.customer_name }}</span>
                             </div>
+                            <div class="flex justify-between">
+                                <span>Metode:</span>
+                                <span class="uppercase font-bold">{{ activeReceipt.payment_method }}</span>
+                            </div>
                             <div v-if="activeReceipt.voucher_code" class="flex justify-between text-emerald-700">
                                 <span>Voucher:</span>
                                 <span class="font-bold">{{ activeReceipt.voucher_code }}</span>
@@ -354,28 +371,38 @@ const cancelTransaction = (trx) => {
 
                         <!-- Item Summary -->
                         <div class="py-1 space-y-1 text-[11px]">
-                            <div class="flex justify-between text-slate-500">
+                            <template v-if="activeReceipt.items && activeReceipt.items.length > 0">
+                                <div v-for="(it, i) in activeReceipt.items" :key="i" class="flex justify-between">
+                                    <span>{{ it.name }} x{{ it.qty }}</span>
+                                    <span class="font-bold">{{ formatRupiah(it.subtotal) }}</span>
+                                </div>
+                            </template>
+                            <div v-else class="flex justify-between text-slate-500">
                                 <span>Belanja:</span>
-                                <span>{{ activeReceipt.items_summary || 'Barang Koperasi' }}</span>
+                                <span>Barang Koperasi</span>
                             </div>
-                            <div class="flex justify-between">
+                            <div class="border-t border-dashed border-slate-300 pt-1 flex justify-between font-bold">
                                 <span>Subtotal:</span>
-                                <span class="font-bold">{{ formatRupiah(activeReceipt.transaction_amount) }}</span>
+                                <span>{{ formatRupiah(activeReceipt.total_gross) }}</span>
                             </div>
-                            <div v-if="activeReceipt.discount_amount > 0" class="flex justify-between text-emerald-700 font-bold">
-                                <span>Potongan Voucher:</span>
-                                <span>- {{ formatRupiah(activeReceipt.discount_amount) }}</span>
+                            <div v-if="activeReceipt.voucher_amount > 0" class="flex justify-between text-emerald-700 font-bold">
+                                <span>Voucher Habit:</span>
+                                <span>- {{ formatRupiah(activeReceipt.voucher_amount) }}</span>
                             </div>
                             <div class="flex justify-between font-black text-sm border-t border-slate-400 pt-1">
                                 <span>Total Bayar:</span>
                                 <span>{{ formatRupiah(activeReceipt.payable_amount) }}</span>
                             </div>
-                            <div v-if="activeReceipt.paid_amount > 0" class="flex justify-between text-[11px]">
-                                <span>Tunai Diterima:</span>
-                                <span>{{ formatRupiah(activeReceipt.paid_amount) }}</span>
+                            <div v-if="activeReceipt.rfid_paid_amount > 0" class="flex justify-between text-[10px]">
+                                <span>Dibayar Saldo RFID:</span>
+                                <span>{{ formatRupiah(activeReceipt.rfid_paid_amount) }}</span>
                             </div>
-                            <div v-if="activeReceipt.change_amount > 0" class="flex justify-between text-[11px] font-bold">
-                                <span>Kembalian:</span>
+                            <div v-if="activeReceipt.cash_paid_amount > 0" class="flex justify-between text-[10px]">
+                                <span>Dibayar Tunai:</span>
+                                <span>{{ formatRupiah(activeReceipt.cash_paid_amount) }}</span>
+                            </div>
+                            <div v-if="activeReceipt.change_amount > 0" class="flex justify-between text-[10px] font-bold">
+                                <span>Kembalian Tunai:</span>
                                 <span>{{ formatRupiah(activeReceipt.change_amount) }}</span>
                             </div>
                         </div>
@@ -408,23 +435,3 @@ const cancelTransaction = (trx) => {
         </div>
     </PosLayout>
 </template>
-
-<style scoped>
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    #receipt-print-area, #receipt-print-area * {
-        visibility: visible;
-    }
-    #receipt-print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        max-width: 80mm;
-        margin: 0 auto;
-        padding: 5px;
-    }
-}
-</style>

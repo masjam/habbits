@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
 import PosLayout from '@/Layouts/PosLayout.vue'
 import { IconKoperasi, IconVoucher, IconArsip } from '@/Components/Icons'
+import { printReceiptElement } from '@/utils/printReceipt'
 
 const props = defineProps({
     cashier: {
@@ -27,7 +28,7 @@ const props = defineProps({
     },
     storeInfo: {
         type: Object,
-        default: () => ({ name: 'Koperasi Surya Amanah SDM 1 Krian' }),
+        default: () => ({ name: 'Koperasi Rabbani' }),
     },
     lastReceipt: {
         type: Object,
@@ -422,7 +423,7 @@ const submitCheckout = () => {
 const activeReceipt = ref(null)
 
 const printReceipt = () => {
-    window.print()
+    printReceiptElement('receipt-print-area')
 }
 
 // ─── Keyboard Shortcuts ─────────────────────────────────────
@@ -459,7 +460,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <Head title="Waroong POS Koperasi — SD Muhammadiyah 1 Krian" />
+    <Head title="POS Koperasi Rabbani — SD Muhammadiyah 1 Krian" />
 
     <PosLayout>
         <!-- ── Top Notification Banner ── -->
@@ -1009,23 +1010,3 @@ onUnmounted(() => {
 
     </PosLayout>
 </template>
-
-<style scoped>
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    #receipt-print-area, #receipt-print-area * {
-        visibility: visible;
-    }
-    #receipt-print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        max-width: 80mm;
-        margin: 0 auto;
-        padding: 5px;
-    }
-}
-</style>

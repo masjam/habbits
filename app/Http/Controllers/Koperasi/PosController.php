@@ -25,7 +25,20 @@ use Maatwebsite\Excel\Facades\Excel;
 class PosController extends Controller
 {
     /**
-     * Tampilkan halaman utama Sistem POS Kasir Koperasi Sekolah (Waroong POS).
+     * Ambil informasi identitas toko koperasi untuk POS dan struk belanja.
+     */
+    private function storeInfo(): array
+    {
+        return [
+            'name'           => Setting::get('koperasi_name', 'Koperasi Rabbani'),
+            'address'        => Setting::get('koperasi_address', 'Jl. Raden Bagus No. 1, Krian, Sidoarjo, Jawa Timur'),
+            'phone'          => Setting::get('koperasi_phone', '0812-3456-7890'),
+            'receipt_footer' => Setting::get('koperasi_receipt_footer', "Terima kasih telah berbelanja di Koperasi Rabbani.\nSemoga berkah & bernilai ibadah."),
+        ];
+    }
+
+    /**
+     * Tampilkan halaman utama Sistem POS Kasir Koperasi Rabbani.
      */
     public function index(Request $request)
     {
@@ -86,12 +99,7 @@ class PosController extends Controller
             });
 
         // 4. Informasi Koperasi
-        $storeInfo = [
-            'name'           => Setting::get('koperasi_name', 'Koperasi Surya Amanah SD Muhammadiyah 1 Krian'),
-            'address'        => Setting::get('koperasi_address', 'Jl. Raden Bagus No. 1, Krian, Sidoarjo, Jawa Timur'),
-            'phone'          => Setting::get('koperasi_phone', '0812-3456-7890'),
-            'receipt_footer' => Setting::get('koperasi_receipt_footer', "Terima kasih telah berbelanja di Koperasi Sekolah SDAM.\nSemoga berkah & bernilai ibadah."),
-        ];
+        $storeInfo = $this->storeInfo();
 
         return Inertia::render('Koperasi/POS/Index', [
             'cashier'            => [
@@ -515,6 +523,8 @@ class PosController extends Controller
 
             DB::commit();
 
+            $storeInfo = $this->storeInfo();
+
             // Siapkan payload struk thermal
             $receipt = [
                 'transaction_code' => $transactionCode,
@@ -532,10 +542,10 @@ class PosController extends Controller
                 'cash_paid_amount' => $cashPaidAmount,
                 'change_amount'    => $changeAmount,
                 'customer_balance' => $customer ? (float) $customer->fresh()->coop_balance : null,
-                'store_name'       => Setting::get('koperasi_name', 'Koperasi Surya Amanah SD Muhammadiyah 1 Krian'),
-                'store_address'    => Setting::get('koperasi_address', 'Jl. Raden Bagus No. 1, Krian, Sidoarjo'),
-                'store_phone'      => Setting::get('koperasi_phone', '0812-3456-7890'),
-                'receipt_footer'   => Setting::get('koperasi_receipt_footer', "Terima kasih telah berbelanja di Koperasi Sekolah SDAM.\nBarang yang sudah dibeli tidak dapat ditukar/dikembalikan."),
+                'store_name'       => $storeInfo['name'],
+                'store_address'    => $storeInfo['address'],
+                'store_phone'      => $storeInfo['phone'],
+                'receipt_footer'   => $storeInfo['receipt_footer'],
             ];
 
             return redirect()->route('koperasi.pos')
@@ -599,6 +609,8 @@ class PosController extends Controller
             'items_summary'      => $itemsSummary,
         ]);
 
+        $storeInfo = $this->storeInfo();
+
         $receipt = [
             'transaction_code' => $transactionCode,
             'voucher_code'     => $voucher->voucher_code,
@@ -616,10 +628,10 @@ class PosController extends Controller
             'rfid_paid_amount' => 0,
             'cash_paid_amount' => $paidAmount,
             'change_amount'    => $changeAmount,
-            'store_name'       => Setting::get('koperasi_name', 'Koperasi Surya Amanah SD Muhammadiyah 1 Krian'),
-            'store_address'    => Setting::get('koperasi_address', 'Jl. Raden Bagus No. 1, Krian, Sidoarjo'),
-            'store_phone'      => Setting::get('koperasi_phone', '0812-3456-7890'),
-            'receipt_footer'   => Setting::get('koperasi_receipt_footer', "Terima kasih telah berbelanja di Koperasi Sekolah SDAM.\nSemoga berkah & bernilai ibadah."),
+            'store_name'       => $storeInfo['name'],
+            'store_address'    => $storeInfo['address'],
+            'store_phone'      => $storeInfo['phone'],
+            'receipt_footer'   => $storeInfo['receipt_footer'],
         ];
 
         return redirect()->route('koperasi.pos')
@@ -736,6 +748,7 @@ class PosController extends Controller
             return [
                 'id'               => $t->id,
                 'transaction_code' => $t->transaction_code,
+                'voucher_code'     => $t->voucher?->voucher_code,
                 'customer_name'    => $t->customer?->name ?: 'Pelanggan Umum',
                 'customer_nip'     => $t->customer?->nip ?: '-',
                 'customer_divisi'  => $t->customer?->divisi ?: '-',
@@ -765,6 +778,7 @@ class PosController extends Controller
                 'end_date'   => $endDate,
                 'search'     => $search,
             ],
+            'storeInfo'    => $this->storeInfo(),
             'cashier'      => auth()->user(),
         ]);
     }

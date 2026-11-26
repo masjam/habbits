@@ -7,6 +7,43 @@ const page = usePage()
 const userRoles = computed(() => page.props.auth?.roles ?? [])
 const hasRole = (role) => userRoles.value.includes(role)
 
+// ─── Ikon & Tema Warna Infografis Alur Kerja ────────────────────────────────
+const workflowStepIcons = [
+    'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z',
+    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+    'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+]
+
+const stepThemes = [
+    {
+        node: 'bg-emerald-600 text-white ring-emerald-100 dark:ring-emerald-900/60',
+        badge: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300',
+        bar: 'bg-emerald-500',
+        border: 'hover:border-emerald-300 dark:hover:border-emerald-700',
+    },
+    {
+        node: 'bg-teal-600 text-white ring-teal-100 dark:ring-teal-900/60',
+        badge: 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300',
+        bar: 'bg-teal-500',
+        border: 'hover:border-teal-300 dark:hover:border-teal-700',
+    },
+    {
+        node: 'bg-sky-600 text-white ring-sky-100 dark:ring-sky-900/60',
+        badge: 'bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300',
+        bar: 'bg-sky-500',
+        border: 'hover:border-sky-300 dark:hover:border-sky-700',
+    },
+    {
+        node: 'bg-amber-500 text-white ring-amber-100 dark:ring-amber-900/60',
+        badge: 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300',
+        bar: 'bg-amber-500',
+        border: 'hover:border-amber-300 dark:hover:border-amber-700',
+    },
+]
+
+const getStepTheme = (idx) => stepThemes[idx % stepThemes.length]
+
 // ─── Data Panduan Lengkap per Role (Alur Kerja + Langkah Detail + Akses Cepat) ──
 const roleGuides = [
     {
@@ -639,8 +676,15 @@ const scrollToSection = (idx) => {
     }
 }
 
-// ─── Scroll Reveal Observer (Ringan, menghormati reduced-motion) ───────────
+// ─── Scroll Reveal Observer & Mobile Accordion ──────────────────────────────
 const activeSectionIndex = ref(0)
+const openMobileSections = ref({ 0: true })
+const isSectionOpen = (idx) => searchQuery.value.trim().length > 0 || !!openMobileSections.value[idx]
+const toggleMobileSection = (idx) => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) return
+    openMobileSections.value[idx] = !openMobileSections.value[idx]
+}
+
 let observer = null
 
 const setupObserver = () => {
@@ -667,6 +711,11 @@ const setupObserver = () => {
 
 onMounted(() => {
     setupObserver()
+})
+
+watch(activeTab, () => {
+    openMobileSections.value = { 0: true }
+    activeSectionIndex.value = 0
 })
 
 watch([activeTab, searchQuery], () => {
@@ -752,135 +801,269 @@ onUnmounted(() => {
                 </button>
             </div>
 
-            <!-- ── 3. Alur Kerja Utama (Workflow Timeline) ─────────────── -->
-            <div v-if="currentGuide?.workflow?.length && !searchQuery" class="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-xs">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Alur Kerja Utama • {{ currentGuide.name }}
-                    </h2>
-                    <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Urutan Penggunaan Harian</span>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div
-                        v-for="wf in currentGuide.workflow"
-                        :key="wf.step"
-                        class="relative flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70"
-                    >
-                        <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 shadow-xs">
-                            {{ wf.step }}
-                        </span>
-                        <div class="min-w-0">
-                            <p class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">{{ wf.title }}</p>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{{ wf.desc }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── 4. Sticky Quick-Jump Navigation Pills ────────────────── -->
+            <!-- ── 3. Infografis Alur Kerja Utama ───────────────────────── -->
             <div
-                v-if="currentGuide?.sections?.length > 1"
-                class="sticky top-2 z-20 flex items-center gap-2 overflow-x-auto py-2 px-3 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-sm"
+                v-if="currentGuide?.workflow?.length && !searchQuery"
+                class="relative overflow-hidden bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-xs"
             >
-                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0 px-1">Daftar Isi:</span>
-                <button
-                    v-for="(sec, idx) in currentGuide.sections"
-                    :key="sec.group"
-                    type="button"
-                    @click="scrollToSection(idx)"
-                    class="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer"
-                    :class="activeSectionIndex === idx
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-700'"
-                >
-                    {{ idx + 1 }}. {{ sec.group }}
-                </button>
-            </div>
+                <!-- Header Infografis -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+                    <div>
+                        <span class="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Infografis Alur Kerja • {{ currentGuide.name }}
+                        </span>
+                        <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                            Langkah Praktis dari Awal hingga Selesai
+                        </h2>
+                    </div>
+                    <span class="self-start sm:self-auto px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                        {{ currentGuide.workflow.length }} Tahap Utama
+                    </span>
+                </div>
 
-            <!-- ── 5. Menu Detail Sections (Scroll-Reveal Chapters) ────── -->
-            <div v-if="currentGuide?.sections?.length" class="space-y-6">
-                <section
-                    v-for="(section, sIdx) in currentGuide.sections"
-                    :key="section.group"
-                    :id="`guide-section-${sIdx}`"
-                    :data-section-idx="sIdx"
-                    class="guide-reveal bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5 scroll-mt-20"
-                >
-                    <!-- Chapter Header -->
-                    <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                        <div class="flex items-center gap-3">
-                            <span class="w-9 h-9 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm font-black flex-shrink-0">
-                                0{{ sIdx + 1 }}
-                            </span>
-                            <div>
-                                <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white">{{ section.group }}</h2>
-                                <p class="text-xs text-slate-400">{{ section.items.length }} menu tersedia di kelompok ini</p>
+                <!-- Desktop Horizontal Infographic Flow (lg+) -->
+                <div class="hidden lg:block relative">
+                    <!-- Connector Line Behind Nodes -->
+                    <div class="absolute top-7 left-12 right-12 h-1 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 opacity-35 pointer-events-none"></div>
+
+                    <div
+                        class="grid gap-4 relative z-10"
+                        :style="{ gridTemplateColumns: `repeat(${currentGuide.workflow.length}, minmax(0, 1fr))` }"
+                    >
+                        <div
+                            v-for="(wf, idx) in currentGuide.workflow"
+                            :key="wf.step"
+                            class="group relative flex flex-col items-center text-center"
+                        >
+                            <!-- Directional Arrow between nodes -->
+                            <div
+                                v-if="idx < currentGuide.workflow.length - 1"
+                                class="absolute top-4 -right-3.5 z-20 w-5 h-5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 flex items-center justify-center shadow-2xs"
+                            >
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </div>
+
+                            <!-- Circular Infographic Node -->
+                            <div
+                                class="w-14 h-14 rounded-2xl ring-8 flex items-center justify-center shadow-md transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-105"
+                                :class="getStepTheme(idx).node"
+                            >
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" :d="workflowStepIcons[idx % workflowStepIcons.length]" />
+                                </svg>
+                            </div>
+
+                            <!-- Infographic Card -->
+                            <div
+                                class="mt-4 w-full flex-1 bg-slate-50/90 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700/70 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:bg-white dark:group-hover:bg-slate-800 group-hover:shadow-sm overflow-hidden relative"
+                                :class="getStepTheme(idx).border"
+                            >
+                                <div class="absolute top-0 inset-x-0 h-1" :class="getStepTheme(idx).bar"></div>
+                                <span
+                                    class="inline-block px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase mb-2"
+                                    :class="getStepTheme(idx).badge"
+                                >
+                                    Tahap {{ wf.step }}
+                                </span>
+                                <p class="font-black text-sm text-slate-900 dark:text-white leading-snug">{{ wf.title }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{{ wf.desc }}</p>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Cards Grid -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <article
-                            v-for="item in section.items"
-                            :key="item.menu"
-                            class="flex flex-col justify-between bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/70 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-white dark:hover:bg-slate-800 transition-all duration-200 space-y-4"
+                <!-- Mobile & Tablet Vertical Infographic Timeline (< lg) -->
+                <div class="lg:hidden relative pl-4 space-y-4">
+                    <div class="absolute left-7 top-4 bottom-4 w-0.5 bg-gradient-to-b from-emerald-400 via-teal-400 to-amber-400 opacity-50 pointer-events-none"></div>
+
+                    <div
+                        v-for="(wf, idx) in currentGuide.workflow"
+                        :key="wf.step"
+                        class="relative flex items-start gap-4"
+                    >
+                        <div
+                            class="relative z-10 w-10 h-10 rounded-xl ring-4 flex items-center justify-center flex-shrink-0 shadow-sm mt-1"
+                            :class="getStepTheme(idx).node"
                         >
-                            <div class="space-y-3">
-                                <!-- Title + Sidebar Path -->
-                                <div class="flex flex-wrap items-start justify-between gap-2">
-                                    <h3 class="font-black text-sm sm:text-base text-slate-900 dark:text-white">{{ item.menu }}</h3>
-                                    <span class="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                                        {{ item.path }}
-                                    </span>
-                                </div>
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" :d="workflowStepIcons[idx % workflowStepIcons.length]" />
+                            </svg>
+                        </div>
 
-                                <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    {{ item.detail }}
-                                </p>
-
-                                <!-- Step-by-Step List -->
-                                <div v-if="item.steps?.length" class="space-y-1.5 pt-1">
-                                    <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Langkah Penggunaan:</p>
-                                    <ol class="space-y-1.5">
-                                        <li
-                                            v-for="(stepText, idx) in item.steps"
-                                            :key="idx"
-                                            class="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300"
-                                        >
-                                            <span class="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                {{ idx + 1 }}
-                                            </span>
-                                            <span>{{ stepText }}</span>
-                                        </li>
-                                    </ol>
-                                </div>
-
-                                <!-- Optional Tip Callout -->
-                                <div v-if="item.tip" class="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs">
-                                    <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span>{{ item.tip }}</span>
-                                </div>
-                            </div>
-
-                            <!-- Quick Launch Action -->
-                            <div v-if="item.route" class="pt-3 border-t border-slate-200/70 dark:border-slate-700/60 flex justify-end">
-                                <Link
-                                    :href="route(item.route)"
-                                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
+                        <div
+                            class="flex-1 bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3.5 border border-slate-200/80 dark:border-slate-700/70 relative overflow-hidden"
+                        >
+                            <div class="absolute left-0 inset-y-0 w-1" :class="getStepTheme(idx).bar"></div>
+                            <div class="flex items-center justify-between gap-2 mb-1 pl-1.5">
+                                <p class="font-black text-xs sm:text-sm text-slate-900 dark:text-white">{{ wf.title }}</p>
+                                <span
+                                    class="px-2 py-0.5 rounded-full text-[10px] font-black flex-shrink-0"
+                                    :class="getStepTheme(idx).badge"
                                 >
-                                    <span>Buka Menu</span>
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                    </svg>
-                                </Link>
+                                    {{ wf.step }}
+                                </span>
                             </div>
-                        </article>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 pl-1.5">{{ wf.desc }}</p>
+                        </div>
                     </div>
-                </section>
+                </div>
+            </div>
+
+            <!-- ── 4. Dokumentasi 2-Kolom (Desktop TOC) & Accordion (Mobile) ── -->
+            <div
+                v-if="currentGuide?.sections?.length"
+                class="lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start"
+            >
+                <!-- Desktop Sticky Vertical TOC (Opsi 3) -->
+                <aside
+                    v-if="currentGuide.sections.length > 1"
+                    class="hidden lg:block lg:col-span-4 xl:col-span-3 sticky top-4 bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2"
+                >
+                    <p class="px-3 pt-1 pb-2 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                        Daftar Isi Panduan
+                    </p>
+                    <nav class="space-y-1">
+                        <button
+                            v-for="(sec, idx) in currentGuide.sections"
+                            :key="sec.group"
+                            type="button"
+                            @click="scrollToSection(idx)"
+                            class="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all cursor-pointer"
+                            :class="activeSectionIndex === idx
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-emerald-700 dark:hover:text-emerald-400'"
+                        >
+                            <span class="flex items-center gap-2.5 min-w-0">
+                                <span
+                                    class="w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center flex-shrink-0"
+                                    :class="activeSectionIndex === idx
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'"
+                                >
+                                    {{ idx + 1 }}
+                                </span>
+                                <span class="truncate">{{ sec.group }}</span>
+                            </span>
+                            <span
+                                class="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
+                                :class="activeSectionIndex === idx
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'"
+                            >
+                                {{ sec.items.length }}
+                            </span>
+                        </button>
+                    </nav>
+                </aside>
+
+                <!-- Menu Detail Sections (Mobile Accordion Opsi 2 + Desktop Full View) -->
+                <div
+                    class="space-y-5"
+                    :class="currentGuide.sections.length > 1 ? 'lg:col-span-8 xl:col-span-9' : 'lg:col-span-12'"
+                >
+                    <section
+                        v-for="(section, sIdx) in currentGuide.sections"
+                        :key="section.group"
+                        :id="`guide-section-${sIdx}`"
+                        :data-section-idx="sIdx"
+                        class="guide-reveal bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-xs scroll-mt-6"
+                    >
+                        <!-- Chapter Header (Interactive Accordion on Mobile, Static Header on Desktop) -->
+                        <button
+                            type="button"
+                            @click="toggleMobileSection(sIdx)"
+                            class="w-full flex items-center justify-between gap-3 text-left lg:cursor-default cursor-pointer"
+                            :class="isSectionOpen(sIdx) ? 'pb-4 border-b border-slate-100 dark:border-slate-800' : 'lg:pb-4 lg:border-b lg:border-slate-100 lg:dark:border-slate-800'"
+                        >
+                            <div class="flex items-center gap-3 min-w-0">
+                                <span class="w-9 h-9 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm font-black flex-shrink-0">
+                                    0{{ sIdx + 1 }}
+                                </span>
+                                <div class="min-w-0">
+                                    <h2 class="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">{{ section.group }}</h2>
+                                    <p class="text-xs text-slate-400">{{ section.items.length }} menu tersedia di kelompok ini</p>
+                                </div>
+                            </div>
+                            <svg
+                                class="w-5 h-5 text-slate-400 flex-shrink-0 transition-transform duration-200 lg:hidden"
+                                :class="{ 'rotate-180 text-emerald-600': isSectionOpen(sIdx) }"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <!-- Cards Grid (Always visible on Desktop, collapsible on Mobile) -->
+                        <div
+                            class="grid-cols-1 md:grid-cols-2 gap-4 pt-4"
+                            :class="isSectionOpen(sIdx) ? 'grid' : 'hidden lg:grid'"
+                        >
+                            <article
+                                v-for="item in section.items"
+                                :key="item.menu"
+                                class="flex flex-col justify-between bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/70 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-white dark:hover:bg-slate-800 transition-all duration-200 space-y-4"
+                            >
+                                <div class="space-y-3">
+                                    <!-- Title + Sidebar Path -->
+                                    <div class="flex flex-wrap items-start justify-between gap-2">
+                                        <h3 class="font-black text-sm sm:text-base text-slate-900 dark:text-white">{{ item.menu }}</h3>
+                                        <span class="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                            {{ item.path }}
+                                        </span>
+                                    </div>
+
+                                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                        {{ item.detail }}
+                                    </p>
+
+                                    <!-- Step-by-Step List -->
+                                    <div v-if="item.steps?.length" class="space-y-1.5 pt-1">
+                                        <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Langkah Penggunaan:</p>
+                                        <ol class="space-y-1.5">
+                                            <li
+                                                v-for="(stepText, idx) in item.steps"
+                                                :key="idx"
+                                                class="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300"
+                                            >
+                                                <span class="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                    {{ idx + 1 }}
+                                                </span>
+                                                <span>{{ stepText }}</span>
+                                            </li>
+                                        </ol>
+                                    </div>
+
+                                    <!-- Optional Tip Callout -->
+                                    <div v-if="item.tip" class="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs">
+                                        <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>{{ item.tip }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Launch Action -->
+                                <div v-if="item.route" class="pt-3 border-t border-slate-200/70 dark:border-slate-700/60 flex justify-end">
+                                    <Link
+                                        :href="route(item.route)"
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
+                                    >
+                                        <span>Buka Menu</span>
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                        </svg>
+                                    </Link>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+                </div>
             </div>
 
             <!-- Empty Search State -->

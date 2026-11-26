@@ -372,7 +372,7 @@ const rawMenuGroups = computed(() => [
     },
     {
         key: 'koperasi',
-        label: 'Koperasi Sekolah',
+        label: 'Koperasi Rabbani',
         icon: IconKoperasi,
         roles: ['koperasi', 'superadmin'],
         items: [

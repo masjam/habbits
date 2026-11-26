@@ -6,7 +6,7 @@ import { IconKoperasi, IconArsip } from '@/Components/Icons'
 const props = defineProps({
     title: {
         type: String,
-        default: 'Waroong POS Koperasi',
+        default: 'POS Koperasi Rabbani',
     },
 })
 
@@ -59,7 +59,7 @@ onUnmounted(() => {
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="font-black text-base text-slate-900 tracking-tight">WAROONG KOPERASI</span>
+                        <span class="font-black text-base text-slate-900 tracking-tight">KOPERASI RABBANI</span>
                         <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
                             POS SDAM
                         </span>

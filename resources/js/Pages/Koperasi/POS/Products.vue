@@ -112,7 +112,7 @@ const formatRupiah = (val) => {
 </script>
 
 <template>
-    <Head title="Katalog Barang — Waroong POS Koperasi" />
+    <Head title="Katalog Barang — Koperasi Rabbani" />
 
     <PosLayout>
         <div class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-5 bg-slate-100">

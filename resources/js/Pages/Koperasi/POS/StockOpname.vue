@@ -231,7 +231,7 @@ const printOpnameSheet = () => {
 
             <!-- Print Header (Visible Only When Printing) -->
             <div class="hidden print:block text-center border-b-2 border-slate-900 pb-3 mb-4">
-                <h2 class="text-xl font-black uppercase tracking-tight">Koperasi Surya Amanah — SD Muhammadiyah 1 Krian</h2>
+                <h2 class="text-xl font-black uppercase tracking-tight">Koperasi Rabbani — SD Muhammadiyah 1 Krian</h2>
                 <h3 class="text-base font-bold uppercase text-slate-700">Lembar Audit Stock Opname Inventaris Barang</h3>
                 <p class="text-xs text-slate-500">Tanggal Cetak: {{ new Date().toLocaleDateString('id-ID', { dateStyle: 'full' }) }}</p>
             </div>
