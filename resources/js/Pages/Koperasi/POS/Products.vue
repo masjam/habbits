@@ -74,6 +74,13 @@ const saveProduct = () => {
     })
 }
 
+const deleteProduct = (p) => {
+    if (!confirm(`Yakin ingin menghapus barang "${p.name}"?`)) return
+    router.delete(route('koperasi.products.destroy', p.id), {
+        preserveScroll: true,
+    })
+}
+
 // ─── Excel Bulk Import Modal ───
 const showImportModal = ref(false)
 const importFileRef = ref(null)
@@ -226,13 +233,22 @@ const formatRupiah = (val) => {
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-center">
-                                    <button
-                                        type="button"
-                                        @click="openEditModal(p)"
-                                        class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors"
-                                    >
-                                        Edit
-                                    </button>
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            @click="openEditModal(p)"
+                                            class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="deleteProduct(p)"
+                                            class="px-3 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-600 transition-colors"
+                                        >
+                                            Hapus
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="products.data.length === 0">

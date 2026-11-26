@@ -950,6 +950,17 @@ class PosController extends Controller
     }
 
     /**
+     * Hapus Produk Koperasi.
+     */
+    public function destroyProduct(CoopProduct $product)
+    {
+        $name = $product->name;
+        $product->delete();
+
+        return redirect()->back()->with('success', "Produk {$name} berhasil dihapus.");
+    }
+
+    /**
      * Download template Excel untuk impor katalog barang.
      */
     public function exportTemplate()

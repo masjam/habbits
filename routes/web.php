@@ -319,6 +319,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/export/member-transactions', [\App\Http\Controllers\Koperasi\ReportController::class, 'exportMemberTransactions'])->name('reports.export.member-transactions');
         Route::get('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'products'])->name('products');
         Route::post('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'storeProduct'])->name('products.store');
+        Route::delete('/products/{product}', [\App\Http\Controllers\Koperasi\PosController::class, 'destroyProduct'])->name('products.destroy');
         Route::post('/products/import', [\App\Http\Controllers\Koperasi\PosController::class, 'importProducts'])->name('products.import');
         Route::get('/stock-opname', [\App\Http\Controllers\Koperasi\PosController::class, 'stockOpname'])->name('stock-opname');
         Route::post('/stock-opname/adjust', [\App\Http\Controllers\Koperasi\PosController::class, 'adjustStock'])->name('stock-opname.adjust');
