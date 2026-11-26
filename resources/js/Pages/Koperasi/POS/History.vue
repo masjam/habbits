@@ -371,11 +371,14 @@ const cancelTransaction = (trx) => {
                         </div>
 
                         <!-- Item Summary -->
-                        <div class="py-1 space-y-1 text-[11px]">
+                        <div class="py-1 space-y-1.5 text-[11px]">
                             <template v-if="activeReceipt.items && activeReceipt.items.length > 0">
-                                <div v-for="(it, i) in activeReceipt.items" :key="i" class="flex justify-between">
-                                    <span>{{ it.name }} x{{ it.qty }}</span>
-                                    <span class="font-bold">{{ formatRupiah(it.subtotal) }}</span>
+                                <div v-for="(it, i) in activeReceipt.items" :key="i">
+                                    <div class="font-bold text-slate-900">{{ it.name }}</div>
+                                    <div class="flex justify-between text-[10px] text-slate-600">
+                                        <span>{{ it.qty }} x {{ formatRupiah(it.price) }}</span>
+                                        <span class="font-bold text-slate-800">{{ formatRupiah(it.subtotal) }}</span>
+                                    </div>
                                 </div>
                             </template>
                             <div v-else class="flex justify-between text-slate-500">

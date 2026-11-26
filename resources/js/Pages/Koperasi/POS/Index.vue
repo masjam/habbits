@@ -968,10 +968,13 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Items List -->
-                    <div class="space-y-1 text-[11px]">
-                        <div v-for="(it, i) in activeReceipt.items" :key="i" class="flex justify-between">
-                            <span>{{ it.name }} x{{ it.qty }}</span>
-                            <span class="font-bold">{{ formatRupiah(it.subtotal) }}</span>
+                    <div class="space-y-1.5 text-[11px]">
+                        <div v-for="(it, i) in activeReceipt.items" :key="i">
+                            <div class="font-bold text-slate-900">{{ it.name }}</div>
+                            <div class="flex justify-between text-[10px] text-slate-600">
+                                <span>{{ it.qty }} x {{ formatRupiah(it.price) }}</span>
+                                <span class="font-bold text-slate-800">{{ formatRupiah(it.subtotal) }}</span>
+                            </div>
                         </div>
 
                         <div class="border-t border-dashed border-slate-300 pt-1 flex justify-between font-bold">

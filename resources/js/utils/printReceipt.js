@@ -29,16 +29,16 @@ export function printReceiptElement(elementId = 'receipt-print-area') {
 <meta charset="utf-8" />
 <title>Struk Belanja</title>
 <style>
-    @page { size: 58mm auto; margin: 1.5mm 2mm; }
+    @page { margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-        width: 100%;
-        max-width: 48mm;
-        margin: 0 auto;
-        padding: 0 1mm 0 0;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        font-size: 9.5px;
-        line-height: 1.3;
+        width: 46mm;
+        margin: 0;
+        padding: 1.5mm 2mm;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1.35;
         color: #000;
     }
     .text-center { text-align: center; }
@@ -46,9 +46,9 @@ export function printReceiptElement(elementId = 'receipt-print-area') {
     .uppercase { text-transform: uppercase; }
     .font-black, .font-bold { font-weight: 700; }
     .whitespace-pre-line { white-space: pre-line; }
-    .flex { display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; }
-    .flex > span:first-child { flex: 1 1 auto; min-width: 0; word-break: break-word; }
-    .flex > span:last-child { flex: 0 0 auto; text-align: right; white-space: nowrap; }
+    .flex { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+    .flex > span:first-child { flex: 0 0 auto; white-space: nowrap; }
+    .flex > span:last-child { flex: 1 1 auto; text-align: right; word-break: break-word; }
     .justify-between { justify-content: space-between; }
     .space-y-0\\.5 > * + * { margin-top: 2px; }
     .space-y-1 > * + * { margin-top: 3px; }
@@ -59,10 +59,10 @@ export function printReceiptElement(elementId = 'receipt-print-area') {
     .py-1 { padding-top: 3px; padding-bottom: 3px; }
     .py-1\\.5 { padding-top: 5px; padding-bottom: 5px; }
     .py-2 { padding-top: 6px; padding-bottom: 6px; }
-    .border-t { border-top: 1px dashed #333; }
-    .border-b { border-bottom: 1px dashed #333; }
-    h3 { font-size: 11.5px; margin-bottom: 2px; }
-    .text-sm { font-size: 10.5px; }
+    .border-t { border-top: 1px dashed #000; }
+    .border-b { border-bottom: 1px dashed #000; }
+    h3 { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+    .text-sm { font-size: 11px; }
 </style>
 </head>
 <body>${el.innerHTML}</body>
