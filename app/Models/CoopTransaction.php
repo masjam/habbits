@@ -6,6 +6,7 @@ use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CoopTransaction extends Model
 {
@@ -16,6 +17,7 @@ class CoopTransaction extends Model
         'transaction_code',
         'cashier_id',
         'user_id',
+        'member_id',
         'voucher_id',
         'payment_method',
         'total_amount',
@@ -24,6 +26,9 @@ class CoopTransaction extends Model
         'rfid_paid_amount',
         'cash_paid_amount',
         'change_amount',
+        'bon_amount',
+        'bon_paid_amount',
+        'bon_status',
         'items',
         'notes',
     ];
@@ -35,6 +40,8 @@ class CoopTransaction extends Model
         'rfid_paid_amount' => 'float',
         'cash_paid_amount' => 'float',
         'change_amount'    => 'float',
+        'bon_amount'       => 'float',
+        'bon_paid_amount'  => 'float',
         'items'            => 'array',
     ];
 
@@ -48,8 +55,18 @@ class CoopTransaction extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(CoopMember::class, 'member_id');
+    }
+
     public function voucher(): BelongsTo
     {
         return $this->belongsTo(HabitVoucher::class, 'voucher_id');
+    }
+
+    public function bonPayments(): HasMany
+    {
+        return $this->hasMany(CoopBonPayment::class, 'transaction_id');
     }
 }

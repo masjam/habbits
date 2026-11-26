@@ -12,6 +12,7 @@ class CoopBalanceLog extends Model
 
     protected $fillable = [
         'user_id',
+        'member_id',
         'type',
         'amount',
         'balance_before',
@@ -30,6 +31,11 @@ class CoopBalanceLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function member(): BelongsTo
+    {
+        return $this->belongsTo(CoopMember::class, 'member_id');
     }
 
     public function operator(): BelongsTo

@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
-import { IconKoperasi, IconArsip } from '@/Components/Icons'
+import { IconKoperasi } from '@/Components/Icons'
 
 const props = defineProps({
     title: {
@@ -13,6 +13,60 @@ const props = defineProps({
 const page = usePage()
 const user = page.props.auth?.user || {}
 const roles = page.props.auth?.roles || []
+const hasMainApp = roles.includes('superadmin') || roles.includes('admin') || roles.includes('user')
+
+const isSidebarCollapsed = ref(false)
+
+const sidebarGroups = computed(() => {
+    const groups = [
+        {
+            key: 'pos',
+            title: 'POS',
+            items: [
+                { label: 'Mesin Kasir', desc: 'Transaksi penjualan & voucher', routeName: 'koperasi.pos', pattern: 'koperasi.pos*' },
+            ],
+        },
+        {
+            key: 'manajemen',
+            title: 'Manajemen',
+            items: [
+                { label: 'Katalog Barang', desc: 'Kelola produk, harga & stok', routeName: 'koperasi.products', pattern: 'koperasi.products*' },
+                { label: 'Stok Opname', desc: 'Audit & penyesuaian stok fisik', routeName: 'koperasi.stock-opname', pattern: 'koperasi.stock-opname*' },
+                { label: 'Riwayat Transaksi', desc: 'Arsip belanja, cetak struk & void', routeName: 'koperasi.history', pattern: 'koperasi.history*' },
+                { label: 'Laporan Koperasi', desc: 'Laba/rugi, perubahan stok & member', routeName: 'koperasi.reports', pattern: 'koperasi.reports*' },
+            ],
+        },
+        {
+            key: 'member',
+            title: 'Member',
+            items: [
+                { label: 'Member Koperasi', desc: 'Pegawai, wali murid, siswa & topup', routeName: 'koperasi.members', pattern: 'koperasi.members*' },
+                { label: 'BON / Piutang', desc: 'Catatan kasbon & pelunasan', routeName: 'koperasi.bon', pattern: 'koperasi.bon*' },
+            ],
+        },
+    ]
+
+    if (hasMainApp) {
+        groups.push({
+            key: 'home',
+            title: 'Home',
+            items: [
+                { label: 'Dashboard Utama', desc: 'Kembali ke aplikasi utama', routeName: 'dashboard', pattern: 'dashboard' },
+            ],
+        })
+    }
+
+    return groups
+})
+
+// ─── Mobile Bottom Nav Sheet ───
+const activeMobileSheet = ref(null) // 'manajemen' | 'member' | null
+const toggleMobileSheet = (name) => {
+    activeMobileSheet.value = activeMobileSheet.value === name ? null : name
+}
+const activeSheetItems = computed(() => {
+    return sidebarGroups.value.find(g => g.key === activeMobileSheet.value)?.items || []
+})
 
 // ─── Realtime Clock ───
 const currentTime = ref('')
@@ -70,45 +124,6 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <!-- Middle Navigation Links (Waroong POS Mode) -->
-            <nav class="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                <Link
-                    :href="route('koperasi.pos')"
-                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
-                    :class="route().current('koperasi.pos*') ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white'"
-                >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    <span>Mesin Kasir</span>
-                </Link>
-
-                <Link
-                    :href="route('koperasi.products')"
-                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
-                    :class="route().current('koperasi.products*') ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white'"
-                >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                    <span>Katalog Barang</span>
-                </Link>
-
-                <Link
-                    :href="route('koperasi.stock-opname')"
-                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
-                    :class="route().current('koperasi.stock-opname*') ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white'"
-                >
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                    <span>Stok Opname</span>
-                </Link>
-
-                <Link
-                    :href="route('koperasi.history')"
-                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
-                    :class="route().current('koperasi.history*') ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white'"
-                >
-                    <IconArsip class="w-4 h-4" />
-                    <span>Riwayat Transaksi</span>
-                </Link>
-            </nav>
-
             <!-- Right Controls: Cashier, Clock, Fullscreen, Logout -->
             <div class="flex items-center gap-3">
                 <!-- Clock -->
@@ -163,9 +178,135 @@ onUnmounted(() => {
             </div>
         </header>
 
-        <!-- ── Main POS Workspace ── -->
-        <main class="flex-1 overflow-hidden relative flex flex-col bg-slate-100">
-            <slot />
-        </main>
+        <!-- ── Desktop Sidebar + Main POS Workspace ── -->
+        <div class="flex-1 flex overflow-hidden">
+            <aside
+                class="hidden md:flex flex-col bg-white border-r border-slate-200 flex-shrink-0 transition-all duration-200 overflow-y-auto"
+                :class="isSidebarCollapsed ? 'w-16 p-2' : 'w-56 p-3'"
+            >
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <span v-if="!isSidebarCollapsed" class="text-[10px] font-black uppercase tracking-wider text-slate-400">Menu Koperasi</span>
+                    <button
+                        type="button"
+                        @click="isSidebarCollapsed = !isSidebarCollapsed"
+                        class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors ml-auto"
+                        :title="isSidebarCollapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'"
+                    >
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="isSidebarCollapsed ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div v-for="group in sidebarGroups" :key="group.key" class="space-y-1">
+                        <div v-if="!isSidebarCollapsed" class="px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            {{ group.title }}
+                        </div>
+                        <div v-else class="border-t border-slate-100 my-1"></div>
+
+                        <Link
+                            v-for="item in group.items"
+                            :key="item.routeName"
+                            :href="route(item.routeName)"
+                            :title="item.label"
+                            class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all"
+                            :class="[
+                                route().current(item.pattern) ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
+                                isSidebarCollapsed ? 'justify-center' : ''
+                            ]"
+                        >
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" :class="route().current(item.pattern) ? 'bg-white' : 'bg-emerald-500/60'"></span>
+                            <span v-if="!isSidebarCollapsed" class="truncate">{{ item.label }}</span>
+                        </Link>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="flex-1 overflow-hidden relative flex flex-col bg-slate-100 pb-16 md:pb-0">
+                <slot />
+            </main>
+        </div>
+
+        <!-- ── Mobile Submenu Bottom Sheet ── -->
+        <div
+            v-if="activeMobileSheet"
+            class="fixed inset-0 z-40 md:hidden bg-slate-900/40 backdrop-blur-[1px]"
+            @click="activeMobileSheet = null"
+        >
+            <div
+                class="fixed bottom-16 inset-x-0 bg-white rounded-t-2xl border-t border-slate-200 shadow-2xl p-4 space-y-2"
+                @click.stop
+            >
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-500">
+                        {{ activeMobileSheet === 'manajemen' ? 'Menu Manajemen' : 'Menu Member & BON' }}
+                    </span>
+                    <button type="button" @click="activeMobileSheet = null" class="text-xs font-bold text-slate-400 hover:text-slate-600 px-2 py-0.5">
+                        Tutup
+                    </button>
+                </div>
+
+                <Link
+                    v-for="sub in activeSheetItems"
+                    :key="sub.routeName"
+                    :href="route(sub.routeName)"
+                    @click="activeMobileSheet = null"
+                    class="flex items-center justify-between p-3 rounded-xl border transition-all"
+                    :class="route().current(sub.pattern) ? 'bg-emerald-50 border-emerald-500 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'"
+                >
+                    <div>
+                        <div class="text-xs font-bold">{{ sub.label }}</div>
+                        <div class="text-[11px] text-slate-500">{{ sub.desc }}</div>
+                    </div>
+                    <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </Link>
+            </div>
+        </div>
+
+        <!-- ── Mobile App Bottom Navigation Bar ── -->
+        <nav class="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white border-t border-slate-200 h-16 px-2 grid grid-cols-4 items-center shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+            <!-- Home -->
+            <Link
+                :href="hasMainApp ? route('dashboard') : route('koperasi.pos')"
+                @click="activeMobileSheet = null"
+                class="flex flex-col items-center justify-center gap-0.5 py-1 rounded-xl transition-colors"
+                :class="route().current('dashboard') ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-800'"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                <span class="text-[10px] font-bold">Home</span>
+            </Link>
+
+            <!-- Manajemen -->
+            <button
+                type="button"
+                @click="toggleMobileSheet('manajemen')"
+                class="flex flex-col items-center justify-center gap-0.5 py-1 rounded-xl transition-colors"
+                :class="(activeMobileSheet === 'manajemen' || route().current('koperasi.products*') || route().current('koperasi.stock-opname*') || route().current('koperasi.history*') || route().current('koperasi.reports*')) ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-800'"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                <span class="text-[10px] font-bold">Manajemen</span>
+            </button>
+
+            <!-- POS -->
+            <Link
+                :href="route('koperasi.pos')"
+                @click="activeMobileSheet = null"
+                class="flex flex-col items-center justify-center gap-0.5 py-1 rounded-xl transition-colors"
+                :class="route().current('koperasi.pos*') && !activeMobileSheet ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-800'"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                <span class="text-[10px] font-bold">POS</span>
+            </Link>
+
+            <!-- Member -->
+            <button
+                type="button"
+                @click="toggleMobileSheet('member')"
+                class="flex flex-col items-center justify-center gap-0.5 py-1 rounded-xl transition-colors"
+                :class="(activeMobileSheet === 'member' || route().current('koperasi.members*') || route().current('koperasi.bon*')) ? 'text-emerald-600' : 'text-slate-500 hover:text-slate-800'"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <span class="text-[10px] font-bold">Member</span>
+            </button>
+        </nav>
     </div>
 </template>

@@ -91,6 +91,7 @@ const showReceipt = (trx) => {
         rfid_paid_amount: Number(trx.rfid_paid_amount) || 0,
         cash_paid_amount: Number(trx.cash_paid_amount) || 0,
         change_amount:    Number(trx.change_amount) || 0,
+        bon_amount:       Number(trx.bon_amount) || 0,
         store_name:       props.storeInfo?.name || 'Koperasi Rabbani',
         store_address:    props.storeInfo?.address || 'Jl. Raden Bagus No. 1, Krian, Sidoarjo',
         store_phone:      props.storeInfo?.phone || '0812-3456-7890',
@@ -404,6 +405,10 @@ const cancelTransaction = (trx) => {
                             <div v-if="activeReceipt.change_amount > 0" class="flex justify-between text-[10px] font-bold">
                                 <span>Kembalian Tunai:</span>
                                 <span>{{ formatRupiah(activeReceipt.change_amount) }}</span>
+                            </div>
+                            <div v-if="activeReceipt.bon_amount > 0" class="flex justify-between text-[10px] font-bold text-amber-800">
+                                <span>Dicatat BON (Piutang):</span>
+                                <span>{{ formatRupiah(activeReceipt.bon_amount) }}</span>
                             </div>
                         </div>
 

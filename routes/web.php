@@ -304,6 +304,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/pos/redeem', [\App\Http\Controllers\Koperasi\PosController::class, 'redeem'])->name('pos.redeem');
         Route::post('/pos/cancel/{voucher}', [\App\Http\Controllers\Koperasi\PosController::class, 'cancel'])->name('pos.cancel');
         Route::get('/history', [\App\Http\Controllers\Koperasi\PosController::class, 'history'])->name('history');
+        Route::get('/members', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'members'])->name('members');
+        Route::post('/members', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'storeMember'])->name('members.store');
+        Route::post('/members/pegawai/{user}/topup', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'topupUser'])->name('members.topup-user');
+        Route::post('/members/{member}/topup', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'topupMember'])->name('members.topup');
+        Route::delete('/members/{member}', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'destroyMember'])->name('members.destroy');
+        Route::get('/bon', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'bonIndex'])->name('bon');
+        Route::post('/bon/{transaction}/pay', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'payBon'])->name('bon.pay');
+        Route::post('/bon/pay-bulk', [\App\Http\Controllers\Koperasi\MemberBonController::class, 'payBulkBon'])->name('bon.pay-bulk');
+        Route::get('/reports', [\App\Http\Controllers\Koperasi\ReportController::class, 'index'])->name('reports');
+        Route::get('/reports/export/profit-loss', [\App\Http\Controllers\Koperasi\ReportController::class, 'exportProfitLoss'])->name('reports.export.profit-loss');
+        Route::get('/reports/export/stock-history', [\App\Http\Controllers\Koperasi\ReportController::class, 'exportStockHistory'])->name('reports.export.stock-history');
+        Route::get('/reports/export/member-transactions', [\App\Http\Controllers\Koperasi\ReportController::class, 'exportMemberTransactions'])->name('reports.export.member-transactions');
         Route::get('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'products'])->name('products');
         Route::post('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'storeProduct'])->name('products.store');
         Route::post('/products/import', [\App\Http\Controllers\Koperasi\PosController::class, 'importProducts'])->name('products.import');

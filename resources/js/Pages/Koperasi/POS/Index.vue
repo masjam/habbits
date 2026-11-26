@@ -385,6 +385,11 @@ const submitCheckout = () => {
         }
     }
 
+    if (paymentMethod.value === 'bon' && !customer.value) {
+        alert('Pilih Pegawai atau Member terlebih dahulu untuk transaksi BON!')
+        return
+    }
+
     isProcessing.value = true
 
     router.post(route('koperasi.pos.checkout'), {
@@ -397,6 +402,7 @@ const submitCheckout = () => {
         })),
         total_amount: cartTotalGross.value,
         payment_method: paymentMethod.value,
+        customer_type: customer.value?.customer_type || 'user',
         customer_id: customer.value?.id || null,
         voucher_code: appliedVoucher.value?.code || null,
         cash_paid: Number(cashReceived.value) || 0,
@@ -772,7 +778,7 @@ onUnmounted(() => {
                 <!-- Metode Pembayaran Selector -->
                 <div class="space-y-2">
                     <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block">Pilih Metode Pembayaran</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         <!-- Tunai -->
                         <button
                             type="button"
@@ -816,6 +822,17 @@ onUnmounted(() => {
                             <span class="text-lg block">📱</span>
                             <span class="text-xs mt-1 block">QRIS</span>
                         </button>
+
+                        <!-- BON / Kasbon -->
+                        <button
+                            type="button"
+                            @click="paymentMethod = 'bon'"
+                            class="p-3 rounded-xl border text-center transition-all"
+                            :class="paymentMethod === 'bon' ? 'bg-amber-50 border-amber-500 text-amber-800 font-black shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'"
+                        >
+                            <span class="text-lg block">📝</span>
+                            <span class="text-xs mt-1 block">BON</span>
+                        </button>
                     </div>
                 </div>
 
@@ -858,6 +875,16 @@ onUnmounted(() => {
                         <span class="text-slate-600 font-medium">Kembalian:</span>
                         <span class="text-lg font-black text-emerald-600 font-mono">{{ formatRupiah(changeAmount) }}</span>
                     </div>
+                </div>
+
+                <!-- Info BON / Kasbon -->
+                <div v-if="paymentMethod === 'bon'" class="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-1">
+                    <div class="font-bold text-amber-900">Catat sebagai BON / Piutang Belanja</div>
+                    <template v-if="customer">
+                        <p class="text-slate-700">Pelanggan: <strong>{{ customer.name }}</strong> ({{ customer.divisi }})</p>
+                        <p class="text-slate-600">BON aktif saat ini: <strong class="text-amber-700">{{ formatRupiah(customer.current_bon || 0) }}</strong><span v-if="customer.bon_limit > 0"> • Limit: {{ formatRupiah(customer.bon_limit) }}</span></p>
+                    </template>
+                    <p v-else class="text-rose-700 font-medium">⚠️ Scan kartu RFID atau ketik nama Pegawai / Member terlebih dahulu untuk transaksi BON.</p>
                 </div>
 
                 <!-- Info Saldo Kartu RFID jika memilih RFID -->
@@ -975,6 +1002,11 @@ onUnmounted(() => {
                         <div v-if="activeReceipt.change_amount > 0" class="flex justify-between font-bold text-[10px]">
                             <span>Kembalian Tunai:</span>
                             <span>{{ formatRupiah(activeReceipt.change_amount) }}</span>
+                        </div>
+
+                        <div v-if="activeReceipt.bon_amount > 0" class="flex justify-between font-bold text-[10px] text-amber-800">
+                            <span>Dicatat BON (Piutang):</span>
+                            <span>{{ formatRupiah(activeReceipt.bon_amount) }}</span>
                         </div>
 
                         <div v-if="activeReceipt.customer_balance !== null && activeReceipt.customer_balance !== undefined" class="flex justify-between text-[10px] font-bold text-emerald-800 pt-1 border-t border-dashed border-slate-300">

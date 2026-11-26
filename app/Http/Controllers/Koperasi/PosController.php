@@ -8,6 +8,7 @@ use App\Exports\CoopStockOpnameReport;
 use App\Http\Controllers\Controller;
 use App\Imports\CoopProductImport;
 use App\Models\CoopBalanceLog;
+use App\Models\CoopMember;
 use App\Models\CoopProduct;
 use App\Models\CoopStockLog;
 use App\Models\CoopTransaction;
@@ -144,46 +145,89 @@ class PosController extends Controller
             ->orWhere('nip', $input)
             ->first();
 
-        // Jika belum ketemu, coba cari nama
+        // Jika belum ketemu, coba cari nama pegawai
         if (!$user && strlen($input) >= 3) {
             $user = User::where('name', 'like', "%{$input}%")->first();
         }
 
-        if (!$user) {
+        if ($user) {
+            // Ambil voucher aktif milik pegawai ini (jika ada)
+            $activeVouchers = HabitVoucher::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->whereNull('claimed_at')
+                ->get()
+                ->map(fn($v) => [
+                    'id'           => $v->id,
+                    'code'         => $v->voucher_code,
+                    'title'        => $v->title,
+                    'reward_title' => $v->reward_title,
+                    'reward_value' => $v->reward_value,
+                    'reward_num'   => $v->getRewardNumericValue(),
+                    'period'       => $v->period,
+                    'valid_until'  => $v->valid_until ? $v->valid_until->format('d M Y') : '-',
+                ]);
+
+            $currentBon = (float) CoopTransaction::where('user_id', $user->id)
+                ->whereIn('bon_status', ['unpaid', 'partial'])
+                ->sum(DB::raw('bon_amount - bon_paid_amount'));
+
+            return response()->json([
+                'success'  => true,
+                'message'  => "Kartu RFID milik {$user->name} berhasil terdeteksi!",
+                'customer' => [
+                    'customer_type'     => 'user',
+                    'id'                => $user->id,
+                    'name'              => $user->name,
+                    'nip'               => $user->nip ?: '-',
+                    'divisi'            => $user->divisi ?: 'Pegawai',
+                    'rfid_uid'          => $user->rfid_uid ?: '-',
+                    'coop_balance'      => (float) $user->coop_balance,
+                    'formatted_balance' => 'Rp ' . number_format($user->coop_balance, 0, ',', '.'),
+                    'bon_limit'         => 0,
+                    'current_bon'       => $currentBon,
+                    'active_vouchers'   => $activeVouchers,
+                ],
+            ]);
+        }
+
+        // Cari pada Member Non-Pegawai (Wali Murid / Siswa / Umum)
+        $member = CoopMember::where('is_active', true)
+            ->where(function ($q) use ($input) {
+                $q->where('rfid_uid', $input)
+                  ->orWhere('member_code', $input)
+                  ->orWhere('phone', $input);
+                if (strlen($input) >= 3) {
+                    $q->orWhere('name', 'like', "%{$input}%");
+                }
+            })
+            ->first();
+
+        if (!$member) {
             return response()->json([
                 'success' => false,
-                'message' => "Kartu RFID atau Pegawai '{$input}' tidak terdaftar di sistem.",
+                'message' => "Kartu RFID, Pegawai, atau Member '{$input}' tidak terdaftar di sistem.",
             ], 404);
         }
 
-        // Ambil voucher aktif milik pegawai ini (jika ada)
-        $activeVouchers = HabitVoucher::where('user_id', $user->id)
-            ->where('status', 'active')
-            ->whereNull('claimed_at')
-            ->get()
-            ->map(fn($v) => [
-                'id'           => $v->id,
-                'code'         => $v->voucher_code,
-                'title'        => $v->title,
-                'reward_title' => $v->reward_title,
-                'reward_value' => $v->reward_value,
-                'reward_num'   => $v->getRewardNumericValue(),
-                'period'       => $v->period,
-                'valid_until'  => $v->valid_until ? $v->valid_until->format('d M Y') : '-',
-            ]);
+        $currentBon = (float) CoopTransaction::where('member_id', $member->id)
+            ->whereIn('bon_status', ['unpaid', 'partial'])
+            ->sum(DB::raw('bon_amount - bon_paid_amount'));
 
         return response()->json([
             'success'  => true,
-            'message'  => "Kartu RFID milik {$user->name} berhasil terdeteksi!",
+            'message'  => "Member {$member->name} ({$member->type_label}) berhasil terdeteksi!",
             'customer' => [
-                'id'             => $user->id,
-                'name'           => $user->name,
-                'nip'            => $user->nip ?: '-',
-                'divisi'         => $user->divisi ?: '-',
-                'rfid_uid'       => $user->rfid_uid ?: '-',
-                'coop_balance'   => (float) $user->coop_balance,
-                'formatted_balance' => 'Rp ' . number_format($user->coop_balance, 0, ',', '.'),
-                'active_vouchers' => $activeVouchers,
+                'customer_type'     => 'member',
+                'id'                => $member->id,
+                'name'              => $member->name,
+                'nip'               => $member->member_code,
+                'divisi'            => $member->type_label,
+                'rfid_uid'          => $member->rfid_uid ?: '-',
+                'coop_balance'      => (float) $member->coop_balance,
+                'formatted_balance' => 'Rp ' . number_format($member->coop_balance, 0, ',', '.'),
+                'bon_limit'         => (float) $member->bon_limit,
+                'current_bon'       => $currentBon,
+                'active_vouchers'   => [],
             ],
         ]);
     }
@@ -384,8 +428,9 @@ class PosController extends Controller
             'items.*.price'    => 'required|numeric|min:0',
             'items.*.qty'      => 'required|integer|min:1',
             'items.*.subtotal' => 'required|numeric|min:0',
-            'payment_method'   => 'required|in:cash,rfid_card,voucher,split,qris',
-            'customer_id'      => 'nullable|exists:users,id',
+            'payment_method'   => 'required|in:cash,rfid_card,voucher,split,qris,bon',
+            'customer_type'    => 'nullable|in:user,member',
+            'customer_id'      => 'nullable|integer',
             'voucher_code'     => 'nullable|string',
             'cash_paid'        => 'nullable|numeric|min:0',
             'notes'            => 'nullable|string|max:255',
@@ -415,14 +460,36 @@ class PosController extends Controller
         $rfidPaidAmount = 0.0;
         $cashPaidAmount = 0.0;
         $changeAmount = 0.0;
+        $bonAmount = 0.0;
+        $bonStatus = null;
+        $customerType = $request->input('customer_type', 'user');
         $customer = null;
 
         if ($request->filled('customer_id')) {
-            $customer = User::find($request->customer_id);
+            $customer = $customerType === 'member'
+                ? CoopMember::find($request->customer_id)
+                : User::find($request->customer_id);
         }
 
         // 2. Pemrosesan Berdasarkan Metode Pembayaran
-        if ($paymentMethod === 'rfid_card') {
+        if ($paymentMethod === 'bon') {
+            if (!$customer) {
+                return redirect()->back()->with('error', 'Pegawai atau Member wajib dipilih untuk transaksi BON / Kasbon.');
+            }
+
+            if ($customer instanceof CoopMember && $customer->bon_limit > 0) {
+                $currentBon = (float) CoopTransaction::where('member_id', $customer->id)
+                    ->whereIn('bon_status', ['unpaid', 'partial'])
+                    ->sum(DB::raw('bon_amount - bon_paid_amount'));
+
+                if (($currentBon + $payableAfterVoucher) > $customer->bon_limit) {
+                    return redirect()->back()->with('error', "Transaksi melebihi batas BON {$customer->name} (Limit: Rp " . number_format($customer->bon_limit, 0, ',', '.') . ").");
+                }
+            }
+
+            $bonAmount = $payableAfterVoucher;
+            $bonStatus = $bonAmount > 0 ? 'unpaid' : 'paid';
+        } elseif ($paymentMethod === 'rfid_card') {
             if (!$customer) {
                 return redirect()->back()->with('error', 'Kartu RFID pegawai / data pelanggan wajib terdeteksi untuk pembayaran kartu RFID.');
             }
@@ -470,11 +537,24 @@ class PosController extends Controller
             $randomSuffix = strtoupper(Str::random(4));
             $transactionCode = 'WRG-' . $datePrefix . '-' . $randomSuffix;
 
+            // Ambil produk sekaligus untuk mencatat cost_price historis & mengurangi stok
+            $productIds = collect($items)->pluck('id')->filter()->unique()->values();
+            $productsMap = $productIds->isNotEmpty()
+                ? CoopProduct::whereIn('id', $productIds)->get()->keyBy('id')
+                : collect();
+
+            $items = collect($items)->map(function ($item) use ($productsMap) {
+                $prod = !empty($item['id']) ? $productsMap->get($item['id']) : null;
+                $item['cost_price'] = (float) ($prod?->cost_price ?? 0);
+                return $item;
+            })->all();
+
             // Simpan Transaksi POS
             $transaction = CoopTransaction::create([
                 'transaction_code' => $transactionCode,
                 'cashier_id'       => $cashier->id,
-                'user_id'          => $customer?->id,
+                'user_id'          => $customer instanceof User ? $customer->id : null,
+                'member_id'        => $customer instanceof CoopMember ? $customer->id : null,
                 'voucher_id'       => $voucher?->id,
                 'payment_method'   => $paymentMethod,
                 'total_amount'     => $totalGross,
@@ -483,6 +563,9 @@ class PosController extends Controller
                 'rfid_paid_amount' => $rfidPaidAmount,
                 'cash_paid_amount' => $cashPaidAmount,
                 'change_amount'    => $changeAmount,
+                'bon_amount'       => $bonAmount,
+                'bon_paid_amount'  => 0,
+                'bon_status'       => $bonStatus,
                 'items'            => $items,
                 'notes'            => $request->notes,
             ]);
@@ -493,7 +576,7 @@ class PosController extends Controller
                     $rfidPaidAmount,
                     'pos_purchase',
                     $transactionCode,
-                    "Pembelian di Koperasi Sekolah ({$transactionCode})",
+                    "Pembelian di Koperasi Rabbani ({$transactionCode})",
                     $cashier
                 );
             }
@@ -514,7 +597,7 @@ class PosController extends Controller
             // Kurangi stok produk jika item terhubung dengan database
             foreach ($items as $item) {
                 if (!empty($item['id'])) {
-                    $prod = CoopProduct::find($item['id']);
+                    $prod = $productsMap->get($item['id']);
                     if ($prod && $prod->stock >= $item['qty']) {
                         $prod->decrement('stock', $item['qty']);
                     }
@@ -531,7 +614,7 @@ class PosController extends Controller
                 'date_time'        => Carbon::now()->locale('id')->isoFormat('D MMMM Y, HH:mm:ss'),
                 'cashier_name'     => $cashier->name,
                 'customer_name'    => $customer?->name ?: 'Pelanggan Umum',
-                'customer_nip'     => $customer?->nip ?: '-',
+                'customer_nip'     => $customer instanceof CoopMember ? $customer->member_code : ($customer?->nip ?: '-'),
                 'payment_method'   => $paymentMethod,
                 'items'            => $items,
                 'total_gross'      => $totalGross,
@@ -541,6 +624,7 @@ class PosController extends Controller
                 'rfid_paid_amount' => $rfidPaidAmount,
                 'cash_paid_amount' => $cashPaidAmount,
                 'change_amount'    => $changeAmount,
+                'bon_amount'       => $bonAmount,
                 'customer_balance' => $customer ? (float) $customer->fresh()->coop_balance : null,
                 'store_name'       => $storeInfo['name'],
                 'store_address'    => $storeInfo['address'],
@@ -648,9 +732,10 @@ class PosController extends Controller
         if ($trx) {
             DB::beginTransaction();
             try {
-                // Kembalikan saldo RFID jika terpotong
-                if ($trx->rfid_paid_amount > 0 && $trx->customer) {
-                    $trx->customer->addCoopBalance(
+                // Kembalikan saldo RFID jika terpotong (Pegawai atau Member)
+                $rfidOwner = $trx->customer ?? $trx->member;
+                if ($trx->rfid_paid_amount > 0 && $rfidOwner) {
+                    $rfidOwner->addCoopBalance(
                         $trx->rfid_paid_amount,
                         'refund',
                         $trx->transaction_code,
@@ -719,7 +804,7 @@ class PosController extends Controller
         $endDate = $request->query('end_date', Carbon::today()->endOfMonth()->format('Y-m-d'));
         $search = $request->query('search');
 
-        $query = CoopTransaction::with(['customer', 'cashier', 'voucher'])
+        $query = CoopTransaction::with(['customer', 'member', 'cashier', 'voucher'])
             ->whereBetween('created_at', [
                 Carbon::parse($startDate)->startOfDay(),
                 Carbon::parse($endDate)->endOfDay(),
@@ -732,6 +817,11 @@ class PosController extends Controller
                   ->orWhereHas('customer', function ($uq) use ($search) {
                       $uq->where('name', 'like', "%{$search}%")
                          ->orWhere('nip', 'like', "%{$search}%")
+                         ->orWhere('rfid_uid', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('member', function ($mq) use ($search) {
+                      $mq->where('name', 'like', "%{$search}%")
+                         ->orWhere('member_code', 'like', "%{$search}%")
                          ->orWhere('rfid_uid', 'like', "%{$search}%");
                   });
             });
@@ -749,9 +839,9 @@ class PosController extends Controller
                 'id'               => $t->id,
                 'transaction_code' => $t->transaction_code,
                 'voucher_code'     => $t->voucher?->voucher_code,
-                'customer_name'    => $t->customer?->name ?: 'Pelanggan Umum',
-                'customer_nip'     => $t->customer?->nip ?: '-',
-                'customer_divisi'  => $t->customer?->divisi ?: '-',
+                'customer_name'    => $t->customer?->name ?? $t->member?->name ?? 'Pelanggan Umum',
+                'customer_nip'     => $t->customer?->nip ?? $t->member?->member_code ?? '-',
+                'customer_divisi'  => $t->customer?->divisi ?? $t->member?->type_label ?? '-',
                 'payment_method'   => $t->payment_method,
                 'total_amount'     => (float) $t->total_amount,
                 'discount_amount'  => (float) $t->discount_amount,
@@ -759,6 +849,9 @@ class PosController extends Controller
                 'rfid_paid_amount' => (float) $t->rfid_paid_amount,
                 'cash_paid_amount' => (float) $t->cash_paid_amount,
                 'change_amount'    => (float) $t->change_amount,
+                'bon_amount'       => (float) $t->bon_amount,
+                'bon_paid_amount'  => (float) $t->bon_paid_amount,
+                'bon_status'       => $t->bon_status,
                 'items'            => $t->items,
                 'created_at'       => $t->created_at->format('d M Y, H:i'),
                 'cashier_name'     => $t->cashier?->name ?: 'Kasir',
