@@ -154,10 +154,8 @@ Route::middleware('auth')->group(function () {
     // ─── Admin & Superadmin Routes ─────────────────────────────────────────────
     Route::middleware('role:admin|superadmin')->prefix('admin')->group(function () {
         
-        // Arsip & KPI
+        // Arsip
         Route::get('/arsip-pegawai', [\App\Http\Controllers\Corporate\EmployeeDocumentController::class, 'manage'])->name('admin.employee-documents.index');
-        Route::get('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'adminIndex'])->name('admin.performance.index');
-        Route::post('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'store'])->name('admin.performance.store');
 
         Route::get('/presensi', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'index'])->name('admin.attendance.index');
         Route::post('/presensi/approval', [\App\Http\Controllers\Admin\AttendanceReportController::class, 'updateApproval'])->name('admin.attendance.approval');
@@ -190,8 +188,6 @@ Route::middleware('auth')->group(function () {
             
         Route::get('/laporan/{user}', [\App\Http\Controllers\Admin\LaporanController::class, 'detail'])->name('admin.laporan.detail');
 
-        Route::get('/teacher-journals', [\App\Http\Controllers\Admin\TeacherJournalController::class, 'index'])->name('admin.teacher-journals.index');
-
         Route::get('/habits', [\App\Http\Controllers\Admin\HabitController::class, 'index'])->name('admin.habits.index');
         Route::post('/habits/reorder', [\App\Http\Controllers\Admin\HabitController::class, 'reorder'])->name('admin.habits.reorder');
         Route::post('/habits', [\App\Http\Controllers\Admin\HabitController::class, 'store'])->name('admin.habits.store');
@@ -199,6 +195,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
         Route::post('/users', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('admin.users.store');
+        Route::post('/users/bulk-category', [\App\Http\Controllers\Admin\UserController::class, 'bulkUpdateCategory'])->name('admin.users.bulk-category');
         Route::put('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('admin.users.update');
         Route::get('/users/template', [\App\Http\Controllers\Admin\UserController::class, 'downloadTemplate'])->name('admin.users.template');
         Route::post('/users/import', [\App\Http\Controllers\Admin\UserController::class, 'import'])->name('admin.users.import');
@@ -241,12 +238,25 @@ Route::middleware('auth')->group(function () {
         Route::get('/academic-years/{year}/export-archive', [\App\Http\Controllers\Admin\AcademicYearController::class, 'exportArchive'])->name('admin.academic-years.export-archive');
     });
 
-    // ─── Rekap & Verifikasi Administrasi Guru (Admin, Superadmin, Kepala Sekolah, Kurikulum) ───
+    // ─── Rekap & Verifikasi Administrasi Guru + Evaluasi KPI (Admin, Superadmin, Kepala Sekolah, Kurikulum) ───
     Route::middleware('role:admin|superadmin|kepala_sekolah|kurikulum')->prefix('admin')->group(function () {
         Route::get('/teacher-administrations', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'index'])->name('admin.teacher-administrations.index');
         Route::post('/teacher-administrations/{teacherAdministration}/verify', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'verify'])->name('admin.teacher-administrations.verify');
         Route::delete('/teacher-administrations/{teacherAdministration}', [\App\Http\Controllers\Admin\TeacherAdministrationReviewController::class, 'destroy'])->name('admin.teacher-administrations.destroy');
         Route::get('/teacher-administrations/archive/{year}/download', [\App\Http\Controllers\Admin\AcademicYearController::class, 'exportArchive'])->name('admin.teacher-administrations.export-archive');
+    });
+
+    // ─── Evaluasi Kinerja KPI (Admin, Superadmin, Kepala Sekolah) ───
+    Route::middleware('role:admin|superadmin|kepala_sekolah')->prefix('admin')->group(function () {
+        Route::get('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'adminIndex'])->name('admin.performance.index');
+        Route::get('/performance-evaluations/insight', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'insight'])->name('admin.performance.insight');
+        Route::get('/performance-evaluations/export', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'export'])->name('admin.performance.export');
+        Route::post('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'store'])->name('admin.performance.store');
+        Route::post('/performance-evaluations/{evaluation}/publish', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'publish'])->name('admin.performance.publish');
+        Route::post('/performance-evaluations/{evaluation}/unpublish', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'unpublish'])->name('admin.performance.unpublish');
+        Route::put('/performance-evaluations/rubric', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'updateRubric'])->name('admin.performance.rubric.update');
+        Route::post('/performance-evaluations/rubric/reset', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'resetRubric'])->name('admin.performance.rubric.reset');
+        Route::get('/teacher-journals', [\App\Http\Controllers\Admin\TeacherJournalController::class, 'index'])->name('admin.teacher-journals.index');
     });
 
     // ─── Superadmin Only Routes ─────────────────────────────────────────────

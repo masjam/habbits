@@ -30,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(\App\Models\Notulen::class, \App\Policies\NotulenPolicy::class);
+        Gate::policy(\App\Models\PerformanceEvaluation::class, \App\Policies\PerformanceEvaluationPolicy::class);
 
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Notifications\Events\NotificationSent::class,

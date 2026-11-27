@@ -51,9 +51,11 @@ class UserController extends Controller
                 'email'            => $user->email,
                 'gender'           => $user->gender,
                 'roles'            => $user->getRoleNames(),
-                'nip'              => $user->nip,
-                'divisi'           => $user->divisi,
-                'status_kehadiran' => $user->status_kehadiran,
+                'nip'                 => $user->nip,
+                'divisi'              => $user->divisi,
+                'evaluation_category' => $user->evaluation_category,
+                'resolved_category'   => $user->evaluationCategory(),
+                'status_kehadiran'    => $user->status_kehadiran,
                 'catatan_pimpinan' => $user->catatan_pimpinan,
                 'can_multi_login'  => (bool) $user->can_multi_login,
                 'work_start'       => $user->work_start ? substr($user->work_start, 0, 5) : null,
@@ -91,9 +93,10 @@ class UserController extends Controller
             'email'            => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password'         => ['required', Rules\Password::defaults()],
             'gender'           => 'required|in:L,P',
-            'nip'              => 'nullable|string|max:255',
-            'divisi'           => 'nullable|string|max:255',
-            'status_kehadiran' => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
+            'nip'                 => 'nullable|string|max:255',
+            'divisi'              => 'nullable|string|max:255',
+            'evaluation_category' => 'nullable|in:guru,karyawan',
+            'status_kehadiran'    => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
             'work_start'       => 'nullable|string|max:10',
             'work_end'         => 'nullable|string|max:10',
             'late_tolerance'   => 'nullable|integer|min:0|max:120',
@@ -117,9 +120,10 @@ class UserController extends Controller
             'email'            => $validated['email'],
             'password'         => Hash::make($validated['password']),
             'gender'           => $validated['gender'],
-            'nip'              => $validated['nip'] ?? null,
-            'divisi'           => $validated['divisi'] ?? null,
-            'status_kehadiran' => $validated['status_kehadiran'] ?? 'Aktif',
+            'nip'                 => $validated['nip'] ?? null,
+            'divisi'              => $validated['divisi'] ?? null,
+            'evaluation_category' => $validated['evaluation_category'] ?? null,
+            'status_kehadiran'    => $validated['status_kehadiran'] ?? 'Aktif',
             'can_multi_login'  => $isSuperadmin ? ($validated['can_multi_login'] ?? false) : false,
             'work_start'       => !empty($validated['work_start']) ? $validated['work_start'] : null,
             'work_end'         => !empty($validated['work_end']) ? $validated['work_end'] : null,
@@ -183,9 +187,10 @@ class UserController extends Controller
             'name'               => 'required|string|max:255',
             'email'              => 'required|string|lowercase|email|max:255|unique:'.User::class.',email,'.$user->id,
             'gender'             => 'required|in:L,P',
-            'nip'                => 'nullable|string|max:255',
-            'divisi'             => 'nullable|string|max:255',
-            'status_kehadiran'   => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
+            'nip'                 => 'nullable|string|max:255',
+            'divisi'              => 'nullable|string|max:255',
+            'evaluation_category' => 'nullable|in:guru,karyawan',
+            'status_kehadiran'    => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
             'target_tidak_aktif' => 'nullable|integer|min:0|max:100',
             'work_start'         => 'nullable|string|max:10',
             'work_end'           => 'nullable|string|max:10',
@@ -226,8 +231,9 @@ class UserController extends Controller
             'name'               => $validated['name'],
             'email'              => $validated['email'],
             'gender'             => $validated['gender'],
-            'nip'                => $validated['nip'] ?? null,
-            'divisi'             => $validated['divisi'] ?? null,
+            'nip'                 => $validated['nip'] ?? null,
+            'divisi'              => $validated['divisi'] ?? null,
+            'evaluation_category' => $validated['evaluation_category'] ?? null,
             'status_kehadiran'   => $validated['status_kehadiran'] ?? 'Aktif',
             'target_tidak_aktif' => $validated['target_tidak_aktif'] ?? null,
             'work_start'         => !empty($validated['work_start']) ? $validated['work_start'] : null,
@@ -381,5 +387,41 @@ class UserController extends Controller
 
         $user->badges()->detach($request->badge_id);
         return redirect()->back()->with('success', 'Lencana berhasil ditarik dari pegawai.');
+    }
+
+    /**
+     * Ubah kategori evaluasi (guru / karyawan / otomatis) secara massal.
+     */
+    public function bulkUpdateCategory(Request $request)
+    {
+        $currentUser = Auth::user();
+        $isSuperadmin = $currentUser->hasRole('superadmin');
+
+        $validated = $request->validate([
+            'user_ids'            => 'required|array|min:1',
+            'user_ids.*'          => 'integer|exists:users,id',
+            'evaluation_category' => 'nullable|in:guru,karyawan',
+        ]);
+
+        $targets = User::with('roles')->whereIn('id', $validated['user_ids'])->get();
+
+        if (!$isSuperadmin) {
+            foreach ($targets as $target) {
+                if (!$target->hasAnyRole(['user', 'kurikulum', 'koperasi']) || $this->isPrivilegedTarget($target)) {
+                    abort(403, 'Anda tidak memiliki hak akses untuk mengubah kategori akun Admin, Superadmin, Kepala Sekolah, atau Tata Usaha.');
+                }
+            }
+        }
+
+        $category = $validated['evaluation_category'] ?? null;
+        User::whereIn('id', $targets->pluck('id'))->update(['evaluation_category' => $category]);
+
+        $label = match ($category) {
+            'guru'     => 'Guru',
+            'karyawan' => 'Tendik (Karyawan)',
+            default    => 'Deteksi Otomatis',
+        };
+
+        return redirect()->back()->with('success', "Kategori {$targets->count()} pegawai berhasil diubah menjadi {$label}.");
     }
 }

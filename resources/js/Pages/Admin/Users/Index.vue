@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head, Link, useForm, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useConfirm } from '@/Composables/useConfirm'
 
 const { confirm } = useConfirm()
@@ -22,7 +22,6 @@ const searchQuery = ref(props.filters?.search || '')
 const perPage = ref(props.filters?.per_page || 10)
 
 let searchTimeout = null
-import { watch } from 'vue'
 watch(searchQuery, (newVal) => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
@@ -49,6 +48,7 @@ const form = useForm({
     is_koperasi: false,
     nip: '',
     divisi: '',
+    evaluation_category: '',
     status_kehadiran: 'Aktif',
     catatan_pimpinan: '',
     target_tidak_aktif: '',
@@ -114,6 +114,7 @@ const openEditModal = (user) => {
     // HR Features
     form.nip = user.nip || ''
     form.divisi = user.divisi || ''
+    form.evaluation_category = user.evaluation_category || ''
     form.status_kehadiran = user.status_kehadiran || 'Aktif'
     form.catatan_pimpinan = user.catatan_pimpinan || ''
     form.target_tidak_aktif = user.target_tidak_aktif || ''
@@ -239,6 +240,46 @@ const canEditUser = (user) => {
     if (props.isSuperadmin) return true
     return (user.roles.includes('user') || user.roles.includes('kurikulum')) && !user.roles.includes('superadmin') && !user.roles.includes('admin')
 }
+
+const selectedIds = ref([])
+const bulkProcessing = ref(false)
+
+watch(() => props.users?.data, () => {
+    selectedIds.value = []
+})
+
+const selectableUsers = computed(() => (props.users?.data || []).filter(u => canEditUser(u)))
+
+const allSelectedOnPage = computed(() => {
+    return selectableUsers.value.length > 0 && selectableUsers.value.every(u => selectedIds.value.includes(u.id))
+})
+
+const toggleSelectAllOnPage = () => {
+    if (allSelectedOnPage.value) {
+        const pageIds = new Set(selectableUsers.value.map(u => u.id))
+        selectedIds.value = selectedIds.value.filter(id => !pageIds.has(id))
+    } else {
+        const merged = new Set([...selectedIds.value, ...selectableUsers.value.map(u => u.id)])
+        selectedIds.value = Array.from(merged)
+    }
+}
+
+const bulkUpdateCategory = (category) => {
+    if (selectedIds.value.length === 0 || bulkProcessing.value) return
+    bulkProcessing.value = true
+    router.post(route('admin.users.bulk-category'), {
+        user_ids: selectedIds.value,
+        evaluation_category: category,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            selectedIds.value = []
+        },
+        onFinish: () => {
+            bulkProcessing.value = false
+        },
+    })
+}
 </script>
 
 <template>
@@ -291,6 +332,27 @@ const canEditUser = (user) => {
                 </div>
             </div>
 
+            <!-- Bulk Action Bar -->
+            <div v-if="selectedIds.length > 0" class="flex flex-wrap items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 shadow-xs">
+                <div class="text-sm font-semibold text-emerald-900">
+                    {{ selectedIds.length }} pegawai dipilih
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" :disabled="bulkProcessing" @click="bulkUpdateCategory('guru')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-colors">
+                        Jadikan Guru
+                    </button>
+                    <button type="button" :disabled="bulkProcessing" @click="bulkUpdateCategory('karyawan')" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white text-xs font-bold transition-colors">
+                        Jadikan Tendik (Karyawan)
+                    </button>
+                    <button type="button" :disabled="bulkProcessing" @click="bulkUpdateCategory(null)" class="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 disabled:opacity-50 text-slate-700 text-xs font-bold transition-colors">
+                        Reset ke Otomatis
+                    </button>
+                    <button type="button" :disabled="bulkProcessing" @click="selectedIds = []" class="px-2.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-700 text-xs font-semibold">
+                        Batal Pilih
+                    </button>
+                </div>
+            </div>
+
             <!-- Table & Mobile Cards -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
@@ -298,18 +360,25 @@ const canEditUser = (user) => {
                     <table class="hidden md:table w-full text-left text-sm text-slate-600">
                         <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-semibold border-b border-slate-200">
                             <tr>
+                                <th class="px-4 py-3 w-10 text-center">
+                                    <input type="checkbox" :checked="allSelectedOnPage" :disabled="selectableUsers.length === 0" @change="toggleSelectAllOnPage" title="Pilih semua di halaman ini" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                                </th>
                                 <th class="px-4 py-3">Nama Pegawai</th>
                                 <th class="px-4 py-3">Email</th>
                                 <th class="px-4 py-3 text-center">Gender</th>
                                 <th class="px-4 py-3 text-center">Role</th>
+                                <th class="px-4 py-3 text-center">Kategori</th>
                                 <th class="px-4 py-3 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200">
                             <tr v-if="users.data.length === 0">
-                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">Tidak ada data pegawai yang ditemukan.</td>
+                                <td colspan="7" class="px-4 py-8 text-center text-slate-500">Tidak ada data pegawai yang ditemukan.</td>
                             </tr>
                             <tr v-for="user in users.data" :key="user.id" class="bg-white hover:bg-slate-50 transition-colors" :class="{'opacity-50': user.status_kehadiran !== 'Aktif'}">
+                                <td class="px-4 py-4 text-center">
+                                    <input type="checkbox" :value="user.id" v-model="selectedIds" :disabled="!canEditUser(user)" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-40" />
+                                </td>
                                 <td class="px-4 py-4">
                                     <div v-if="$page.props.global_settings?.feature_idcard === '1' || $page.props.global_settings?.feature_idcard === 'true'"
                                          @click="openIdCardModal(user)" 
@@ -354,6 +423,16 @@ const canEditUser = (user) => {
                                         </span>
                                     </div>
                                 </td>
+                                <td class="px-4 py-4 text-center">
+                                    <div class="inline-flex flex-col items-center gap-0.5">
+                                        <span class="px-2 py-0.5 rounded text-xs font-bold" :class="user.resolved_category === 'guru' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'">
+                                            {{ user.resolved_category === 'guru' ? 'Guru' : 'Tendik' }}
+                                        </span>
+                                        <span class="text-[10px] text-slate-400">
+                                            {{ user.evaluation_category ? 'Manual' : 'Otomatis' }}
+                                        </span>
+                                    </div>
+                                </td>
                                 <td class="px-4 py-4 text-right">
                                     <div class="flex items-center justify-end gap-1">
                                         <button v-if="canEditUser(user)" @click="openEditModal(user)" title="Edit Profil" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
@@ -381,15 +460,22 @@ const canEditUser = (user) => {
                     <div class="md:hidden divide-y divide-slate-100">
                         <div v-for="user in users.data" :key="`mobile-${user.id}`" class="p-4 space-y-3 bg-white hover:bg-slate-50 transition-colors" :class="{'opacity-50': user.status_kehadiran !== 'Aktif'}">
                             <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <div v-if="$page.props.global_settings?.feature_idcard === '1' || $page.props.global_settings?.feature_idcard === 'true'"
-                                         @click="openIdCardModal(user)" 
-                                         class="font-bold text-emerald-600 text-sm cursor-pointer hover:underline inline-flex items-center gap-1">
-                                        {{ user.name }}
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                    </div>
-                                    <div v-else class="font-bold text-slate-800 text-sm">{{ user.name }}</div>
-                                    <div class="text-xs text-slate-500 truncate w-48">{{ user.email }}</div>
+                                <div class="flex items-start gap-2.5">
+                                    <input type="checkbox" :value="user.id" v-model="selectedIds" :disabled="!canEditUser(user)" class="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-40" />
+                                    <div>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <div v-if="$page.props.global_settings?.feature_idcard === '1' || $page.props.global_settings?.feature_idcard === 'true'"
+                                                 @click="openIdCardModal(user)" 
+                                                 class="font-bold text-emerald-600 text-sm cursor-pointer hover:underline inline-flex items-center gap-1">
+                                                {{ user.name }}
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                            </div>
+                                            <div v-else class="font-bold text-slate-800 text-sm">{{ user.name }}</div>
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="user.resolved_category === 'guru' ? 'bg-emerald-100 text-emerald-700' : 'bg-sky-100 text-sky-700'">
+                                                {{ user.resolved_category === 'guru' ? 'Guru' : 'Tendik' }}
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-slate-500 truncate w-48">{{ user.email }}</div>
                                     
                                     <div class="text-[11px] mt-1.5 space-y-0.5">
                                         <div v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'" class="text-slate-500">
@@ -398,6 +484,7 @@ const canEditUser = (user) => {
                                         <div v-if="$page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true'" class="text-slate-500">
                                             Sts: <span class="font-medium">{{ user.status_kehadiran || 'Aktif' }}</span>
                                         </div>
+                                    </div>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-1 flex-shrink-0">
@@ -521,6 +608,16 @@ const canEditUser = (user) => {
                                             <p v-if="form.errors.divisi" class="text-xs text-rose-500 mt-1">{{ form.errors.divisi }}</p>
                                         </div>
                                     </template>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Kategori Pegawai (KPI / Jurnal)</label>
+                                        <select v-model="form.evaluation_category" class="w-full p-2 text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                                            <option value="">Otomatis (Berdasarkan Divisi / Jurnal)</option>
+                                            <option value="guru">Guru</option>
+                                            <option value="karyawan">Tendik (Karyawan)</option>
+                                        </select>
+                                        <p v-if="form.errors.evaluation_category" class="text-xs text-rose-500 mt-1">{{ form.errors.evaluation_category }}</p>
+                                    </div>
 
                                     <template v-if="$page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true'">
                                         <div>

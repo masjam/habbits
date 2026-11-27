@@ -35,6 +35,7 @@ class User extends Authenticatable
         'avatar',
         'nip',
         'divisi',
+        'evaluation_category',
         'status_kehadiran',
         'catatan_pimpinan',
         'target_tidak_aktif',
@@ -87,6 +88,62 @@ class User extends Authenticatable
     public function coopTransactions(): HasMany
     {
         return $this->hasMany(CoopTransaction::class, 'user_id');
+    }
+
+    public function teacherJournals(): HasMany
+    {
+        return $this->hasMany(TeacherJournal::class, 'user_id');
+    }
+
+    public function teacherAdministrations(): HasMany
+    {
+        return $this->hasMany(TeacherAdministration::class, 'user_id');
+    }
+
+    /**
+     * Tentukan kategori evaluasi KPI pegawai ('guru' atau 'karyawan').
+     * Sumber kebenaran tunggal untuk deteksi otomatis kategori.
+     */
+    public function evaluationCategory(): string
+    {
+        if (in_array($this->evaluation_category, ['guru', 'karyawan'], true)) {
+            return $this->evaluation_category;
+        }
+
+        $divisi = strtolower(trim((string) $this->divisi));
+
+        $teacherKeywords = ['guru', 'wali kelas', 'pengajar', 'tahfidz', 'kurikulum', 'mapel', 'kelas'];
+        foreach ($teacherKeywords as $kw) {
+            if ($divisi !== '' && str_contains($divisi, $kw)) {
+                return 'guru';
+            }
+        }
+
+        $staffKeywords = ['tata usaha', 'tu', 'koperasi', 'keuangan', 'sarpras', 'kebersihan', 'keamanan', 'satpam', 'karyawan', 'tendik', 'staf', 'staff', 'it', 'humas', 'perpustakaan'];
+        foreach ($staffKeywords as $kw) {
+            if ($divisi !== '' && str_contains($divisi, $kw)) {
+                return 'karyawan';
+            }
+        }
+
+        if ($this->hasRole('kurikulum')) {
+            return 'guru';
+        }
+
+        if ($this->hasAnyRole(['tata_usaha', 'koperasi'])) {
+            return 'karyawan';
+        }
+
+        // Jika pernah mengisi jurnal guru atau perangkat pembelajaran, perlakukan sebagai guru
+        if ($this->relationLoaded('teacherJournals') ? $this->teacherJournals->isNotEmpty() : $this->teacherJournals()->exists()) {
+            return 'guru';
+        }
+
+        if ($this->relationLoaded('teacherAdministrations') ? $this->teacherAdministrations->isNotEmpty() : $this->teacherAdministrations()->exists()) {
+            return 'guru';
+        }
+
+        return 'karyawan';
     }
 
     public function coopBalanceLogs(): HasMany
