@@ -11,6 +11,7 @@ const props = defineProps({
     allBadges: Array,
     divisions: Array,
     filters: Object,
+    categoryCounts: Object,
     isSuperadmin: Boolean,
 })
 
@@ -18,19 +19,27 @@ const isModalOpen = ref(false)
 const isEditing = ref(false)
 const editingUserId = ref(null)
 
+const activeCategory = ref(props.filters?.category || 'guru')
 const searchQuery = ref(props.filters?.search || '')
 const perPage = ref(props.filters?.per_page || 10)
+
+const switchCategory = (cat) => {
+    if (activeCategory.value === cat) return
+    activeCategory.value = cat
+    selectedIds.value = []
+    router.get(route('admin.users.index'), { category: cat, search: searchQuery.value, per_page: perPage.value }, { preserveState: true, preserveScroll: true })
+}
 
 let searchTimeout = null
 watch(searchQuery, (newVal) => {
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
-        router.get(route('admin.users.index'), { search: newVal, per_page: perPage.value }, { preserveState: true, preserveScroll: true, replace: true })
+        router.get(route('admin.users.index'), { category: activeCategory.value, search: newVal, per_page: perPage.value }, { preserveState: true, preserveScroll: true, replace: true })
     }, 300)
 })
 
 watch(perPage, () => {
-    router.get(route('admin.users.index'), { search: searchQuery.value, per_page: perPage.value }, { preserveState: true, preserveScroll: true })
+    router.get(route('admin.users.index'), { category: activeCategory.value, search: searchQuery.value, per_page: perPage.value }, { preserveState: true, preserveScroll: true })
 })
 
 const isResetModalOpen = ref(false)
@@ -330,6 +339,36 @@ const bulkUpdateCategory = (category) => {
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <!-- Tabs Guru & Tendik -->
+            <div class="flex items-center gap-2 border-b border-slate-200">
+                <button
+                    type="button"
+                    @click="switchCategory('guru')"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors -mb-px"
+                    :class="activeCategory === 'guru'
+                        ? 'border-emerald-600 text-emerald-700'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                >
+                    <span>Guru</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeCategory === 'guru' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'">
+                        {{ categoryCounts?.guru ?? 0 }}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    @click="switchCategory('karyawan')"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors -mb-px"
+                    :class="activeCategory === 'karyawan'
+                        ? 'border-sky-600 text-sky-700'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                >
+                    <span>Tendik (Karyawan)</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeCategory === 'karyawan' ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600'">
+                        {{ categoryCounts?.karyawan ?? 0 }}
+                    </span>
+                </button>
             </div>
 
             <!-- Bulk Action Bar -->

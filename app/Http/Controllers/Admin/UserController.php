@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -22,11 +24,23 @@ class UserController extends Controller
     {
         $currentUser = Auth::user();
         $search = $request->input('search');
-        $perPage = $request->input('per_page', 10);
+        $perPage = max(1, (int) $request->input('per_page', 10));
+        $category = in_array($request->input('category'), ['guru', 'karyawan'], true)
+            ? $request->input('category')
+            : 'guru';
 
         // Ambil data user, admin hanya bisa melihat role user. Superadmin bisa lihat semua.
         // Tapi sementara kita tampilkan semua saja, atau jika admin, tampilkan pegawai saja.
-        $query = User::with(['roles', 'badges'])->orderBy('created_at', 'desc');
+        $query = User::with(['roles', 'badges'])
+            ->withExists(['teacherJournals', 'teacherAdministrations'])
+            ->orderBy('created_at', 'desc');
+
+        // Akun dengan role 'superadmin' hanya bisa dilihat oleh dirinya sendiri, apapun peran gandanya
+        $query->where(function ($q) use ($currentUser) {
+            $q->whereDoesntHave('roles', function ($r) {
+                $r->where('name', 'superadmin');
+            })->orWhere('users.id', $currentUser->id);
+        });
 
         if (!$currentUser->hasRole('superadmin')) {
             // Admin biasa hanya melihat pegawai (role: user, kurikulum, atau koperasi)
@@ -42,9 +56,22 @@ class UserController extends Controller
             });
         }
 
-        $users = $query->paginate($perPage)->withQueryString();
+        $allMatching = $query->get();
 
-        $users->getCollection()->transform(function ($user) {
+        $guruCount = 0;
+        $tendikCount = 0;
+        $filtered = $allMatching->filter(function (User $user) use ($category, &$guruCount, &$tendikCount) {
+            $resolved = $user->evaluationCategory();
+            if ($resolved === 'guru') {
+                $guruCount++;
+            } else {
+                $tendikCount++;
+            }
+            return $resolved === $category;
+        })->values();
+
+        $page = Paginator::resolveCurrentPage();
+        $pageItems = $filtered->forPage($page, $perPage)->values()->map(function ($user) {
             return [
                 'id'               => $user->id,
                 'name'             => $user->name,
@@ -68,15 +95,20 @@ class UserController extends Controller
             ];
         });
 
+        $users = (new LengthAwarePaginator($pageItems, $filtered->count(), $perPage, $page, [
+            'path' => Paginator::resolveCurrentPath(),
+        ]))->withQueryString();
+
         $badges = \App\Models\Badge::all();
         $divisions = \App\Models\Division::orderBy('name')->get();
 
         return Inertia::render('Admin/Users/Index', [
-            'users'       => $users,
-            'allBadges'   => $badges,
-            'divisions'   => $divisions,
-            'filters'     => ['search' => $search, 'per_page' => (int) $perPage],
-            'isSuperadmin'=> $currentUser->hasRole('superadmin'),
+            'users'          => $users,
+            'allBadges'      => $badges,
+            'divisions'      => $divisions,
+            'filters'        => ['category' => $category, 'search' => $search, 'per_page' => $perPage],
+            'categoryCounts' => ['guru' => $guruCount, 'karyawan' => $tendikCount],
+            'isSuperadmin'   => $currentUser->hasRole('superadmin'),
         ]);
     }
 

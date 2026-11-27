@@ -135,11 +135,17 @@ class User extends Authenticatable
         }
 
         // Jika pernah mengisi jurnal guru atau perangkat pembelajaran, perlakukan sebagai guru
-        if ($this->relationLoaded('teacherJournals') ? $this->teacherJournals->isNotEmpty() : $this->teacherJournals()->exists()) {
+        $hasJournal = array_key_exists('teacher_journals_exists', $this->attributes)
+            ? (bool) $this->attributes['teacher_journals_exists']
+            : ($this->relationLoaded('teacherJournals') ? $this->teacherJournals->isNotEmpty() : $this->teacherJournals()->exists());
+        if ($hasJournal) {
             return 'guru';
         }
 
-        if ($this->relationLoaded('teacherAdministrations') ? $this->teacherAdministrations->isNotEmpty() : $this->teacherAdministrations()->exists()) {
+        $hasAdmin = array_key_exists('teacher_administrations_exists', $this->attributes)
+            ? (bool) $this->attributes['teacher_administrations_exists']
+            : ($this->relationLoaded('teacherAdministrations') ? $this->teacherAdministrations->isNotEmpty() : $this->teacherAdministrations()->exists());
+        if ($hasAdmin) {
             return 'guru';
         }
 

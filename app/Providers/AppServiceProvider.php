@@ -29,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
                            ->symbols();
         });
 
+        Gate::before(fn ($user) => $user->hasRole('superadmin') ? true : null);
+
         Gate::policy(\App\Models\Notulen::class, \App\Policies\NotulenPolicy::class);
         Gate::policy(\App\Models\PerformanceEvaluation::class, \App\Policies\PerformanceEvaluationPolicy::class);
 
