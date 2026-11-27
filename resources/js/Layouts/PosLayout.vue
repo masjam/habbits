@@ -31,6 +31,7 @@ const sidebarGroups = computed(() => {
             title: 'Manajemen',
             items: [
                 { icon: 'products', label: 'Katalog Barang', desc: 'Kelola produk, harga & stok', routeName: 'koperasi.products', pattern: 'koperasi.products*' },
+                { icon: 'discounts', label: 'Diskon & Promo', desc: 'Atur promo event, member & kategori', routeName: 'koperasi.discounts', pattern: 'koperasi.discounts*' },
                 { icon: 'opname', label: 'Stok Opname', desc: 'Audit & penyesuaian stok fisik', routeName: 'koperasi.stock-opname', pattern: 'koperasi.stock-opname*' },
                 { icon: 'history', label: 'Riwayat Transaksi', desc: 'Arsip belanja, cetak struk & void', routeName: 'koperasi.history', pattern: 'koperasi.history*' },
                 { icon: 'reports', label: 'Laporan Koperasi', desc: 'Laba/rugi, perubahan stok & member', routeName: 'koperasi.reports', pattern: 'koperasi.reports*' },
@@ -226,6 +227,12 @@ onUnmounted(() => {
                                 <path d="M12.5 3H6a2 2 0 0 0-2 2v6.5a2 2 0 0 0 .59 1.41l7.5 7.5a2 2 0 0 0 2.82 0l5.5-5.5a2 2 0 0 0 0-2.82l-7.5-7.5A2 2 0 0 0 12.5 3Z" fill="currentColor" fill-opacity="0.14" />
                                 <circle cx="8.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
                                 <path d="M10.5 13.5l3-3M12.5 15.5l2-2" />
+                            </svg>
+                            <svg v-else-if="item.icon === 'discounts'" class="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity="0.13" />
+                                <path d="M9 15l6-6" />
+                                <circle cx="9.5" cy="9.5" r="1" fill="currentColor" stroke="none" />
+                                <circle cx="14.5" cy="14.5" r="1" fill="currentColor" stroke="none" />
                             </svg>
                             <svg v-else-if="item.icon === 'opname'" class="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5v-7Z" fill="currentColor" fill-opacity="0.13" />

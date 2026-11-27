@@ -393,6 +393,14 @@ const rawMenuGroups = computed(() => [
                 roles: ['koperasi', 'superadmin'],
             },
             {
+                key: 'koperasi-discounts',
+                label: 'Diskon & Promo',
+                icon: IconVoucher,
+                route: 'koperasi.discounts',
+                activeRoutes: ['koperasi.discounts*'],
+                roles: ['koperasi', 'superadmin'],
+            },
+            {
                 key: 'koperasi-stock-opname',
                 label: 'Stok Opname',
                 icon: IconVerifikasiArsip,

@@ -18,6 +18,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    activeDiscounts: {
+        type: Array,
+        default: () => [],
+    },
     todayStats: {
         type: Object,
         default: () => ({ sales_count: 0, total_gross: 0, voucher_used: 0, rfid_used: 0, cash_received: 0, date: '' }),
@@ -121,6 +125,7 @@ const addToCart = (product) => {
         cart.value.push({
             id: product.id,
             name: product.name,
+            category: product.category || '',
             price: Number(product.price),
             qty: 1,
             unit: product.unit || 'Pcs',
@@ -319,14 +324,68 @@ const cartTotalGross = computed(() => {
     return cart.value.reduce((sum, item) => sum + item.subtotal, 0)
 })
 
+const selectedDiscountId = ref('auto')
+
+const eligibleDiscounts = computed(() => {
+    if (cart.value.length === 0 || cartTotalGross.value <= 0) return []
+    const custType = customer.value?.customer_type || null
+    const subType = customer.value?.member_sub_type || (custType === 'user' ? 'pegawai' : null)
+
+    return props.activeDiscounts
+        .map((d) => {
+            if (d.member_type) {
+                if (d.member_type === 'registered' && !customer.value) return null
+                if (d.member_type === 'pegawai' && custType !== 'user') return null
+                if (!['registered', 'pegawai'].includes(d.member_type) && !(custType === 'member' && subType === d.member_type)) return null
+            }
+
+            const eligibleSub = cart.value.reduce((sum, item) => {
+                if (!d.product_category || item.category === d.product_category) {
+                    return sum + item.subtotal
+                }
+                return sum
+            }, 0)
+
+            if (eligibleSub <= 0 || eligibleSub < (Number(d.min_purchase) || 0)) return null
+
+            let amt = 0
+            if (d.discount_type === 'percentage') {
+                amt = Math.round(eligibleSub * (Math.min(100, Math.max(0, Number(d.discount_value))) / 100))
+                if (d.max_discount && Number(d.max_discount) > 0) {
+                    amt = Math.min(amt, Number(d.max_discount))
+                }
+            } else {
+                amt = Math.min(eligibleSub, Math.max(0, Number(d.discount_value)))
+            }
+            amt = Math.min(amt, cartTotalGross.value)
+            if (amt <= 0) return null
+
+            return { ...d, calculated_amount: amt }
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.calculated_amount - a.calculated_amount)
+})
+
+const appliedDiscount = computed(() => {
+    if (selectedDiscountId.value === 'none' || eligibleDiscounts.value.length === 0) return null
+    if (selectedDiscountId.value !== 'auto') {
+        const picked = eligibleDiscounts.value.find(d => d.id === Number(selectedDiscountId.value))
+        if (picked) return picked
+    }
+    return eligibleDiscounts.value[0]
+})
+
+const promoDiscount = computed(() => appliedDiscount.value ? appliedDiscount.value.calculated_amount : 0)
+
 const voucherDiscount = computed(() => {
     if (!appliedVoucher.value) return 0
     const val = Number(appliedVoucher.value.reward_numeric) || 50000
-    return Math.min(val, cartTotalGross.value)
+    const afterDiscount = Math.max(0, cartTotalGross.value - promoDiscount.value)
+    return Math.min(val, afterDiscount)
 })
 
 const cartNetPayable = computed(() => {
-    return Math.max(0, cartTotalGross.value - voucherDiscount.value)
+    return Math.max(0, cartTotalGross.value - promoDiscount.value - voucherDiscount.value)
 })
 
 // ─── Checkout & Payment Modal State ─────────────────────────
@@ -404,6 +463,8 @@ const submitCheckout = () => {
         payment_method: paymentMethod.value,
         customer_type: customer.value?.customer_type || 'user',
         customer_id: customer.value?.id || null,
+        discount_id: selectedDiscountId.value !== 'auto' && selectedDiscountId.value !== 'none' ? Number(selectedDiscountId.value) : null,
+        skip_discount: selectedDiscountId.value === 'none',
         voucher_code: appliedVoucher.value?.code || null,
         cash_paid: Number(cashReceived.value) || 0,
         notes: checkoutNotes.value,
@@ -728,6 +789,23 @@ onUnmounted(() => {
                             <span>Subtotal Belanja:</span>
                             <span class="font-mono font-bold text-slate-800">{{ formatRupiah(cartTotalGross) }}</span>
                         </div>
+                        <div v-if="eligibleDiscounts.length > 0" class="space-y-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <select
+                                    v-model="selectedDiscountId"
+                                    class="flex-1 px-2 py-1 rounded-lg border border-emerald-200 bg-emerald-50/70 text-[11px] font-bold text-emerald-800 focus:outline-none"
+                                >
+                                    <option value="auto">Promo Otomatis ({{ eligibleDiscounts[0].name }})</option>
+                                    <option v-for="d in eligibleDiscounts" :key="d.id" :value="d.id">
+                                        {{ d.name }} (-{{ formatRupiah(d.calculated_amount) }})
+                                    </option>
+                                    <option value="none">Tanpa Diskon</option>
+                                </select>
+                                <span v-if="promoDiscount > 0" class="font-mono font-bold text-emerald-700 whitespace-nowrap">
+                                    - {{ formatRupiah(promoDiscount) }}
+                                </span>
+                            </div>
+                        </div>
                         <div v-if="voucherDiscount > 0" class="flex justify-between text-amber-700 font-bold">
                             <span>Voucher Habit:</span>
                             <span class="font-mono">- {{ formatRupiah(voucherDiscount) }}</span>
@@ -980,6 +1058,11 @@ onUnmounted(() => {
                         <div class="border-t border-dashed border-slate-300 pt-1 flex justify-between font-bold">
                             <span>Subtotal:</span>
                             <span>{{ formatRupiah(activeReceipt.total_gross) }}</span>
+                        </div>
+
+                        <div v-if="activeReceipt.discount_amount > 0" class="flex justify-between text-emerald-700 font-bold">
+                            <span>Diskon ({{ activeReceipt.discount_name || 'Promo' }}):</span>
+                            <span>- {{ formatRupiah(activeReceipt.discount_amount) }}</span>
                         </div>
 
                         <div v-if="activeReceipt.voucher_amount > 0" class="flex justify-between text-emerald-700 font-bold">

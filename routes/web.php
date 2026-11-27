@@ -319,6 +319,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/export/member-transactions', [\App\Http\Controllers\Koperasi\ReportController::class, 'exportMemberTransactions'])->name('reports.export.member-transactions');
         Route::get('/settings', [\App\Http\Controllers\Koperasi\PosController::class, 'settings'])->name('settings');
         Route::post('/settings', [\App\Http\Controllers\Koperasi\PosController::class, 'updateSettings'])->name('settings.update');
+        Route::get('/discounts', [\App\Http\Controllers\Koperasi\DiscountController::class, 'index'])->name('discounts');
+        Route::post('/discounts', [\App\Http\Controllers\Koperasi\DiscountController::class, 'store'])->name('discounts.store');
+        Route::put('/discounts/{discount}', [\App\Http\Controllers\Koperasi\DiscountController::class, 'update'])->name('discounts.update');
+        Route::patch('/discounts/{discount}/toggle', [\App\Http\Controllers\Koperasi\DiscountController::class, 'toggle'])->name('discounts.toggle');
+        Route::delete('/discounts/{discount}', [\App\Http\Controllers\Koperasi\DiscountController::class, 'destroy'])->name('discounts.destroy');
         Route::get('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'products'])->name('products');
         Route::post('/products', [\App\Http\Controllers\Koperasi\PosController::class, 'storeProduct'])->name('products.store');
         Route::delete('/products/{product}', [\App\Http\Controllers\Koperasi\PosController::class, 'destroyProduct'])->name('products.destroy');

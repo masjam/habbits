@@ -8,6 +8,7 @@ use App\Exports\CoopStockOpnameReport;
 use App\Http\Controllers\Controller;
 use App\Imports\CoopProductImport;
 use App\Models\CoopBalanceLog;
+use App\Models\CoopDiscount;
 use App\Models\CoopMember;
 use App\Models\CoopProduct;
 use App\Models\CoopStockLog;
@@ -100,8 +101,25 @@ class PosController extends Controller
                 ];
             });
 
-        // 4. Informasi Koperasi
+        // 4. Informasi Koperasi & Diskon Aktif
         $storeInfo = $this->storeInfo();
+        $activeDiscounts = CoopDiscount::activeOn()
+            ->orderByDesc('discount_value')
+            ->get()
+            ->map(fn ($d) => [
+                'id'               => $d->id,
+                'name'             => $d->name,
+                'discount_type'    => $d->discount_type,
+                'discount_value'   => (float) $d->discount_value,
+                'max_discount'     => $d->max_discount !== null ? (float) $d->max_discount : null,
+                'min_purchase'     => (float) $d->min_purchase,
+                'member_type'      => $d->member_type,
+                'member_label'     => $d->member_type_label,
+                'product_category' => $d->product_category,
+                'start_date'       => $d->start_date?->format('Y-m-d'),
+                'end_date'         => $d->end_date?->format('Y-m-d'),
+            ])
+            ->values();
 
         return Inertia::render('Koperasi/POS/Index', [
             'cashier'            => [
@@ -113,6 +131,7 @@ class PosController extends Controller
             ],
             'products'           => $products,
             'categories'         => $categories,
+            'activeDiscounts'    => $activeDiscounts,
             'todayStats'         => [
                 'sales_count'     => $todaySalesCount,
                 'total_gross'     => (float) $todayTotalGross,
@@ -180,6 +199,7 @@ class PosController extends Controller
                 'message'  => "Kartu RFID milik {$user->name} berhasil terdeteksi!",
                 'customer' => [
                     'customer_type'     => 'user',
+                    'member_sub_type'   => 'pegawai',
                     'id'                => $user->id,
                     'name'              => $user->name,
                     'nip'               => $user->nip ?: '-',
@@ -222,6 +242,7 @@ class PosController extends Controller
             'message'  => "Member {$member->name} ({$member->type_label}) berhasil terdeteksi!",
             'customer' => [
                 'customer_type'     => 'member',
+                'member_sub_type'   => $member->type,
                 'id'                => $member->id,
                 'name'              => $member->name,
                 'nip'               => $member->member_code,
@@ -435,6 +456,8 @@ class PosController extends Controller
             'payment_method'   => 'required|in:cash,rfid_card,voucher,split,qris,bon',
             'customer_type'    => 'nullable|in:user,member',
             'customer_id'      => 'nullable|integer',
+            'discount_id'      => 'nullable|integer',
+            'skip_discount'    => 'nullable|boolean',
             'voucher_code'     => 'nullable|string',
             'cash_paid'        => 'nullable|numeric|min:0',
             'notes'            => 'nullable|string|max:255',
@@ -445,27 +468,6 @@ class PosController extends Controller
         $totalGross = (float) collect($items)->sum('subtotal');
         $paymentMethod = $request->payment_method;
 
-        $voucher = null;
-        $voucherAmount = 0.0;
-
-        // 1. Validasi jika ada Voucher Habit yang digunakan
-        if ($request->filled('voucher_code')) {
-            $vCode = trim($request->voucher_code);
-            $voucher = HabitVoucher::where('voucher_code', $vCode)->first();
-            if ($voucher && !$voucher->isRedeemed() && !$voucher->isExpired()) {
-                $voucherVal = $voucher->getRewardNumericValue();
-                $voucherAmount = min($voucherVal, $totalGross);
-            }
-        }
-
-        // Sisa tagihan setelah dipotong voucher
-        $payableAfterVoucher = max(0.0, $totalGross - $voucherAmount);
-
-        $rfidPaidAmount = 0.0;
-        $cashPaidAmount = 0.0;
-        $changeAmount = 0.0;
-        $bonAmount = 0.0;
-        $bonStatus = null;
         $customerType = $request->input('customer_type', 'user');
         $customer = null;
 
@@ -474,6 +476,65 @@ class PosController extends Controller
                 ? CoopMember::find($request->customer_id)
                 : User::nonAdmin()->find($request->customer_id);
         }
+
+        // Ambil produk lebih awal agar kategori & cost_price tersedia untuk kalkulasi diskon
+        $productIds = collect($items)->pluck('id')->filter()->unique()->values();
+        $productsMap = $productIds->isNotEmpty()
+            ? CoopProduct::whereIn('id', $productIds)->get()->keyBy('id')
+            : collect();
+        $productCategoryMap = $productsMap->mapWithKeys(fn ($p) => [$p->id => $p->category])->all();
+
+        $memberSubType = $customer instanceof CoopMember
+            ? $customer->type
+            : ($customer instanceof User ? 'pegawai' : null);
+
+        // 1. Hitung Diskon Promo (Event / Member / Kategori) secara server-side
+        $appliedDiscount = null;
+        $discountAmount = 0.0;
+        if (!$request->boolean('skip_discount')) {
+            if ($request->filled('discount_id')) {
+                $candidate = CoopDiscount::activeOn()->find($request->discount_id);
+                if ($candidate) {
+                    $calc = $candidate->calculateDiscount($items, $customer ? $customerType : null, $memberSubType, $productCategoryMap);
+                    if ($calc > 0) {
+                        $appliedDiscount = $candidate;
+                        $discountAmount = $calc;
+                    }
+                }
+            } else {
+                foreach (CoopDiscount::activeOn()->get() as $candidate) {
+                    $calc = $candidate->calculateDiscount($items, $customer ? $customerType : null, $memberSubType, $productCategoryMap);
+                    if ($calc > $discountAmount) {
+                        $discountAmount = $calc;
+                        $appliedDiscount = $candidate;
+                    }
+                }
+            }
+        }
+
+        $payableAfterDiscount = max(0.0, $totalGross - $discountAmount);
+
+        $voucher = null;
+        $voucherAmount = 0.0;
+
+        // 2. Validasi jika ada Voucher Habit yang digunakan
+        if ($request->filled('voucher_code')) {
+            $vCode = trim($request->voucher_code);
+            $voucher = HabitVoucher::where('voucher_code', $vCode)->first();
+            if ($voucher && !$voucher->isRedeemed() && !$voucher->isExpired()) {
+                $voucherVal = $voucher->getRewardNumericValue();
+                $voucherAmount = min($voucherVal, $payableAfterDiscount);
+            }
+        }
+
+        // Sisa tagihan setelah dipotong diskon dan voucher
+        $payableAfterVoucher = max(0.0, $payableAfterDiscount - $voucherAmount);
+
+        $rfidPaidAmount = 0.0;
+        $cashPaidAmount = 0.0;
+        $changeAmount = 0.0;
+        $bonAmount = 0.0;
+        $bonStatus = null;
 
         // 2. Pemrosesan Berdasarkan Metode Pembayaran
         if ($paymentMethod === 'bon') {
@@ -509,7 +570,7 @@ class PosController extends Controller
 
             $rfidPaidAmount = $payableAfterVoucher;
         } elseif ($paymentMethod === 'voucher') {
-            if ($voucherAmount < $totalGross) {
+            if ($voucherAmount < $payableAfterDiscount) {
                 return redirect()->back()->with('error', "Voucher tidak mencukupi untuk pembayaran penuh. Silakan pilih metode Tunai atau Kartu RFID.");
             }
         } elseif ($paymentMethod === 'split') {
@@ -546,12 +607,6 @@ class PosController extends Controller
             $randomSuffix = strtoupper(Str::random(4));
             $transactionCode = 'WRG-' . $datePrefix . '-' . $randomSuffix;
 
-            // Ambil produk sekaligus untuk mencatat cost_price historis & mengurangi stok
-            $productIds = collect($items)->pluck('id')->filter()->unique()->values();
-            $productsMap = $productIds->isNotEmpty()
-                ? CoopProduct::whereIn('id', $productIds)->get()->keyBy('id')
-                : collect();
-
             $items = collect($items)->map(function ($item) use ($productsMap) {
                 $prod = !empty($item['id']) ? $productsMap->get($item['id']) : null;
                 $item['cost_price'] = (float) ($prod?->cost_price ?? 0);
@@ -565,9 +620,11 @@ class PosController extends Controller
                 'user_id'          => $customer instanceof User ? $customer->id : null,
                 'member_id'        => $customer instanceof CoopMember ? $customer->id : null,
                 'voucher_id'       => $voucher?->id,
+                'discount_id'      => $appliedDiscount?->id,
                 'payment_method'   => $paymentMethod,
                 'total_amount'     => $totalGross,
-                'discount_amount'  => 0,
+                'discount_amount'  => $discountAmount,
+                'discount_name'    => $appliedDiscount?->name,
                 'voucher_amount'   => $voucherAmount,
                 'rfid_paid_amount' => $rfidPaidAmount,
                 'cash_paid_amount' => $cashPaidAmount,
@@ -627,6 +684,8 @@ class PosController extends Controller
                 'payment_method'   => $paymentMethod,
                 'items'            => $items,
                 'total_gross'      => $totalGross,
+                'discount_name'    => $appliedDiscount?->name,
+                'discount_amount'  => $discountAmount,
                 'voucher_code'     => $voucher?->voucher_code,
                 'voucher_amount'   => $voucherAmount,
                 'payable_amount'   => $payableAfterVoucher,
