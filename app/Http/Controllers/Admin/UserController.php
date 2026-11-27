@@ -23,9 +23,11 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $currentUser = Auth::user();
+        $isSuperadmin = $currentUser->hasRole('superadmin');
         $search = $request->input('search');
         $perPage = max(1, (int) $request->input('per_page', 10));
-        $category = in_array($request->input('category'), ['guru', 'karyawan'], true)
+        $allowedCategories = $isSuperadmin ? ['guru', 'karyawan', 'non_aktif'] : ['guru', 'karyawan'];
+        $category = in_array($request->input('category'), $allowedCategories, true)
             ? $request->input('category')
             : 'guru';
 
@@ -42,10 +44,13 @@ class UserController extends Controller
             })->orWhere('users.id', $currentUser->id);
         });
 
-        if (!$currentUser->hasRole('superadmin')) {
-            // Admin biasa hanya melihat pegawai (role: user, kurikulum, atau koperasi)
+        if (!$isSuperadmin) {
+            // Admin biasa hanya melihat pegawai aktif/cuti/sakit/dinas luar (Non Aktif disembunyikan)
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['user', 'kurikulum', 'koperasi']);
+            })->where(function ($q) {
+                $q->whereNull('status_kehadiran')
+                  ->orWhere('status_kehadiran', '!=', 'Non Aktif');
             });
         }
 
@@ -60,7 +65,13 @@ class UserController extends Controller
 
         $guruCount = 0;
         $tendikCount = 0;
-        $filtered = $allMatching->filter(function (User $user) use ($category, &$guruCount, &$tendikCount) {
+        $nonAktifCount = 0;
+        $filtered = $allMatching->filter(function (User $user) use ($category, &$guruCount, &$tendikCount, &$nonAktifCount) {
+            if ($user->status_kehadiran === 'Non Aktif') {
+                $nonAktifCount++;
+                return $category === 'non_aktif';
+            }
+
             $resolved = $user->evaluationCategory();
             if ($resolved === 'guru') {
                 $guruCount++;
@@ -107,8 +118,8 @@ class UserController extends Controller
             'allBadges'      => $badges,
             'divisions'      => $divisions,
             'filters'        => ['category' => $category, 'search' => $search, 'per_page' => $perPage],
-            'categoryCounts' => ['guru' => $guruCount, 'karyawan' => $tendikCount],
-            'isSuperadmin'   => $currentUser->hasRole('superadmin'),
+            'categoryCounts' => ['guru' => $guruCount, 'karyawan' => $tendikCount, 'non_aktif' => $nonAktifCount],
+            'isSuperadmin'   => $isSuperadmin,
         ]);
     }
 
@@ -128,7 +139,7 @@ class UserController extends Controller
             'nip'                 => 'nullable|string|max:255',
             'divisi'              => 'nullable|string|max:255',
             'evaluation_category' => 'nullable|in:guru,karyawan',
-            'status_kehadiran'    => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
+            'status_kehadiran'    => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar,Non Aktif',
             'work_start'       => 'nullable|string|max:10',
             'work_end'         => 'nullable|string|max:10',
             'late_tolerance'   => 'nullable|integer|min:0|max:120',
@@ -199,7 +210,8 @@ class UserController extends Controller
      */
     private function isPrivilegedTarget(User $target): bool
     {
-        return $target->hasAnyRole(['kepala_sekolah', 'tata_usaha', 'admin', 'superadmin']);
+        return $target->hasAnyRole(['kepala_sekolah', 'tata_usaha', 'admin', 'superadmin'])
+            || $target->status_kehadiran === 'Non Aktif';
     }
 
     /**
@@ -210,8 +222,8 @@ class UserController extends Controller
         $currentUser = Auth::user();
         $isSuperadmin = $currentUser->hasRole('superadmin');
 
-        // Keamanan: Admin biasa hanya boleh edit role user / kurikulum / koperasi. Superadmin bebas.
-        if (!$isSuperadmin && !$user->hasAnyRole(['user', 'kurikulum', 'koperasi'])) {
+        // Keamanan: Admin biasa hanya boleh edit role user / kurikulum / koperasi (dan bukan Non Aktif). Superadmin bebas.
+        if (!$isSuperadmin && (!$user->hasAnyRole(['user', 'kurikulum', 'koperasi']) || $this->isPrivilegedTarget($user))) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengedit pengguna ini.');
         }
 
@@ -222,7 +234,7 @@ class UserController extends Controller
             'nip'                 => 'nullable|string|max:255',
             'divisi'              => 'nullable|string|max:255',
             'evaluation_category' => 'nullable|in:guru,karyawan',
-            'status_kehadiran'    => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar',
+            'status_kehadiran'    => 'nullable|string|in:Aktif,Cuti,Sakit,Dinas Luar,Non Aktif',
             'target_tidak_aktif' => 'nullable|integer|min:0|max:100',
             'work_start'         => 'nullable|string|max:10',
             'work_end'           => 'nullable|string|max:10',

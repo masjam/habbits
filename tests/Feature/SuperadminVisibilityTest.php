@@ -117,4 +117,62 @@ class SuperadminVisibilityTest extends TestCase
         $this->assertTrue(Gate::forUser($sa)->allows('test-custom-ability'));
         $this->assertFalse(Gate::forUser($regular)->allows('test-custom-ability'));
     }
+
+    public function test_non_aktif_users_are_hidden_from_admin_and_only_visible_in_superadmin_non_aktif_tab(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $sa = User::factory()->create();
+        $sa->assignRole('superadmin');
+
+        $activeGuru = User::factory()->create(['divisi' => 'Guru Kelas', 'status_kehadiran' => 'Aktif']);
+        $activeGuru->assignRole('user');
+
+        $nonAktif = User::factory()->create(['divisi' => 'Guru Kelas', 'status_kehadiran' => 'Non Aktif']);
+        $nonAktif->assignRole('user');
+
+        // Admin cannot see Non Aktif in guru, karyawan, or non_aktif (falls back to guru)
+        $this->actingAs($admin)
+            ->get(route('admin.users.index', ['category' => 'non_aktif']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.category', 'guru')
+                ->where('categoryCounts.guru', 1)
+                ->where('categoryCounts.non_aktif', 0)
+                ->has('users.data', 1)
+                ->where('users.data.0.id', $activeGuru->id)
+            );
+
+        // Admin cannot edit Non Aktif user
+        $this->actingAs($admin)
+            ->put(route('admin.users.update', $nonAktif->id), [
+                'name' => 'Ubah',
+                'email' => $nonAktif->email,
+                'gender' => 'L',
+                'role' => 'user',
+                'status_kehadiran' => 'Aktif',
+            ])
+            ->assertForbidden();
+
+        // Superadmin does not see Non Aktif in guru tab, sees it only in non_aktif tab
+        $this->actingAs($sa)
+            ->get(route('admin.users.index', ['category' => 'guru']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('categoryCounts.guru', 1)
+                ->where('categoryCounts.non_aktif', 1)
+                ->has('users.data', 1)
+                ->where('users.data.0.id', $activeGuru->id)
+            );
+
+        $this->actingAs($sa)
+            ->get(route('admin.users.index', ['category' => 'non_aktif']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.category', 'non_aktif')
+                ->has('users.data', 1)
+                ->where('users.data.0.id', $nonAktif->id)
+            );
+    }
 }

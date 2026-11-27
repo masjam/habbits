@@ -369,6 +369,20 @@ const bulkUpdateCategory = (category) => {
                         {{ categoryCounts?.karyawan ?? 0 }}
                     </span>
                 </button>
+                <button
+                    v-if="isSuperadmin"
+                    type="button"
+                    @click="switchCategory('non_aktif')"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-colors -mb-px"
+                    :class="activeCategory === 'non_aktif'
+                        ? 'border-rose-600 text-rose-700'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'"
+                >
+                    <span>Non Aktif</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="activeCategory === 'non_aktif' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'">
+                        {{ categoryCounts?.non_aktif ?? 0 }}
+                    </span>
+                </button>
             </div>
 
             <!-- Bulk Action Bar -->
@@ -666,6 +680,7 @@ const bulkUpdateCategory = (category) => {
                                                 <option value="Cuti">Cuti</option>
                                                 <option value="Sakit">Sakit</option>
                                                 <option value="Dinas Luar">Dinas Luar</option>
+                                                <option value="Non Aktif">Non Aktif</option>
                                             </select>
                                             <p v-if="form.errors.status_kehadiran" class="text-xs text-rose-500 mt-1">{{ form.errors.status_kehadiran }}</p>
                                         </div>
