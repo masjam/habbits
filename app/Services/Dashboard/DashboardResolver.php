@@ -8,8 +8,9 @@ class DashboardResolver
 {
     /**
      * Aturan prioritas multi-role untuk /dashboard utama:
-     * User dengan lebih dari 1 role selalu menggunakan Dashboard Pegawai sebagai dashboard utama;
-     * dashboard role tambahan diakses melalui menu role masing-masing.
+     * - Admin dan Superadmin selalu menggunakan Dashboard Admin/Superadmin sebagai dashboard utama.
+     * - Role non-admin dengan lebih dari 1 role menggunakan Dashboard Pegawai sebagai dashboard utama;
+     *   dashboard role tambahan diakses melalui menu role masing-masing.
      */
     public function resolve(User $user): DashboardBuilderInterface
     {
@@ -18,6 +19,14 @@ class DashboardResolver
         }
 
         $user->loadMissing('roles');
+
+        if ($user->hasRole('superadmin')) {
+            return app(SuperadminDashboardBuilder::class);
+        }
+
+        if ($user->hasRole('admin')) {
+            return app(AdminDashboardBuilder::class);
+        }
 
         if ($user->roles->count() > 1) {
             return app(EmployeeDashboardBuilder::class);

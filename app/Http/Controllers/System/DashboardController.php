@@ -93,6 +93,13 @@ class DashboardController extends Controller
             ]);
         }
 
+        if ($builder->roleKey() === 'user') {
+            return $this->userDashboard($request, $user, [
+                'dashboard' => $dashboard,
+                'deferred' => $deferred,
+            ]);
+        }
+
         return Inertia::render('Dashboard', [
             'dashboard' => $dashboard,
             'deferred' => $deferred,

@@ -277,7 +277,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/tata-usaha/disposisi/{disposisi}/status', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'updateStatus'])->name('tata-usaha.disposisi.update-status');
     Route::get('/tata-usaha/surat-masuk/{suratMasuk}/file', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'file'])->name('tata-usaha.surat-masuk.file');
 
-    // ─── Dashboard Role Tambahan (Kurikulum, Kepala Sekolah, Admin) ───────────
+    // ─── Dashboard Role Tambahan (Pegawai, Kurikulum, Kepala Sekolah, Admin) ───
+    Route::middleware('role:user')->get('/pegawai/dashboard', [\App\Http\Controllers\System\DashboardController::class, 'roleDashboard'])
+        ->defaults('role', 'user')
+        ->name('pegawai.dashboard');
     Route::middleware('role:kurikulum|superadmin')->get('/kurikulum/dashboard', [\App\Http\Controllers\System\DashboardController::class, 'roleDashboard'])
         ->defaults('role', 'kurikulum')
         ->name('kurikulum.dashboard');

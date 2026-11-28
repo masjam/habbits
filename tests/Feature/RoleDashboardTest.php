@@ -118,6 +118,44 @@ class RoleDashboardTest extends TestCase
                 ->where('dashboard.roleKey', 'kurikulum')
             );
 
+        $multiAdmin = User::factory()->create();
+        $multiAdmin->assignRole(['user', 'admin']);
+
+        $this->actingAs($multiAdmin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('dashboard.roleKey', 'admin')
+            );
+
+        $this->actingAs($multiAdmin)
+            ->get(route('pegawai.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('dashboard.roleKey', 'user')
+            );
+
+        $multiSuperadmin = User::factory()->create();
+        $multiSuperadmin->assignRole(['user', 'superadmin']);
+
+        $this->actingAs($multiSuperadmin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Dashboard')
+                ->where('dashboard.roleKey', 'superadmin')
+            );
+
+        $this->actingAs($multiSuperadmin)
+            ->get(route('pegawai.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('dashboard.roleKey', 'user')
+            );
+
         $sa = User::factory()->create();
         $sa->assignRole('superadmin');
 
