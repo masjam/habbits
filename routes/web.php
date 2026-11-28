@@ -306,6 +306,7 @@ Route::middleware('auth')->group(function () {
 
     // ─── Modul Petugas Koperasi (Sistem POS & Penukaran Voucher) ──────────────
     Route::middleware('role:koperasi|superadmin')->prefix('koperasi')->name('koperasi.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Koperasi\PosController::class, 'dashboard'])->name('dashboard');
         Route::get('/pos', [\App\Http\Controllers\Koperasi\PosController::class, 'index'])->name('pos');
         Route::post('/pos/check', [\App\Http\Controllers\Koperasi\PosController::class, 'checkVoucher'])->name('pos.check');
         Route::post('/pos/rfid-scan', [\App\Http\Controllers\Koperasi\PosController::class, 'scanRfid'])->name('pos.rfid-scan');

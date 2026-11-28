@@ -103,26 +103,10 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="flex h-screen overflow-hidden bg-transparent select-auto relative">
+    <div class="flex h-screen overflow-x-clip overflow-y-hidden bg-slate-50 dark:bg-slate-950 select-auto relative">
 
-        <!-- ═══ SOFT-UI VIRTUAL REALITY BACKDROP CANVAS ═════════════ -->
-        <div class="fixed inset-0 pointer-events-none overflow-hidden -z-20" aria-hidden="true">
-            <!-- Scenic Photography Wallpaper -->
-            <img 
-                src="/img/vr-nature-bg.jpg" 
-                alt="VR Backdrop" 
-                class="w-full h-full object-cover object-center fixed inset-0 -z-20 opacity-55 dark:opacity-30 transition-opacity duration-300 pointer-events-none select-none" 
-            />
-            <!-- Atmospheric Gradient Blend for Readability & Brand Harmony -->
-            <div class="absolute inset-0 bg-gradient-to-b from-white/45 via-white/70 to-white/90 dark:from-slate-950/65 dark:via-slate-950/80 dark:to-slate-950/95 -z-10"></div>
-        </div>
-
-        <!-- ═══ AMBIENT LIGHT ORBS (GLASSMORPHISM GLOW) ═════════════ -->
-        <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10" aria-hidden="true">
-            <div class="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-primary-400/20 dark:bg-primary-500/10 blur-3xl animate-pulse" style="animation-duration: 8s;"></div>
-            <div class="absolute top-1/3 -left-32 w-80 h-80 rounded-full bg-teal-400/15 dark:bg-teal-500/10 blur-3xl"></div>
-            <div class="absolute -bottom-32 right-1/4 w-96 h-96 rounded-full bg-indigo-400/15 dark:bg-indigo-500/10 blur-3xl"></div>
-        </div>
+        <!-- ═══ CRISP EDITORIAL SURFACE WASH ═════════════════════════ -->
+        <div class="fixed inset-0 pointer-events-none -z-10 bg-gradient-to-b from-primary-50/45 via-transparent to-transparent dark:from-primary-950/20" aria-hidden="true"></div>
 
         <!-- ═══ OFFLINE BANNER ══════════════════════════════════════ -->
         <Transition

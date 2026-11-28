@@ -23,6 +23,7 @@ const sidebarGroups = computed(() => {
             key: 'pos',
             title: 'POS',
             items: [
+                { icon: 'pos', label: 'Dashboard Koperasi', desc: 'Ringkasan transaksi, stok & bon', routeName: 'koperasi.dashboard', pattern: 'koperasi.dashboard*' },
                 { icon: 'pos', label: 'Mesin Kasir', desc: 'Transaksi penjualan & voucher', routeName: 'koperasi.pos', pattern: 'koperasi.pos*' },
             ],
         },

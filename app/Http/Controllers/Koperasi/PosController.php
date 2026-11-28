@@ -41,6 +41,21 @@ class PosController extends Controller
     }
 
     /**
+     * Tampilkan Dashboard Ringkasan Koperasi (/koperasi/dashboard).
+     */
+    public function dashboard(
+        \App\Services\Dashboard\KoperasiDashboardBuilder $builder
+    ) {
+        $user = auth()->user();
+        $ctx = new \App\Services\Dashboard\DashboardContext();
+
+        return Inertia::render('Koperasi/Dashboard', [
+            'dashboard' => $builder->build($user, $ctx),
+            'deferred'  => Inertia::defer(fn () => $builder->buildDeferred($user, $ctx)),
+        ]);
+    }
+
+    /**
      * Tampilkan halaman utama Sistem POS Kasir Koperasi Rabbani.
      */
     public function index(Request $request)

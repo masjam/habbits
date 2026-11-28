@@ -533,10 +533,39 @@ onUnmounted(() => {
         <!-- ── Top Notification Banner ── -->
         <div
             v-if="scanNotification.message"
-            class="px-4 py-2 text-xs font-bold text-center transition-all z-40"
+            class="px-4 py-2 text-xs font-bold text-center transition-colors z-40"
             :class="scanNotification.type === 'error' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'"
         >
             {{ scanNotification.message }}
+        </div>
+
+        <!-- ── Crisp Daily Cashier Summary Strip ── -->
+        <div class="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex flex-wrap items-center gap-4 tabular-nums">
+                <div>
+                    <span class="text-slate-500">Transaksi hari ini:</span>
+                    <span class="ml-1 font-bold text-slate-900">{{ todayStats?.sales_count || 0 }}</span>
+                </div>
+                <div>
+                    <span class="text-slate-500">Omzet:</span>
+                    <span class="ml-1 font-bold text-emerald-700">{{ formatRupiah(todayStats?.total_gross || 0) }}</span>
+                </div>
+                <div class="hidden sm:block">
+                    <span class="text-slate-500">Tunai:</span>
+                    <span class="ml-1 font-semibold text-slate-700">{{ formatRupiah(todayStats?.cash_received || 0) }}</span>
+                </div>
+                <div class="hidden md:block">
+                    <span class="text-slate-500">RFID:</span>
+                    <span class="ml-1 font-semibold text-slate-700">{{ formatRupiah(todayStats?.rfid_used || 0) }}</span>
+                </div>
+                <div class="hidden md:block">
+                    <span class="text-slate-500">Voucher:</span>
+                    <span class="ml-1 font-semibold text-slate-700">{{ formatRupiah(todayStats?.voucher_used || 0) }}</span>
+                </div>
+            </div>
+            <div class="text-slate-500 font-medium">
+                Kasir: <span class="font-semibold text-slate-800">{{ cashier?.name }}</span>
+            </div>
         </div>
 
         <!-- ── Main POS Workspace: Two Column Layout ── -->
@@ -561,7 +590,7 @@ onUnmounted(() => {
                             @keydown.enter.prevent="handleGlobalScanner"
                             autocomplete="off"
                             placeholder="Tap Kartu RFID Guru / Scan Barcode Produk / Scan Voucher (Enter)..."
-                            class="w-full pl-9 pr-20 py-2.5 bg-slate-50 hover:bg-white border border-emerald-500/50 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 font-mono transition-all"
+                            class="w-full pl-9 pr-20 py-2.5 bg-slate-50 hover:bg-white border border-emerald-500/50 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 font-mono transition-colors"
                         />
                         <button
                             type="button"
@@ -578,7 +607,7 @@ onUnmounted(() => {
                             type="text"
                             v-model="searchProduct"
                             placeholder="Cari nama barang..."
-                            class="w-full px-3 py-2 bg-slate-50 hover:bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition-all"
+                            class="w-full px-3 py-2 bg-slate-50 hover:bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition-colors"
                         />
                     </div>
                 </div>
@@ -590,7 +619,7 @@ onUnmounted(() => {
                         :key="cat"
                         type="button"
                         @click="selectedCategory = cat"
-                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"
                         :class="selectedCategory === cat ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'"
                     >
                         {{ cat }}
@@ -604,7 +633,7 @@ onUnmounted(() => {
                             v-for="product in filteredProducts"
                             :key="product.id"
                             @click="addToCart(product)"
-                            class="group relative bg-white hover:bg-emerald-50/20 border border-slate-200 hover:border-emerald-400/80 rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-all duration-150 active:scale-95 shadow-xs hover:shadow-sm"
+                            class="group relative bg-white hover:bg-emerald-50/20 border border-slate-200 hover:border-emerald-400/80 rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-colors duration-150 active:scale-95 shadow-xs hover:shadow-sm"
                             :class="{'opacity-50 pointer-events-none': product.stock <= 0}"
                         >
                             <div>

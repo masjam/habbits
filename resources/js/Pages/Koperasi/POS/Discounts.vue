@@ -118,8 +118,9 @@ const deleteDiscount = (d) => {
 
 <template>
     <Head title="Diskon & Promo - Koperasi Rabbani" />
-    <PosLayout title="Diskon & Promo Koperasi">
-        <div class="p-4 sm:p-6 max-w-6xl mx-auto space-y-5">
+    <PosLayout>
+        <div class="flex-1 w-full overflow-y-auto bg-slate-50">
+            <div class="w-full py-5 px-4 sm:px-6 space-y-5">
 
             <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -365,6 +366,7 @@ const deleteDiscount = (d) => {
                     </div>
                 </form>
             </div>
+        </div>
         </div>
     </PosLayout>
 </template>

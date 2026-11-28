@@ -28,7 +28,8 @@ const submit = () => {
     <Head title="Identitas Koperasi — Koperasi Rabbani" />
 
     <PosLayout>
-        <div class="flex-1 py-6 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full space-y-6 overflow-y-auto bg-slate-100/60">
+        <div class="flex-1 w-full overflow-y-auto bg-slate-50">
+            <div class="w-full py-5 px-4 sm:px-6 space-y-5">
             <div>
                 <h1 class="text-xl sm:text-2xl font-black text-slate-900">Pengaturan Identitas Koperasi</h1>
                 <p class="text-xs text-slate-500">Atur nama toko, alamat, nomor telepon, dan catatan footer untuk struk belanja POS</p>
@@ -88,6 +89,7 @@ const submit = () => {
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </PosLayout>

@@ -8,6 +8,8 @@ use App\Models\Habit;
 use App\Models\HabitLog;
 use App\Models\MenstruationLog;
 use App\Models\User;
+use App\Services\Dashboard\DashboardContext;
+use App\Services\Dashboard\DashboardResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,27 +18,54 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, DashboardResolver $resolver)
     {
         $user = Auth::user();
+        $ctx = new DashboardContext();
+        $builder = $resolver->resolve($user);
+        $roleKey = $builder->roleKey();
 
-        // Jika user adalah admin/superadmin, tampilkan Dashboard Admin (Aggregate)
-        if ($user->hasAnyRole(['superadmin', 'admin'])) {
-            return $this->adminDashboard($request);
+        $dashboard = $builder->build($user, $ctx);
+        $deferred = Inertia::defer(fn () => $builder->buildDeferred($user, $ctx));
+
+        if (in_array($roleKey, ['admin', 'superadmin'], true)) {
+            $admin = $dashboard['admin'] ?? [];
+            return Inertia::render('Admin/Dashboard', [
+                'dashboard' => $dashboard,
+                'deferred' => $deferred,
+                // Baseline contract keys
+                'skorHariIni' => $admin['habit_today']['score_today'] ?? 0,
+                'skorMaksimalHariIni' => $admin['habit_today']['max_score_today'] ?? 0,
+                'totalPegawai' => $admin['total_employees'] ?? 0,
+                'dailyChartData' => [],
+                'monthlyChartData' => [],
+                'semester' => $ctx->now->month <= 6 ? 'Semester 1' : 'Semester 2',
+                'tahun' => $ctx->now->year,
+                'targetRatio' => [
+                    'hit' => 0,
+                    'miss' => 0,
+                    'target' => (float) $ctx->setting('monthly_target_score', 80),
+                ],
+            ]);
         }
 
-        // Jika user murni bertugas sebagai Petugas Koperasi, arahkan ke POS Kasir
-        if ($user->hasRole('koperasi') && !$user->hasRole('user')) {
-            return redirect()->route('koperasi.pos');
+        if ($roleKey === 'user') {
+            return $this->userDashboard($request, $user, [
+                'dashboard' => $dashboard,
+                'deferred' => $deferred,
+            ]);
         }
 
-        return $this->userDashboard($request, $user);
+        return Inertia::render('Dashboard', [
+            'dashboard' => $dashboard,
+            'deferred' => $deferred,
+        ]);
     }
 
     /**
      * Dashboard khusus pengguna (Pegawai).
      */
-    private function userDashboard(Request $request, User $user)
+    private function userDashboard(Request $request, User $user, array $extraProps = [])
     {
         $targetUserId  = $user->id;
         $selectedMonth = (int) $request->query('month', date('n'));
@@ -429,7 +458,7 @@ class DashboardController extends Controller
         ];
         });
 
-        return Inertia::render('Dashboard', $dashboardData);
+        return Inertia::render('Dashboard', array_merge($dashboardData, $extraProps));
     }
 
     /**

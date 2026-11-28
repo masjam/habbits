@@ -118,7 +118,8 @@ const cancelTransaction = (trx) => {
     <Head title="Riwayat Transaksi POS — Koperasi Rabbani" />
 
     <PosLayout>
-        <div class="flex-1 py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 overflow-y-auto bg-slate-100/60">
+        <div class="flex-1 w-full overflow-y-auto bg-slate-50">
+            <div class="w-full py-5 px-4 sm:px-6 space-y-5">
 
             <!-- Header & Export Toolbar -->
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -440,6 +441,7 @@ const cancelTransaction = (trx) => {
                 </div>
             </div>
 
+        </div>
         </div>
     </PosLayout>
 </template>

@@ -377,6 +377,14 @@ const rawMenuGroups = computed(() => [
         roles: ['koperasi', 'superadmin'],
         items: [
             {
+                key: 'koperasi-dashboard',
+                label: 'Dashboard Koperasi',
+                icon: IconDashboard,
+                route: 'koperasi.dashboard',
+                activeRoutes: ['koperasi.dashboard*'],
+                roles: ['koperasi', 'superadmin'],
+            },
+            {
                 key: 'koperasi-pos',
                 label: 'Kasir POS Voucher',
                 icon: IconKoperasi,

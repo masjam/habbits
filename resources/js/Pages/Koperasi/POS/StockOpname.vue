@@ -172,7 +172,8 @@ const printOpnameSheet = () => {
     <Head title="Dashboard Stock Opname — Koperasi Sekolah" />
 
     <PosLayout>
-        <div class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6 bg-slate-100/70">
+        <div class="flex-1 w-full overflow-y-auto bg-slate-50">
+            <div class="w-full py-5 px-4 sm:px-6 space-y-5">
 
             <!-- ══════════════════════════════════════════════════════════
                  1. HEADER & ACTION TOOLBAR (SCREEN ONLY)
@@ -746,6 +747,7 @@ const printOpnameSheet = () => {
             </div>
         </div>
 
+        </div>
     </PosLayout>
 </template>
 

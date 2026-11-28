@@ -122,7 +122,8 @@ const formatRupiah = (val) => {
     <Head title="Katalog Barang — Koperasi Rabbani" />
 
     <PosLayout>
-        <div class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-5 bg-slate-100">
+        <div class="flex-1 w-full overflow-y-auto bg-slate-50">
+            <div class="w-full py-5 px-4 sm:px-6 space-y-5">
             <!-- Header with Action Buttons -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -396,5 +397,6 @@ const formatRupiah = (val) => {
             </div>
         </div>
 
+        </div>
     </PosLayout>
 </template>
