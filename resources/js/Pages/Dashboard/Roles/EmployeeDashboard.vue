@@ -160,7 +160,7 @@ const teacherItems = computed(() => {
         </template>
 
         <template #main>
-            <div class="md:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 flex flex-col min-h-[200px]">
+            <div class="md:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 flex flex-col min-h-[200px] md:min-h-0 md:h-full">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
                     <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                         <button
@@ -169,7 +169,7 @@ const teacherItems = computed(() => {
                             class="px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer"
                             :class="activeTrendTab === 'habit_daily' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xs' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'"
                         >
-                            Habit 14 Hari
+                            Skor Harian
                         </button>
                         <button
                             type="button"
@@ -191,22 +191,78 @@ const teacherItems = computed(() => {
                     <span v-if="activeTrendTab === 'attendance_monthly' && deferred?.attendance_monthly_trend?.summary" class="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                         {{ deferred.attendance_monthly_trend.summary.hadir }} hadir · {{ deferred.attendance_monthly_trend.summary.terlambat }} terlambat · {{ deferred.attendance_monthly_trend.summary.izin }} izin
                     </span>
+                    <span v-else-if="activeTrendTab === 'habit_daily' && deferred?.habit_trend?.summary" class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        {{ deferred.habit_trend.summary.month_label }}
+                    </span>
                     <span v-else class="text-xs text-slate-500 dark:text-slate-400">Capaian (%)</span>
                 </div>
-                <div class="flex-1 min-h-0">
+                <div class="flex-1 min-h-0 flex flex-col">
                     <Deferred data="deferred">
                         <template #fallback>
                             <div class="h-full min-h-[140px] rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
                         </template>
-                        <MiniTrendChart
-                            v-if="activeTrendTab === 'habit_daily' && deferred?.habit_trend?.labels?.length"
-                            type="line"
-                            :labels="deferred.habit_trend.labels"
-                            :values="deferred.habit_trend.values"
-                            datasetLabel="Capaian Habit"
-                            unit="%"
-                            ariaLabel="Grafik tren habit 14 hari terakhir"
-                        />
+                        <div v-if="activeTrendTab === 'habit_daily' && deferred?.habit_trend?.daily?.length" class="flex-1 min-h-0 flex flex-col gap-2.5">
+                            <div
+                                v-if="deferred.habit_trend.summary"
+                                class="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 shrink-0"
+                            >
+                                <div>
+                                    <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Total Skor Bulan Ini</div>
+                                    <div class="mt-0.5 flex items-baseline gap-1.5 tabular-nums">
+                                        <span class="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                            {{ formatNumber(deferred.habit_trend.summary.total_score) }}
+                                        </span>
+                                        <span class="text-xs text-slate-500 dark:text-slate-400">
+                                            / {{ formatNumber(deferred.habit_trend.summary.max_score) }} ({{ deferred.habit_trend.summary.achieved_percentage }}%)
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Target Bulanan Instansi</span>
+                                        <span
+                                            class="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                                            :class="deferred.habit_trend.summary.is_target_reached
+                                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                                : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'"
+                                        >
+                                            {{ deferred.habit_trend.summary.is_target_reached ? 'Tercapai' : `Kurang ${formatNumber(deferred.habit_trend.summary.points_needed)}` }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-0.5 text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+                                        {{ deferred.habit_trend.summary.target_percentage }}% ({{ formatNumber(deferred.habit_trend.summary.target_score) }} poin)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 min-h-0 max-h-[360px] md:max-h-none overflow-y-auto pr-1 space-y-1.5">
+                                <Link
+                                    v-for="item in deferred.habit_trend.daily"
+                                    :key="item.date"
+                                    :href="route('habit.form', { date: item.date })"
+                                    class="flex items-center gap-3 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                                >
+                                    <div class="w-36 sm:w-40 shrink-0 flex items-center gap-1.5">
+                                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                                            {{ item.label }}
+                                        </span>
+                                        <span v-if="item.is_today" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 shrink-0 whitespace-nowrap">
+                                            Hari ini
+                                        </span>
+                                    </div>
+                                    <div class="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            class="h-full rounded-full transition-[width]"
+                                            :class="item.percent >= (deferred.habit_trend.summary?.target_percentage || 80) ? 'bg-emerald-500' : (item.score > 0 ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-700')"
+                                            :style="{ width: `${Math.min(100, item.percent)}%` }"
+                                        />
+                                    </div>
+                                    <div class="w-24 text-right text-xs font-semibold tabular-nums shrink-0 text-slate-700 dark:text-slate-300">
+                                        {{ formatNumber(item.score) }}<span class="text-slate-400 dark:text-slate-500">/{{ formatNumber(item.max) }}</span>
+                                    </div>
+                                </Link>
+                            </div>
+                        </div>
                         <MiniTrendChart
                             v-else-if="activeTrendTab === 'habit_monthly' && deferred?.habit_monthly_trend?.labels?.length"
                             type="bar"

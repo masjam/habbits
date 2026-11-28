@@ -3,12 +3,15 @@
 namespace App\Services\Dashboard;
 
 use App\Models\Attendance;
+use App\Models\Habit;
 use App\Models\HabitLog;
 use App\Models\HabitVoucher;
+use App\Models\MenstruationLog;
 use App\Models\PerformanceEvaluation;
 use App\Models\TeacherAdministration;
 use App\Models\TeacherJournal;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 abstract class AbstractDashboardBuilder implements DashboardBuilderInterface
@@ -60,11 +63,10 @@ abstract class AbstractDashboardBuilder implements DashboardBuilderInterface
         $habitToday = ['score' => 0, 'max' => 0, 'percent' => 0, 'streak' => (int) ($user->current_streak ?? 0), 'vouchers' => 0];
         if ($habitActive) {
             $maxDaily = $ctx->maxDailyHabitScore();
-            $todayScore = (int) HabitLog::where('user_id', $user->id)
-                ->where('tanggal', $ctx->todayStr)
-                ->sum('skor_diperoleh');
+            $todayScores = $this->computeCappedDailyScores($user, $ctx->todayStr, $ctx->todayStr, $maxDaily);
+            $todayScore = (int) ($todayScores[$ctx->todayStr] ?? 0);
             $vouchers = (int) HabitVoucher::where('user_id', $user->id)
-                ->where('status', 'available')
+                ->where('status', 'active')
                 ->where(fn ($q) => $q->whereNull('valid_until')->orWhere('valid_until', '>=', $ctx->todayStr))
                 ->count();
 
@@ -132,32 +134,117 @@ abstract class AbstractDashboardBuilder implements DashboardBuilderInterface
     }
 
     /**
-     * Tren skor habit 14 hari terakhir untuk user (SQL GROUP BY).
+     * Hitung skor harian bersih (habit pengganti haid hanya dihitung saat tanggal haid,
+     * dan total skor harian dibatasi maksimal $maxDaily).
+     *
+     * @return array<string, int>
+     */
+    protected function computeCappedDailyScores(User $user, string $startStr, string $endStr, int $maxDaily): array
+    {
+        $logs = HabitLog::where('user_id', $user->id)
+            ->whereDate('tanggal', '>=', $startStr)
+            ->whereDate('tanggal', '<=', $endStr)
+            ->get(['tanggal', 'habit_id', 'skor_diperoleh']);
+
+        if ($logs->isEmpty()) {
+            return [];
+        }
+
+        $habitsById = Habit::allCachedById();
+        $haidIntervals = [];
+        if ($user->gender === 'P') {
+            $haidLogs = MenstruationLog::where('user_id', $user->id)->get(['waktu_mulai', 'waktu_selesai']);
+            foreach ($haidLogs as $hl) {
+                $start = $hl->waktu_mulai ? Carbon::parse($hl->waktu_mulai)->timezone('Asia/Jakarta')->toDateString() : null;
+                $end = $hl->waktu_selesai ? Carbon::parse($hl->waktu_selesai)->timezone('Asia/Jakarta')->toDateString() : null;
+                if ($start) {
+                    $haidIntervals[] = [$start, $end];
+                }
+            }
+        }
+
+        $isHaidOnDate = static function (string $dateStr) use ($haidIntervals): bool {
+            foreach ($haidIntervals as [$start, $end]) {
+                if ($dateStr >= $start && ($end === null || $dateStr <= $end)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        $rawTotals = [];
+        foreach ($logs as $log) {
+            $dateStr = $log->tanggal instanceof Carbon
+                ? $log->tanggal->toDateString()
+                : substr((string) $log->tanggal, 0, 10);
+
+            $habit = $habitsById->get($log->habit_id);
+            if ($habit && $habit->is_pengganti_haid && !$isHaidOnDate($dateStr)) {
+                continue;
+            }
+
+            $rawTotals[$dateStr] = ($rawTotals[$dateStr] ?? 0) + (int) $log->skor_diperoleh;
+        }
+
+        $capped = [];
+        foreach ($rawTotals as $dateStr => $sum) {
+            $capped[$dateStr] = $maxDaily > 0 ? min($maxDaily, $sum) : $sum;
+        }
+
+        return $capped;
+    }
+
+    /**
+     * Daftar skor harian habit dalam bulan berjalan + ringkasan total & target bulanan.
      */
     protected function personalHabitTrend(User $user, DashboardContext $ctx): array
     {
         if (!$ctx->feature('feature_habit')) {
-            return ['labels' => [], 'values' => []];
+            return [
+                'daily' => [],
+                'summary' => null,
+            ];
         }
 
         $maxDaily = $ctx->maxDailyHabitScore();
-        $rows = HabitLog::where('user_id', $user->id)
-            ->whereBetween('tanggal', [$ctx->trendStartStr, $ctx->todayStr])
-            ->select('tanggal', DB::raw('SUM(skor_diperoleh) as total'))
-            ->groupBy('tanggal')
-            ->pluck('total', 'tanggal');
+        $dailyScores = $this->computeCappedDailyScores($user, $ctx->monthStartStr, $ctx->todayStr, $maxDaily);
 
-        $labels = [];
-        $values = [];
-        for ($i = 13; $i >= 0; $i--) {
-            $d = $ctx->now->copy()->subDays($i);
-            $key = $d->toDateString();
-            $score = (int) ($rows[$key] ?? 0);
-            $labels[] = $d->locale('id')->isoFormat('D MMM');
-            $values[] = $maxDaily > 0 ? round(min(100, ($score / $maxDaily) * 100), 1) : 0;
+        $daily = [];
+        $totalScore = 0;
+        for ($day = $ctx->now->day; $day >= 1; $day--) {
+            $d = $ctx->now->copy()->setDate($ctx->now->year, $ctx->now->month, $day);
+            $dateStr = $d->toDateString();
+            $score = (int) ($dailyScores[$dateStr] ?? 0);
+            $totalScore += $score;
+
+            $daily[] = [
+                'date' => $dateStr,
+                'label' => $d->locale('id')->isoFormat('ddd, D MMM'),
+                'score' => $score,
+                'max' => $maxDaily,
+                'percent' => $maxDaily > 0 ? round(min(100, ($score / $maxDaily) * 100), 1) : 0,
+                'is_today' => $dateStr === $ctx->todayStr,
+            ];
         }
 
-        return ['labels' => $labels, 'values' => $values];
+        $maxMonthScore = $maxDaily * $ctx->daysInMonth;
+        $achievedPct = $maxMonthScore > 0 ? round(min(100, ($totalScore / $maxMonthScore) * 100), 1) : 0.0;
+        $targetPct = HabitVoucher::getEffectiveTargetForUser($user);
+        $targetScore = (int) ceil(($targetPct / 100) * $maxMonthScore);
+
+        return [
+            'daily' => $daily,
+            'summary' => [
+                'month_label' => $ctx->now->locale('id')->isoFormat('MMMM Y'),
+                'total_score' => $totalScore,
+                'max_score' => $maxMonthScore,
+                'achieved_percentage' => $achievedPct,
+                'target_percentage' => $targetPct,
+                'target_score' => $targetScore,
+                'points_needed' => max(0, $targetScore - $totalScore),
+                'is_target_reached' => $achievedPct >= $targetPct && $totalScore > 0,
+            ],
+        ];
     }
 
     /**
@@ -175,24 +262,22 @@ abstract class AbstractDashboardBuilder implements DashboardBuilderInterface
         $startStr = $ctx->now->copy()->setDate($year, $startMonth, 1)->startOfMonth()->toDateString();
         $endStr = $ctx->now->copy()->setDate($year, $endMonth, 1)->endOfMonth()->toDateString();
 
-        $monthExpr = DB::connection()->getDriverName() === 'sqlite'
-            ? "CAST(strftime('%m', tanggal) AS INTEGER)"
-            : 'MONTH(tanggal)';
-
-        $rows = HabitLog::where('user_id', $user->id)
-            ->whereBetween('tanggal', [$startStr, $endStr])
-            ->selectRaw("{$monthExpr} as m, SUM(skor_diperoleh) as total")
-            ->groupBy('m')
-            ->pluck('total', 'm');
-
         $maxDaily = $ctx->maxDailyHabitScore();
+        $dailyScores = $this->computeCappedDailyScores($user, $startStr, $endStr, $maxDaily);
+
+        $monthlyTotals = [];
+        foreach ($dailyScores as $dateStr => $score) {
+            $m = (int) substr($dateStr, 5, 2);
+            $monthlyTotals[$m] = ($monthlyTotals[$m] ?? 0) + $score;
+        }
+
         $monthNames = [1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Ags', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des'];
         $labels = [];
         $values = [];
         for ($m = $startMonth; $m <= $endMonth; $m++) {
             $daysInMonth = $ctx->now->copy()->setDate($year, $m, 1)->daysInMonth;
             $maxMonth = $maxDaily * $daysInMonth;
-            $score = (float) ($rows[$m] ?? 0);
+            $score = (float) ($monthlyTotals[$m] ?? 0);
             $labels[] = $monthNames[$m];
             $values[] = $maxMonth > 0 ? round(min(100, ($score / $maxMonth) * 100), 1) : 0;
         }

@@ -68,8 +68,10 @@ class DashboardContext
 
     public function maxDailyHabitScore(): int
     {
-        return (int) Cache::remember('dash_max_daily_habit', 300, function () {
-            $sum = (int) Habit::where('status_aktif', true)->sum('skor_maksimal');
+        return (int) Cache::remember('dash_max_daily_habit_v2', 300, function () {
+            $sum = (int) Habit::where('status_aktif', true)
+                ->where('is_pengganti_haid', false)
+                ->sum('skor_maksimal');
             return $sum > 0 ? $sum : 100;
         });
     }
