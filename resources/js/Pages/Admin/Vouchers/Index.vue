@@ -1,104 +1,109 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import PageContainer from '@/Components/UI/PageContainer.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
+import Pagination from '@/Components/UI/Pagination.vue'
+import Modal from '@/Components/UI/Modal.vue'
+import StatCard from '@/Components/Dashboard/StatCard.vue'
 import { useConfirm } from '@/Composables/useConfirm'
 import { useToast } from '@/Composables/useToast'
-import { IconVoucher } from '@/Components/Icons'
+import { formatNumber, formatPercent, formatRupiah } from '@/utils/formatters'
 
 const props = defineProps({
-    period: {
-        type: String,
-        required: true,
-    },
-    periodName: {
-        type: String,
-        required: true,
-    },
-    reportData: {
-        type: Array,
-        default: () => [],
-    },
-    totalPegawai: {
-        type: Number,
-        default: 0,
-    },
-    totalQualified: {
-        type: Number,
-        default: 0,
-    },
-    totalGenerated: {
-        type: Number,
-        default: 0,
-    },
-    totalRedeemed: {
-        type: Number,
-        default: 0,
-    },
-    totalUnredeemed: {
-        type: Number,
-        default: 0,
-    },
-    filters: {
-        type: Object,
-        default: () => ({}),
-    },
-    settings: {
-        type: Object,
-        default: () => ({}),
-    },
-    availablePeriods: {
-        type: Array,
-        default: () => [],
-    },
-    divisions: {
-        type: Array,
-        default: () => [],
-    },
+    period: { type: String, required: true },
+    periodName: { type: String, required: true },
+    reportData: { type: Object, required: true },
+    totalPegawai: { type: Number, default: 0 },
+    totalQualified: { type: Number, default: 0 },
+    totalGenerated: { type: Number, default: 0 },
+    totalRedeemed: { type: Number, default: 0 },
+    totalUnredeemed: { type: Number, default: 0 },
+    totalExpired: { type: Number, default: 0 },
+    totalValueGenerated: { type: Number, default: 0 },
+    totalValueRedeemed: { type: Number, default: 0 },
+    filters: { type: Object, default: () => ({}) },
+    settings: { type: Object, default: () => ({}) },
+    availablePeriods: { type: Array, default: () => [] },
+    divisions: { type: Array, default: () => [] },
 })
 
 const { confirm } = useConfirm()
 const toast = useToast()
 
 const selectedPeriod = ref(props.period)
-const searchQuery = ref(props.filters.search || '')
-const selectedDivision = ref(props.filters.division || '')
-const selectedStatus = ref(props.filters.status || 'all')
-
-const isProcessing = ref(false)
+const searchQuery = ref(props.filters?.search || '')
+const selectedDivision = ref(props.filters?.division || '')
+const selectedStatus = ref(props.filters?.status || 'all')
+const perPage = ref(props.filters?.per_page || 15)
 const quickRedeemCode = ref('')
+const isProcessing = ref(false)
+const copiedCode = ref(null)
 
-// Settings Modal
+// Modals
 const isSettingModalOpen = ref(false)
+const detailItem = ref(null)
 const settingForm = ref({
-    monthly_target_score: props.settings.monthly_target_score || 80,
-    voucher_reward_title: props.settings.voucher_reward_title || 'Voucher Apresiasi Target Habit',
-    voucher_reward_value: props.settings.voucher_reward_value || 'Voucher Belanja Koperasi Sekolah Rp 50.000',
-    voucher_terms: props.settings.voucher_terms || '',
+    monthly_target_score: props.settings?.monthly_target_score || 80,
+    voucher_reward_title: props.settings?.voucher_reward_title || 'Voucher Apresiasi Target Habit',
+    voucher_reward_value: props.settings?.voucher_reward_value || 'Voucher Belanja Koperasi Sekolah Rp 50.000',
+    voucher_terms: props.settings?.voucher_terms || '',
 })
 
-const applyFilters = () => {
+const applyFilters = (replace = false) => {
     router.get(route('admin.vouchers.index'), {
         period: selectedPeriod.value,
         search: searchQuery.value || undefined,
         division: selectedDivision.value || undefined,
         status: selectedStatus.value !== 'all' ? selectedStatus.value : undefined,
+        per_page: perPage.value,
     }, {
         preserveState: true,
         preserveScroll: true,
+        replace,
     })
 }
 
-// Generate voucher untuk 1 pegawai
+let searchTimeout = null
+watch(searchQuery, () => {
+    clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => applyFilters(true), 350)
+})
+
+watch([selectedPeriod, selectedDivision, selectedStatus, perPage], () => {
+    applyFilters()
+})
+
+const resetFilters = () => {
+    searchQuery.value = ''
+    selectedDivision.value = ''
+    selectedStatus.value = 'all'
+    perPage.value = 15
+}
+
+const hasActiveFilter = computed(() =>
+    Boolean(searchQuery.value || selectedDivision.value || selectedStatus.value !== 'all')
+)
+
+const copyCode = async (code) => {
+    if (!code || typeof navigator === 'undefined' || !navigator.clipboard) return
+    try {
+        await navigator.clipboard.writeText(code)
+        copiedCode.value = code
+        toast.success(`Kode ${code} disalin.`)
+        setTimeout(() => { copiedCode.value = null }, 2000)
+    } catch {}
+}
+
 const handleGenerateSingle = async (item) => {
     const ok = await confirm({
         title: 'Terbitkan Voucher Habit',
-        message: `Terbitkan voucher reward apresiasi untuk ${item.name} periode ${props.periodName}?`,
+        message: `Terbitkan voucher reward untuk ${item.name} periode ${props.periodName}?`,
         confirmText: 'Ya, Terbitkan',
         type: 'primary',
     })
     if (!ok) return
-
     isProcessing.value = true
     router.post(route('admin.vouchers.generate'), {
         period: selectedPeriod.value,
@@ -109,16 +114,14 @@ const handleGenerateSingle = async (item) => {
     })
 }
 
-// Batch generate semua voucher yang qualified
-const handleBatchGenerate = async () => {
+const handleGenerateBatch = async () => {
     const ok = await confirm({
-        title: 'Terbitkan Semua Voucher',
-        message: `Terbitkan voucher habit secara serentak untuk seluruh pegawai (${props.totalQualified} pegawai) yang memenuhi target sekolah periode ${props.periodName}?`,
-        confirmText: 'Terbitkan Semua',
+        title: 'Generate Massal Voucher',
+        message: `Terbitkan voucher untuk semua pegawai yang memenuhi target pada periode ${props.periodName}?`,
+        confirmText: 'Terbitkan Massal',
         type: 'primary',
     })
     if (!ok) return
-
     isProcessing.value = true
     router.post(route('admin.vouchers.generate'), {
         period: selectedPeriod.value,
@@ -128,495 +131,451 @@ const handleBatchGenerate = async () => {
     })
 }
 
-// Tandai voucher sudah ditukarkan di koperasi
-const handleRedeemVoucher = async (voucherId, employeeName) => {
+const handleRedeem = async (voucher) => {
     const ok = await confirm({
-        title: 'Konfirmasi Penukaran Koperasi',
-        message: `Tandai voucher milik ${employeeName} sebagai SUDAH DITUKARKAN di Koperasi Sekolah?`,
-        confirmText: 'Ya, Tandai Ditukarkan',
+        title: 'Tandai Voucher Ditebus',
+        message: `Tandai voucher ${voucher.code} (${formatRupiah(voucher.nominal)}) sebagai SUDAH DITUKARKAN?`,
+        confirmText: 'Ya, Tebus',
         type: 'primary',
     })
     if (!ok) return
-
     isProcessing.value = true
     router.post(route('admin.vouchers.redeem'), {
-        voucher_id: voucherId,
-        notes: 'Ditukarkan di Koperasi Sekolah',
+        voucher_id: voucher.id,
     }, {
         preserveScroll: true,
+        onSuccess: () => { detailItem.value = null },
         onFinish: () => { isProcessing.value = false },
     })
 }
 
-// Quick Redeem via scan/input kode
 const handleQuickRedeem = () => {
-    if (!quickRedeemCode.value.trim()) {
-        toast.error('Masukkan kode voucher terlebih dahulu!')
-        return
-    }
-
+    const code = quickRedeemCode.value.trim()
+    if (!code || isProcessing.value) return
     isProcessing.value = true
     router.post(route('admin.vouchers.redeem'), {
-        voucher_code: quickRedeemCode.value.trim(),
-        notes: 'Ditukarkan via Input Kasir Koperasi',
+        voucher_code: code,
     }, {
         preserveScroll: true,
-        onSuccess: () => {
-            quickRedeemCode.value = ''
-        },
+        onSuccess: () => { quickRedeemCode.value = '' },
         onFinish: () => { isProcessing.value = false },
     })
 }
 
-// Batalkan penukaran (kembalikan ke belum ditukarkan)
-const handleUnredeem = async (voucherId, employeeName) => {
+const handleUnredeem = async (voucher) => {
     const ok = await confirm({
         title: 'Batalkan Penukaran Voucher',
-        message: `Kembalikan status voucher milik ${employeeName} menjadi BELUM DITUKARKAN?`,
-        confirmText: 'Ya, Batalkan Penukaran',
-        type: 'warning',
+        message: `Kembalikan status voucher ${voucher.code} menjadi BELUM DITUKARKAN?`,
+        confirmText: 'Ya, Batalkan',
+        type: 'danger',
     })
     if (!ok) return
-
     isProcessing.value = true
-    router.post(route('admin.vouchers.unredeem', voucherId), {}, {
+    router.post(route('admin.vouchers.unredeem', voucher.id), {}, {
         preserveScroll: true,
+        onSuccess: () => { detailItem.value = null },
         onFinish: () => { isProcessing.value = false },
     })
 }
 
-// Simpan Pengaturan
 const saveSettings = () => {
     isProcessing.value = true
     router.post(route('admin.vouchers.settings'), settingForm.value, {
         preserveScroll: true,
-        onSuccess: () => {
-            isSettingModalOpen.value = false
-        },
+        onSuccess: () => { isSettingModalOpen.value = false },
         onFinish: () => { isProcessing.value = false },
     })
 }
+
+const voucherBadge = (item) => {
+    const v = item.voucher
+    if (!v) {
+        return item.is_qualified
+            ? { label: 'Siap Terbit', cls: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60' }
+            : { label: 'Belum Target', cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700' }
+    }
+    if (v.is_redeemed) return { label: 'Sudah Ditebus', cls: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' }
+    if (v.is_expired) return { label: 'Kedaluwarsa', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60' }
+    return { label: 'Tersedia', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60' }
+}
+
+const inputClass = 'w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors'
 </script>
 
 <template>
-    <Head title="Kelola Voucher Habit Koperasi Sekolah" />
-
     <AuthenticatedLayout>
-        <div class="py-6 sm:py-8 space-y-6 max-w-7xl mx-auto px-4 sm:px-6">
-            
-            <!-- ── HEADER HALAMAN ────────────────────────────────────────────────── -->
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-theme">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs flex-shrink-0">
-                        <IconVoucher class="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h1 class="text-xl sm:text-2xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                            <span>Kelola Voucher Habit Koperasi</span>
-                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold border border-emerald-300">
-                                Koperasi Sekolah
-                            </span>
-                        </h1>
-                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                            Penerbitan voucher bagi pegawai yang memenuhi target habit sekolah &amp; verifikasi penukaran di Koperasi Sekolah.
-                        </p>
-                    </div>
-                </div>
+        <Head title="Voucher Habit Koperasi" />
 
-                <div class="flex flex-wrap items-center gap-2">
-                    <!-- Tombol Pengaturan Voucher -->
+        <PageContainer size="xl">
+            <PageHeader
+                title="Voucher Habit Koperasi"
+                :subtitle="`Periode ${periodName} · Kelola penerbitan & penukaran voucher reward`"
+            >
+                <template #actions>
                     <button
                         type="button"
                         @click="isSettingModalOpen = true"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card-subtle hover:bg-slate-200 dark:hover:bg-slate-800 border border-theme text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-2xs"
+                        class="inline-flex items-center px-3.5 py-2 min-h-[44px] sm:min-h-0 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
                     >
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span>Pengaturan Target &amp; Reward</span>
+                        Pengaturan Reward
                     </button>
-
-                    <!-- Tombol Terbitkan Semua Voucher -->
                     <button
                         type="button"
-                        @click="handleBatchGenerate"
-                        :disabled="isProcessing || totalQualified === 0"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white text-xs font-black shadow-md shadow-amber-600/25 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                        :disabled="isProcessing"
+                        @click="handleGenerateBatch"
+                        class="inline-flex items-center px-3.5 py-2 min-h-[44px] sm:min-h-0 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-xs font-bold transition-colors cursor-pointer"
                     >
-                        <span>⚡</span>
-                        <span>Terbitkan Semua Voucher ({{ totalQualified }})</span>
+                        Generate Massal
                     </button>
-                </div>
+                </template>
+            </PageHeader>
+
+            <!-- Ringkasan -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <StatCard
+                    label="Memenuhi target"
+                    :value="formatNumber(totalQualified)"
+                    :subtext="`Dari ${formatNumber(totalPegawai)} pegawai`"
+                    tone="primary"
+                />
+                <StatCard
+                    label="Voucher terbit"
+                    :value="formatNumber(totalGenerated)"
+                    :subtext="`Total ${formatRupiah(totalValueGenerated)}`"
+                    tone="good"
+                />
+                <StatCard
+                    label="Sudah ditebus"
+                    :value="formatNumber(totalRedeemed)"
+                    :subtext="`Nilai ${formatRupiah(totalValueRedeemed)}`"
+                    tone="neutral"
+                />
+                <StatCard
+                    label="Belum ditebus"
+                    :value="formatNumber(totalUnredeemed)"
+                    :subtext="totalExpired > 0 ? `${totalExpired} kedaluwarsa` : 'Siap ditukarkan'"
+                    :tone="totalUnredeemed > 0 ? 'warn' : 'good'"
+                />
             </div>
 
-            <!-- ── RINGKASAN STATISTIK ───────────────────────────────────────────── -->
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div class="p-4 rounded-2xl bg-card-subtle border border-theme text-center space-y-1 shadow-2xs">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase">Total Pegawai</p>
-                    <p class="text-xl font-black text-slate-800 dark:text-slate-100">{{ totalPegawai }}</p>
-                </div>
-                <div class="p-4 rounded-2xl bg-card-subtle border border-theme text-center space-y-1 shadow-2xs">
-                    <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Memenuhi Target</p>
-                    <p class="text-xl font-black text-emerald-600 dark:text-emerald-400">{{ totalQualified }}</p>
-                </div>
-                <div class="p-4 rounded-2xl bg-card-subtle border border-theme text-center space-y-1 shadow-2xs">
-                    <p class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Voucher Terbit</p>
-                    <p class="text-xl font-black text-amber-600 dark:text-amber-400">{{ totalGenerated }}</p>
-                </div>
-                <div class="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-center space-y-1 shadow-2xs">
-                    <p class="text-[10px] font-black text-emerald-700 dark:text-emerald-300 uppercase">🟢 Belum Ditukarkan</p>
-                    <p class="text-xl font-black text-emerald-700 dark:text-emerald-300">{{ totalUnredeemed }}</p>
-                </div>
-                <div class="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-800 text-center space-y-1 shadow-2xs col-span-2 sm:col-span-1">
-                    <p class="text-[10px] font-black text-blue-700 dark:text-blue-300 uppercase">🔵 Sudah Ditukarkan</p>
-                    <p class="text-xl font-black text-blue-700 dark:text-blue-300">{{ totalRedeemed }}</p>
-                </div>
-            </div>
-
-            <!-- ── PANEL CEPAT PENUKARAN VOUCHER KASIR KOPERASI ───────────────────── -->
-            <div class="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border-2 border-emerald-400/40 dark:border-emerald-700/50 shadow-xs space-y-3">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                        <h3 class="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                            <span>🛒 Kasir / Petugas Koperasi: Validasi Penukaran Voucher</span>
-                        </h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">
-                            Masukkan atau scan kode voucher yang dibawa pegawai untuk menandainya sebagai SUDAH DITUKARKAN.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex flex-col sm:flex-row items-center gap-2 max-w-xl">
+            <!-- Bar Quick Redeem & Filter -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 space-y-3">
+                <form @submit.prevent="handleQuickRedeem" class="flex flex-col sm:flex-row gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
                     <input
-                        type="text"
                         v-model="quickRedeemCode"
-                        @keyup.enter="handleQuickRedeem"
-                        placeholder="Contoh: SDAM-VCR-202611-ABC123"
-                        class="w-full text-xs font-mono font-bold uppercase rounded-xl border border-theme bg-white dark:bg-slate-900 px-3.5 py-2.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500"
+                        type="text"
+                        placeholder="Scan atau ketik kode voucher untuk penukaran cepat (contoh: SDAM-VCR-...)"
+                        class="flex-1 px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     />
                     <button
-                        type="button"
-                        @click="handleQuickRedeem"
-                        :disabled="isProcessing"
-                        class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/25 active:scale-95 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                        type="submit"
+                        :disabled="!quickRedeemCode.trim() || isProcessing"
+                        class="px-4 py-2 min-h-[44px] sm:min-h-0 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
                     >
-                        ✓ Tandai Sudah Ditukarkan
+                        Tandai Ditebus
                     </button>
-                </div>
-            </div>
+                </form>
 
-            <!-- ── FILTER DAN PENCARIAN ─────────────────────────────────────────── -->
-            <div class="flex flex-wrap items-center justify-between gap-3 bg-sidebar p-4 rounded-2xl border border-theme">
-                <div class="flex flex-wrap items-center gap-2">
-                    <!-- Pilih Periode -->
-                    <div>
-                        <select
-                            v-model="selectedPeriod"
-                            @change="applyFilters"
-                            class="text-xs font-bold rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 cursor-pointer"
-                        >
-                            <option v-for="opt in availablePeriods" :key="opt.period" :value="opt.period">
-                                {{ opt.label }}
-                            </option>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                    <div class="lg:col-span-3">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Cari pegawai / kode</label>
+                        <input v-model="searchQuery" type="text" placeholder="Nama, NIP, atau kode voucher..." :class="inputClass" />
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Periode</label>
+                        <select v-model="selectedPeriod" :class="inputClass">
+                            <option v-for="p in availablePeriods" :key="p.period" :value="p.period">{{ p.label }}</option>
                         </select>
                     </div>
-
-                    <!-- Filter Divisi -->
-                    <div>
-                        <select
-                            v-model="selectedDivision"
-                            @change="applyFilters"
-                            class="text-xs rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 cursor-pointer"
-                        >
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Divisi</label>
+                        <select v-model="selectedDivision" :class="inputClass">
                             <option value="">Semua Divisi</option>
                             <option v-for="d in divisions" :key="d.id" :value="d.name">{{ d.name }}</option>
                         </select>
                     </div>
-
-                    <!-- Filter Status -->
-                    <div>
-                        <select
-                            v-model="selectedStatus"
-                            @change="applyFilters"
-                            class="text-xs font-bold rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 cursor-pointer"
-                        >
+                    <div class="lg:col-span-3">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Status</label>
+                        <select v-model="selectedStatus" :class="inputClass">
                             <option value="all">Semua Status</option>
-                            <option value="qualified">Memenuhi Target ({{ totalQualified }})</option>
-                            <option value="not_generated">Belum Terbit Voucher</option>
-                            <option value="unredeemed">🟢 Belum Ditukarkan ({{ totalUnredeemed }})</option>
-                            <option value="redeemed">🔵 Sudah Ditukarkan ({{ totalRedeemed }})</option>
+                            <option value="qualified">Memenuhi Target</option>
+                            <option value="not_generated">Siap Terbit (Belum Digenerate)</option>
+                            <option value="unredeemed">Tersedia (Belum Ditebus)</option>
+                            <option value="redeemed">Sudah Ditebus</option>
+                            <option value="expired">Kedaluwarsa</option>
                         </select>
                     </div>
-                </div>
-
-                <!-- Input Pencarian -->
-                <div class="w-full sm:w-64">
-                    <input
-                        type="text"
-                        v-model="searchQuery"
-                        @input="applyFilters"
-                        placeholder="Cari nama atau NIP pegawai..."
-                        class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500"
-                    />
+                    <div class="lg:col-span-2 flex items-center gap-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Baris</label>
+                            <select v-model="perPage" :class="inputClass">
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="25">25</option>
+                                <option :value="50">50</option>
+                            </select>
+                        </div>
+                        <button
+                            v-if="hasActiveFilter"
+                            type="button"
+                            @click="resetFilters"
+                            class="mt-5 px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 cursor-pointer"
+                        >
+                            Reset
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- ── TABEL DAFTAR PEGAWAI & VOUCHER KOPERASI ───────────────────────── -->
-            <div class="bg-sidebar rounded-3xl border border-theme shadow-xs overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-card-subtle text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-theme">
+            <!-- Tabel Desktop & Kartu Mobile -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                        <thead class="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
                             <tr>
-                                <th class="py-3 px-3 text-center w-12">No</th>
-                                <th class="py-3 px-4">Pegawai</th>
-                                <th class="py-3 px-3 text-center">Divisi</th>
-                                <th class="py-3 px-3 text-center">Skor Habit</th>
-                                <th class="py-3 px-3 text-center">Pencapaian</th>
-                                <th class="py-3 px-3 text-center">Target Sekolah</th>
-                                <th class="py-3 px-3 text-center">Status Target</th>
-                                <th class="py-3 px-4 text-center">Voucher Koperasi</th>
-                                <th class="py-3 px-4 text-center">Aksi Petugas</th>
+                                <th class="px-4 py-3">Pegawai</th>
+                                <th class="px-4 py-3">Capaian Habit</th>
+                                <th class="px-4 py-3">Kode Voucher</th>
+                                <th class="px-4 py-3 text-right">Nominal</th>
+                                <th class="px-4 py-3 text-center">Status</th>
+                                <th class="px-4 py-3 text-right">Aksi</th>
                             </tr>
                         </thead>
-
-                        <tbody class="divide-y divide-subtle">
-                            <tr
-                                v-for="(item, idx) in reportData"
-                                :key="item.user_id"
-                                class="hover:bg-card-subtle/50 transition-colors"
-                            >
-                                <td class="py-3 px-3 text-center font-bold text-slate-400">
-                                    {{ idx + 1 }}
-                                </td>
-
-                                <td class="py-3 px-4">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-950 flex items-center justify-center font-bold text-xs text-primary-700 flex-shrink-0 overflow-hidden border border-theme">
-                                            <img v-if="item.avatar" :src="item.avatar.startsWith('http') ? item.avatar : `/storage/${item.avatar}`" class="w-full h-full object-cover" />
-                                            <span v-else>{{ item.name.charAt(0) }}</span>
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-slate-800 dark:text-slate-100">{{ item.name }}</p>
-                                            <p class="text-[10px] text-slate-400">NIP: {{ item.nip }}</p>
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <td class="py-3 px-3 text-center text-slate-500">
-                                    {{ item.divisi }}
-                                </td>
-
-                                <td class="py-3 px-3 text-center font-bold text-slate-700 dark:text-slate-200">
-                                    {{ item.total_score }} <span class="text-[10px] font-normal text-slate-400">/ {{ item.max_score }}</span>
-                                </td>
-
-                                <td class="py-3 px-3 text-center">
-                                    <span
-                                        :class="[
-                                            'font-black',
-                                            item.is_qualified ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'
-                                        ]"
-                                    >
-                                        {{ item.achieved_percentage }}%
-                                    </span>
-                                </td>
-
-                                <td class="py-3 px-3 text-center font-bold text-slate-600 dark:text-slate-300">
-                                    {{ item.target_percentage }}%
-                                </td>
-
-                                <td class="py-3 px-3 text-center">
-                                    <span
-                                        :class="[
-                                            'px-2 py-0.5 rounded-full text-[10px] font-black',
-                                            item.is_qualified
-                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300'
-                                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                        ]"
-                                    >
-                                        {{ item.is_qualified ? 'Tercapai' : 'Belum' }}
-                                    </span>
-                                </td>
-
-                                <!-- Status Voucher -->
-                                <td class="py-3 px-4 text-center">
-                                    <template v-if="item.voucher">
-                                        <div class="space-y-1">
-                                            <span class="font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200 block">
-                                                {{ item.voucher.code }}
-                                            </span>
-                                            <span
-                                                :class="[
-                                                    'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-2xs',
-                                                    item.voucher.is_redeemed
-                                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300'
-                                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 animate-pulse'
-                                                ]"
-                                            >
-                                                <span v-if="item.voucher.is_redeemed">🔵 Sudah Ditukarkan</span>
-                                                <span v-else>🟢 Belum Ditukarkan</span>
-                                            </span>
-                                            <span v-if="item.voucher.is_redeemed" class="block text-[9px] text-slate-400">
-                                                {{ item.voucher.claimed_at }}
-                                            </span>
-                                        </div>
-                                    </template>
-                                    <template v-else>
-                                        <span v-if="item.is_qualified" class="text-amber-600 dark:text-amber-400 font-bold text-[11px]">
-                                            ⏳ Siap Diterbitkan
-                                        </span>
-                                        <span v-else class="text-slate-400 text-[11px]">
-                                            -
-                                        </span>
-                                    </template>
-                                </td>
-
-                                <!-- Aksi Petugas -->
-                                <td class="py-3 px-4 text-center">
-                                    <div class="flex items-center justify-center gap-1.5">
-                                        <!-- Tombol Terbitkan jika belum terbit -->
-                                        <button
-                                            v-if="item.is_qualified && !item.voucher"
-                                            type="button"
-                                            @click="handleGenerateSingle(item)"
-                                            :disabled="isProcessing"
-                                            class="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-[11px] shadow-xs active:scale-95 transition-all cursor-pointer"
-                                            title="Terbitkan Voucher untuk pegawai ini"
-                                        >
-                                            ⚡ Terbitkan
-                                        </button>
-
-                                        <!-- Tombol Tandai Sudah Ditukarkan di Koperasi -->
-                                        <button
-                                            v-if="item.voucher && !item.voucher.is_redeemed"
-                                            type="button"
-                                            @click="handleRedeemVoucher(item.voucher.id, item.name)"
-                                            :disabled="isProcessing"
-                                            class="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
-                                            title="Tandai voucher ini sudah ditukarkan di Koperasi Sekolah"
-                                        >
-                                            ✓ Tukarkan di Koperasi
-                                        </button>
-
-                                        <!-- Tombol Batalkan Penukaran jika salah klik -->
-                                        <button
-                                            v-if="item.voucher && item.voucher.is_redeemed"
-                                            type="button"
-                                            @click="handleUnredeem(item.voucher.id, item.name)"
-                                            :disabled="isProcessing"
-                                            class="px-2 py-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-100 text-slate-600 dark:text-slate-300 hover:text-rose-600 text-[10px] font-bold transition-all cursor-pointer"
-                                            title="Batalkan status penukaran"
-                                        >
-                                            Batal Tukar
-                                        </button>
-                                    </div>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tr v-if="!reportData?.data?.length">
+                                <td colspan="6" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
+                                    Tidak ada data voucher untuk filter ini.
                                 </td>
                             </tr>
-
-                            <tr v-if="reportData.length === 0">
-                                <td colspan="9" class="py-8 text-center text-xs text-slate-400">
-                                    Tidak ada data pegawai yang sesuai dengan filter yang dipilih.
+                            <tr v-for="item in reportData.data" :key="item.user_id" class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                                <td class="px-4 py-3">
+                                    <div class="font-bold text-slate-900 dark:text-slate-100">{{ item.name }}</div>
+                                    <div class="text-[11px] text-slate-400">{{ item.divisi }} · {{ item.nip }}</div>
+                                </td>
+                                <td class="px-4 py-3 tabular-nums">
+                                    <div class="font-bold text-slate-800 dark:text-slate-200">
+                                        {{ formatPercent(item.achieved_percentage, 1) }}
+                                        <span class="font-normal text-slate-400">/ target {{ item.target_percentage }}%</span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-400">{{ formatNumber(item.total_score) }} / {{ formatNumber(item.max_score) }} poin</div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div v-if="item.voucher" class="inline-flex items-center gap-1.5">
+                                        <code class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono font-bold text-slate-800 dark:text-slate-200">
+                                            {{ item.voucher.code }}
+                                        </code>
+                                        <button
+                                            type="button"
+                                            @click="copyCode(item.voucher.code)"
+                                            class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-semibold cursor-pointer"
+                                            :aria-label="`Salin kode ${item.voucher.code}`"
+                                        >
+                                            {{ copiedCode === item.voucher.code ? 'Disalin' : 'Salin' }}
+                                        </button>
+                                    </div>
+                                    <span v-else class="text-slate-400">-</span>
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold tabular-nums text-slate-900 dark:text-slate-100">
+                                    {{ item.voucher ? formatRupiah(item.voucher.nominal) : '-' }}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border" :class="voucherBadge(item).cls">
+                                        {{ voucherBadge(item).label }}
+                                    </span>
+                                    <div v-if="item.voucher?.claimed_at" class="text-[11px] text-slate-400 mt-0.5">
+                                        {{ item.voucher.claimed_at }}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="inline-flex items-center gap-1.5 justify-end">
+                                        <button
+                                            v-if="!item.voucher && item.is_qualified"
+                                            type="button"
+                                            :disabled="isProcessing"
+                                            @click="handleGenerateSingle(item)"
+                                            class="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold cursor-pointer"
+                                        >
+                                            Terbitkan
+                                        </button>
+                                        <button
+                                            v-if="item.voucher && !item.voucher.is_redeemed && !item.voucher.is_expired"
+                                            type="button"
+                                            :disabled="isProcessing"
+                                            @click="handleRedeem(item.voucher)"
+                                            class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer"
+                                        >
+                                            Redeem
+                                        </button>
+                                        <button
+                                            v-if="item.voucher"
+                                            type="button"
+                                            @click="detailItem = item"
+                                            class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
+                                        >
+                                            Detail
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            <!-- ── MODAL PENGATURAN TARGET & REWARD VOUCHER ─────────────────────── -->
-            <div
-                v-if="isSettingModalOpen"
-                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-                @click.self="isSettingModalOpen = false"
-            >
-                <div class="w-full max-w-lg bg-sidebar rounded-3xl border border-theme shadow-2xl p-6 space-y-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-subtle">
-                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                            <span>⚙️ Pengaturan Target &amp; Reward Voucher</span>
-                        </h4>
-                        <button
-                            type="button"
-                            @click="isSettingModalOpen = false"
-                            class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                        >
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                <!-- Mobile Cards -->
+                <div class="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                    <div v-if="!reportData?.data?.length" class="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                        Tidak ada data voucher untuk filter ini.
                     </div>
-
-                    <div class="space-y-4 text-xs">
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Target Skor Bulanan Sekolah (%):
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                v-model.number="settingForm.monthly_target_score"
-                                class="w-full text-xs font-bold rounded-xl border border-theme bg-card-subtle px-3.5 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500"
-                            />
-                            <p class="text-[10px] text-slate-400 mt-1">
-                                Standar target sekolah untuk pegawai mendapatkan voucher apresiasi (default: 80%).
-                            </p>
+                    <div v-for="item in reportData.data" :key="`mv-${item.user_id}`" class="p-4 space-y-2.5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{{ item.name }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ item.divisi }} · {{ formatPercent(item.achieved_percentage, 1) }}</div>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold border shrink-0" :class="voucherBadge(item).cls">
+                                {{ voucherBadge(item).label }}
+                            </span>
                         </div>
-
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Judul Reward Apresiasi:
-                            </label>
-                            <input
-                                type="text"
-                                v-model="settingForm.voucher_reward_title"
-                                class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3.5 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500"
-                            />
+                        <div v-if="item.voucher" class="flex items-center justify-between gap-2 text-xs bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl">
+                            <code class="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.voucher.code }}</code>
+                            <span class="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums shrink-0">{{ formatRupiah(item.voucher.nominal) }}</span>
                         </div>
-
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Bentuk Hadiah / Nominal Voucher Koperasi:
-                            </label>
-                            <input
-                                type="text"
-                                v-model="settingForm.voucher_reward_value"
-                                class="w-full text-xs font-bold text-amber-600 dark:text-amber-400 rounded-xl border border-theme bg-card-subtle px-3.5 py-2 focus:ring-2 focus:ring-primary-500"
-                            />
+                        <div class="flex items-center gap-2">
+                            <button
+                                v-if="!item.voucher && item.is_qualified"
+                                type="button"
+                                @click="handleGenerateSingle(item)"
+                                class="flex-1 min-h-[44px] rounded-xl bg-primary-600 text-white text-xs font-bold"
+                            >
+                                Terbitkan
+                            </button>
+                            <button
+                                v-if="item.voucher && !item.voucher.is_redeemed && !item.voucher.is_expired"
+                                type="button"
+                                @click="handleRedeem(item.voucher)"
+                                class="flex-1 min-h-[44px] rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                            >
+                                Redeem
+                            </button>
+                            <button
+                                v-if="item.voucher"
+                                type="button"
+                                @click="detailItem = item"
+                                class="flex-1 min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold"
+                            >
+                                Detail &amp; Riwayat
+                            </button>
                         </div>
-
-                        <div>
-                            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Syarat &amp; Ketentuan Penukaran di Koperasi:
-                            </label>
-                            <textarea
-                                rows="3"
-                                v-model="settingForm.voucher_terms"
-                                class="w-full text-xs rounded-xl border border-theme bg-card-subtle px-3.5 py-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500"
-                            ></textarea>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-subtle">
-                        <button
-                            type="button"
-                            @click="isSettingModalOpen = false"
-                            class="px-4 py-2 rounded-xl border border-theme text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            type="button"
-                            @click="saveSettings"
-                            :disabled="isProcessing"
-                            class="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
-                        >
-                            Simpan Pengaturan
-                        </button>
                     </div>
                 </div>
-            </div>
 
-        </div>
+                <div v-if="reportData?.links?.length > 3" class="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+                    <Pagination :links="reportData.links" />
+                </div>
+            </div>
+        </PageContainer>
+
+        <!-- Modal Detail & Audit Trail -->
+        <Modal :show="!!detailItem" maxWidth="md" @close="detailItem = null">
+            <div v-if="detailItem?.voucher" class="p-5 space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Detail Voucher</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ detailItem.name }} · {{ detailItem.divisi }}</p>
+                    </div>
+                    <button type="button" @click="detailItem = null" class="text-xs font-semibold text-slate-400 hover:text-slate-600 cursor-pointer">Tutup</button>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 space-y-1.5 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Kode</span>
+                        <code class="font-mono font-bold text-slate-900 dark:text-slate-100">{{ detailItem.voucher.code }}</code>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Nominal</span>
+                        <span class="font-bold text-slate-900 dark:text-slate-100 tabular-nums">{{ formatRupiah(detailItem.voucher.nominal) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Berlaku s/d</span>
+                        <span class="font-semibold text-slate-800 dark:text-slate-200">{{ detailItem.voucher.valid_until || '-' }}</span>
+                    </div>
+                    <div v-if="detailItem.voucher.transaction_code" class="flex justify-between">
+                        <span class="text-slate-500">Transaksi POS</span>
+                        <span class="font-mono font-bold text-emerald-700 dark:text-emerald-400">{{ detailItem.voucher.transaction_code }}</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Riwayat Audit</div>
+                    <div v-if="detailItem.voucher.logs?.length" class="divide-y divide-slate-100 dark:divide-slate-800 max-h-48 overflow-y-auto">
+                        <div v-for="log in detailItem.voucher.logs" :key="log.id" class="py-2 text-xs">
+                            <div class="flex justify-between font-semibold text-slate-800 dark:text-slate-200">
+                                <span class="capitalize">{{ log.action }} · {{ log.actor }}</span>
+                                <span class="text-slate-400 tabular-nums">{{ log.at }}</span>
+                            </div>
+                            <p v-if="log.notes" class="text-slate-500 dark:text-slate-400 mt-0.5">{{ log.notes }}</p>
+                        </div>
+                    </div>
+                    <p v-else class="text-xs text-slate-400">Belum ada riwayat audit tercatat.</p>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                        v-if="detailItem.voucher.is_redeemed && !detailItem.voucher.transaction_code"
+                        type="button"
+                        :disabled="isProcessing"
+                        @click="handleUnredeem(detailItem.voucher)"
+                        class="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold cursor-pointer"
+                    >
+                        Batalkan Penebusan
+                    </button>
+                    <button
+                        v-if="!detailItem.voucher.is_redeemed && !detailItem.voucher.is_expired"
+                        type="button"
+                        :disabled="isProcessing"
+                        @click="handleRedeem(detailItem.voucher)"
+                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                    >
+                        Tandai Ditebus
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
+        <!-- Modal Pengaturan Reward -->
+        <Modal :show="isSettingModalOpen" maxWidth="md" @close="isSettingModalOpen = false">
+            <form @submit.prevent="saveSettings" class="p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">Pengaturan Reward Voucher</h3>
+                    <button type="button" @click="isSettingModalOpen = false" class="text-xs font-semibold text-slate-400 hover:text-slate-600 cursor-pointer">Tutup</button>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Target Minimal Bulanan (%)</label>
+                        <input v-model="settingForm.monthly_target_score" type="number" step="0.1" min="0" max="100" required :class="inputClass" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Judul Reward</label>
+                        <input v-model="settingForm.voucher_reward_title" type="text" required :class="inputClass" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nilai / Keterangan Reward</label>
+                        <input v-model="settingForm.voucher_reward_value" type="text" required :class="inputClass" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Syarat &amp; Ketentuan</label>
+                        <textarea v-model="settingForm.voucher_terms" rows="3" :class="inputClass" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" @click="isSettingModalOpen = false" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold cursor-pointer">Batal</button>
+                    <button type="submit" :disabled="isProcessing" class="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold cursor-pointer">
+                        Simpan Pengaturan
+                    </button>
+                </div>
+            </form>
+        </Modal>
     </AuthenticatedLayout>
 </template>

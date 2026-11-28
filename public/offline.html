@@ -2,132 +2,113 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sedang Offline — Habit SDAM</title>
-    <meta name="theme-color" content="#059669">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Sedang Offline — Sahabat SDAM</title>
+    <meta name="theme-color" content="#f8fafc">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --muted: #475569;
+            --primary: #059669;
+            --primary-hover: #047857;
+            --subtle: #f1f5f9;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #020617;
+                --card: #0f172a;
+                --border: #1e293b;
+                --text: #f1f5f9;
+                --muted: #94a3b8;
+                --primary: #10b981;
+                --primary-hover: #059669;
+                --subtle: #1e293b;
+            }
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
-            color: white;
+            padding: calc(1rem + env(safe-area-inset-top)) 1rem calc(1rem + env(safe-area-inset-bottom));
         }
-
         .card {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.2);
+            background: var(--card);
+            border: 1px solid var(--border);
             border-radius: 24px;
-            padding: 3rem 2rem;
+            padding: 2rem 1.5rem;
             text-align: center;
             max-width: 420px;
             width: 100%;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
         }
-
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--muted);
+            margin-bottom: 1.25rem;
+        }
+        .brand img { width: 24px; height: 24px; border-radius: 6px; }
         .icon-wrap {
-            width: 96px;
-            height: 96px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 50%;
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--subtle);
+            color: var(--muted);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 1.5rem;
-            font-size: 3rem;
+            margin: 0 auto 1rem;
         }
-
-        h1 {
-            font-size: 1.75rem;
-            font-weight: 800;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.025em;
-        }
-
-        p {
-            opacity: 0.8;
-            line-height: 1.7;
-            font-size: 0.95rem;
-            margin-bottom: 2rem;
-        }
-
-        .tips {
-            background: rgba(0,0,0,0.2);
-            border-radius: 14px;
-            padding: 1.25rem;
-            text-align: left;
-            margin-bottom: 2rem;
-        }
-
-        .tips h3 {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            opacity: 0.7;
-            margin-bottom: 0.75rem;
-        }
-
-        .tips li {
-            font-size: 0.875rem;
-            opacity: 0.85;
-            line-height: 1.6;
-            margin-left: 1.25rem;
-            margin-bottom: 0.25rem;
-        }
-
+        h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+        p { margin-top: 0.5rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
         .btn {
-            display: inline-block;
-            background: white;
-            color: #065f46;
+            margin-top: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 0.625rem 1.5rem;
+            border-radius: 12px;
+            background: var(--primary);
+            color: #ffffff;
             font-weight: 700;
             font-size: 0.875rem;
-            padding: 0.875rem 2rem;
-            border-radius: 12px;
-            text-decoration: none;
-            cursor: pointer;
             border: none;
-            transition: transform 0.15s, box-shadow 0.15s;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            cursor: pointer;
+            width: 100%;
         }
-        
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-        .btn:active { transform: translateY(0); }
-
-        .quote {
-            margin-top: 2rem;
-            font-style: italic;
-            opacity: 0.6;
-            font-size: 0.8rem;
-        }
+        .btn:hover { background: var(--primary-hover); }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="icon-wrap">📡</div>
-        <h1>Sedang Offline</h1>
-        <p>Anda saat ini tidak terhubung ke internet. Beberapa halaman yang pernah dikunjungi mungkin masih dapat diakses.</p>
-        
-        <div class="tips">
-            <h3>Yang bisa Anda lakukan:</h3>
-            <ul>
-                <li>Periksa koneksi WiFi atau data seluler</li>
-                <li>Coba buka kembali saat sudah terhubung</li>
-                <li>Halaman yang pernah dibuka mungkin masih tersedia</li>
-            </ul>
+    <main class="card" role="alert">
+        <div class="brand">
+            <img src="/img/icon-192.png" alt="Logo SAHABAT SDAM">
+            <span>SAHABAT SDAM</span>
         </div>
-
-        <button class="btn" onclick="window.location.reload()">🔄 Coba Lagi</button>
-
-        <p class="quote">
-            "إِنَّ اللَّهَ يُحِبُّ إِذَا عَمِلَ أَحَدُكُمْ عَمَلاً أَنْ يُتْقِنَهُ"<br>
-            Sesungguhnya Allah mencintai jika seseorang melakukan suatu amalan, ia melakukannya dengan sempurna.
-        </p>
-    </div>
+        <div class="icon-wrap" aria-hidden="true">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M8.5 16.5a5 5 0 017 0M5 13a9.97 9.97 0 015.58-2.75M19 13a9.97 9.97 0 00-3.11-2.06M12 20h.01" />
+            </svg>
+        </div>
+        <h1>Tidak Ada Koneksi Internet</h1>
+        <p>Perangkat Anda sedang offline. Periksa Wi-Fi atau data seluler, lalu coba muat ulang halaman.</p>
+        <button type="button" class="btn" onclick="window.location.reload()">Coba Lagi</button>
+    </main>
+    <script>
+        window.addEventListener('online', function () { window.location.reload(); });
+    </script>
 </body>
 </html>

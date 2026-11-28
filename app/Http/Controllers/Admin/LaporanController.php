@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\LaporanFilterRequest;
 use App\Models\Habit;
 use App\Models\HabitLog;
 use App\Models\Setting;
 use App\Models\User;
+use App\Queries\HabitReportQuery;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,92 +18,27 @@ class LaporanController extends Controller
     /**
      * Tampilkan halaman Leaderboard (semua pegawai bulan ini).
      */
-    public function index(Request $request)
+    public function index(LaporanFilterRequest $request, HabitReportQuery $reportQuery)
     {
-        $now = Carbon::now();
-        $month = $request->input('month', $now->month);
-        $year = $request->input('year', $now->year);
-        $search = $request->input('search');
-        $perPage = $request->input('per_page', 10);
-        $kategori_skor = $request->input('kategori_skor');
-        $divisi = $request->input('divisi');
+        $filters = $request->validatedFilters();
+        $ctx = $reportQuery->resolveContext($filters);
 
-        $date = Carbon::create($year, $month, 1);
-        $startOfMonth = $date->copy()->startOfMonth();
-        $endOfMonth   = $date->copy()->endOfMonth();
-        $daysInMonth  = $date->daysInMonth;
-
-        // Ambil target skor bulanan dari pengaturan, default 80
-        $settingTargetValue = Setting::get('monthly_target_score');
-        $targetBulanan = $settingTargetValue !== null ? (float) $settingTargetValue : 80.0;
-
-        // Skor maksimal harian berdasarkan database
-        $dailyMaxScore = \App\Models\Habit::allActiveCached()
-            ->where('is_pengganti_haid', false)
-            ->sum('skor_maksimal') ?: 100;
-        $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
-
-        // Ambil data semua pegawai (bukan admin/superadmin) beserta pencarian dan pagination
-        $usersQuery = User::whereIn('id', User::getNonAdminUserIds())
-            ->with('badges')
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->when($divisi, function ($query, $divisi) {
-                $query->where('divisi', $divisi);
-            })
-            ->withSum(
-                ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
-                'skor_diperoleh'
-            )
-            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
-                
-                // Build CASE statement for division targets
-                $divisions = \App\Models\Division::whereNotNull('target_divisi')->get();
-                $divisionCases = "";
-                foreach($divisions as $div) {
-                    $name = addslashes($div->name);
-                    $divisionCases .= " WHEN users.divisi = '{$name}' THEN {$div->target_divisi} ";
-                }
-                $divisionCaseSql = $divisionCases ? "CASE $divisionCases ELSE NULL END" : "NULL";
-
-                // Gunakan target dinamis admin: target khusus inaktif > target divisi > target global
-                $userTargetSql = "COALESCE(
-                    CASE WHEN status_kehadiran != 'Aktif' THEN target_tidak_aktif ELSE NULL END,
-                    $divisionCaseSql,
-                    $targetBulanan
-                )";
-
-                $scoreSql = "(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?)";
-                
-                if ($kategori === '0-30') {
-                    $query->whereRaw("$scoreSql <= (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === '30-50') {
-                    $query->whereRaw("$scoreSql > (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
-                          ->whereRaw("$scoreSql <= (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === '50-target') {
-                    $query->whereRaw("$scoreSql > (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
-                          ->whereRaw("$scoreSql < (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === 'tercapai') {
-                    $query->whereRaw("$scoreSql >= (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                }
-            })
-            ->orderByRaw('COALESCE(habit_logs_sum_skor_diperoleh, 0) DESC');
-
-        $paginatedUsers = $usersQuery->paginate($perPage)->withQueryString();
+        $paginatedUsers = $reportQuery->baseQuery($filters, $ctx)
+            ->paginate($filters['per_page'])
+            ->withQueryString();
 
         $divisionsLookup = \App\Models\Division::getTargetsMap();
+        $skorMaksimalSebulan = $ctx['skorMaksimalSebulan'];
+        $targetBulanan = $ctx['targetBulanan'];
 
         $paginatedUsers->getCollection()->transform(function ($user) use ($skorMaksimalSebulan, $targetBulanan, $divisionsLookup) {
             $skorDiperoleh = (int) $user->habit_logs_sum_skor_diperoleh;
             $persentase = ($skorMaksimalSebulan > 0) ? ($skorDiperoleh / $skorMaksimalSebulan) * 100 : 0;
-            
+
             $userTarget = $targetBulanan;
-            
-            $divisionTarget = null;
-            if (!empty($user->divisi) && isset($divisionsLookup[$user->divisi])) {
-                $divisionTarget = $divisionsLookup[$user->divisi];
-            }
+            $divisionTarget = (!empty($user->divisi) && isset($divisionsLookup[$user->divisi]))
+                ? $divisionsLookup[$user->divisi]
+                : null;
 
             if ($user->status_kehadiran !== 'Aktif' && !is_null($user->target_tidak_aktif)) {
                 $userTarget = (float) $user->target_tidak_aktif;
@@ -112,6 +49,7 @@ class LaporanController extends Controller
             return [
                 'id'               => $user->id,
                 'name'             => $user->name,
+                'nip'              => $user->nip,
                 'gender'           => $user->gender,
                 'divisi'           => $user->divisi,
                 'status'           => $user->status_kehadiran,
@@ -119,6 +57,7 @@ class LaporanController extends Controller
                 'skor'             => $skorDiperoleh,
                 'persentase'       => round($persentase, 1),
                 'target'           => $userTarget,
+                'last_filled_at'   => $user->last_filled_at ? Carbon::parse($user->last_filled_at)->format('d M Y') : null,
             ];
         });
 
@@ -126,37 +65,32 @@ class LaporanController extends Controller
 
         return Inertia::render('Admin/Laporan/Index', [
             'leaderboard'         => $paginatedUsers,
+            'summary'             => $reportQuery->summary($filters, $ctx),
             'targetBulanan'       => $targetBulanan,
             'skorMaksimalSebulan' => $skorMaksimalSebulan,
-            'namaBulan'           => $date->translatedFormat('F Y'),
+            'namaBulan'           => $ctx['namaBulan'],
             'divisis'             => $divisis,
-            'filters'             => [
-                'month'  => (int) $month,
-                'year'   => (int) $year,
-                'search' => $search,
-                'per_page' => (int) $perPage,
-                'kategori_skor' => $kategori_skor,
-                'divisi' => $divisi,
-            ]
+            'filters'             => $filters,
         ]);
     }
 
     /**
-     * Unduh Laporan Leaderboard dalam format Excel.
+     * Unduh Laporan Leaderboard dalam format Excel/PDF.
      */
-    public function export(Request $request)
+    public function export(LaporanFilterRequest $request)
     {
-        $now = Carbon::now();
-        $month = $request->input('month', $now->month);
-        $year = $request->input('year', $now->year);
-        $search = $request->input('search');
-        $kategori_skor = $request->input('kategori_skor');
-        $divisi = $request->input('divisi');
-        $type = $request->input('type', 'excel');
+        $f = $request->validatedFilters();
         $userToNotify = auth()->user();
 
-        // Dispatch Job ke Background Queue
-        \App\Jobs\ProcessLaporanExport::dispatch($month, $year, $search, $kategori_skor, $divisi, $type, $userToNotify);
+        \App\Jobs\ProcessLaporanExport::dispatch(
+            $f['month'],
+            $f['year'],
+            $f['search'],
+            $f['kategori_skor'],
+            $f['divisi'],
+            $f['type'],
+            $userToNotify
+        );
 
         return redirect()->back()->with('success', 'Laporan sedang digenerate di background. Silakan cek menu Pesan/Notifikasi dalam beberapa menit untuk mengunduh.');
     }

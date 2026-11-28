@@ -71,6 +71,11 @@ class HabitVoucher extends Model
         return $this->belongsTo(User::class, 'redeemed_by');
     }
 
+    public function logs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(HabitVoucherLog::class, 'habit_voucher_id')->orderByDesc('created_at')->orderByDesc('id');
+    }
+
     public function isRedeemed(): bool
     {
         return $this->status === 'claimed' || !empty($this->claimed_at);
@@ -243,7 +248,7 @@ class HabitVoucher extends Model
             ->first();
 
         if (!$voucher) {
-            $randomSuffix = strtoupper(Str::random(6));
+            $randomSuffix = strtoupper(bin2hex(random_bytes(4)));
             $voucherCode = 'SDAM-VCR-' . str_replace('-', '', $period) . '-' . $randomSuffix;
 
             $qrPayload = json_encode([

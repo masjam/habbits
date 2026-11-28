@@ -1,9 +1,16 @@
 <script setup>
+import { computed, ref, watch } from 'vue'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, Link, useForm } from '@inertiajs/vue3'
+import PageContainer from '@/Components/UI/PageContainer.vue'
+import PageHeader from '@/Components/UI/PageHeader.vue'
+import Pagination from '@/Components/UI/Pagination.vue'
+import StatCard from '@/Components/Dashboard/StatCard.vue'
+import { formatNumber, formatPercent } from '@/utils/formatters'
 
 const props = defineProps({
     leaderboard: Object,
+    summary: { type: Object, default: () => ({}) },
     targetBulanan: Number,
     skorMaksimalSebulan: Number,
     namaBulan: String,
@@ -11,15 +18,9 @@ const props = defineProps({
     filters: Object,
 })
 
-import { ref, watch } from 'vue'
-import { router } from '@inertiajs/vue3'
-
-const form = useForm({
-    target: props.targetBulanan
-})
-
-const currentYear = new Date().getFullYear()
-const years = Array.from({ length: currentYear - 2024 + 1 }, (_, i) => 2024 + i)
+const now = new Date()
+const currentYear = now.getFullYear()
+const years = Array.from({ length: Math.max(1, currentYear - 2024 + 1) }, (_, i) => 2024 + i)
 const months = [
     { value: 1, label: 'Januari' }, { value: 2, label: 'Februari' },
     { value: 3, label: 'Maret' }, { value: 4, label: 'April' },
@@ -29,284 +30,370 @@ const months = [
     { value: 11, label: 'November' }, { value: 12, label: 'Desember' },
 ]
 
-const selectedMonth = ref(props.filters.month)
-const selectedYear = ref(props.filters.year)
-const searchQuery = ref(props.filters.search || '')
-const perPage = ref(props.filters.per_page || 10)
-const kategoriSkor = ref(props.filters.kategori_skor || '')
-const selectedDivisi = ref(props.filters.divisi || '')
+const selectedMonth = ref(props.filters?.month || now.getMonth() + 1)
+const selectedYear = ref(props.filters?.year || currentYear)
+const searchQuery = ref(props.filters?.search || '')
+const perPage = ref(props.filters?.per_page || 10)
+const kategoriSkor = ref(props.filters?.kategori_skor || '')
+const selectedDivisi = ref(props.filters?.divisi || '')
+const sortField = ref(props.filters?.sort || 'skor')
+const sortDir = ref(props.filters?.dir || 'desc')
 const showMobileFilters = ref(false)
 
-let searchTimeout = null
-watch(searchQuery, (newVal) => {
-    clearTimeout(searchTimeout)
-    searchTimeout = setTimeout(() => {
-        router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: newVal, per_page: perPage.value, kategori_skor: kategoriSkor.value, divisi: selectedDivisi.value }, { preserveState: true, preserveScroll: true, replace: true })
-    }, 300)
-})
-
-watch([selectedMonth, selectedYear, perPage, kategoriSkor, selectedDivisi], () => {
-    router.get(route('admin.laporan'), { month: selectedMonth.value, year: selectedYear.value, search: searchQuery.value, per_page: perPage.value, kategori_skor: kategoriSkor.value, divisi: selectedDivisi.value }, { preserveState: true, preserveScroll: true })
-})
-
+const targetForm = useForm({ target: props.targetBulanan })
 const saveTarget = () => {
-    form.post(route('admin.laporan.target'), {
-        preserveScroll: true
+    targetForm.post(route('admin.laporan.target'), { preserveScroll: true })
+}
+
+const activeParams = (overrides = {}) => ({
+    month: selectedMonth.value,
+    year: selectedYear.value,
+    search: searchQuery.value || undefined,
+    per_page: perPage.value,
+    kategori_skor: kategoriSkor.value || undefined,
+    divisi: selectedDivisi.value || undefined,
+    sort: sortField.value,
+    dir: sortDir.value,
+    ...overrides,
+})
+
+const applyFilters = (overrides = {}, replace = false) => {
+    router.get(route('admin.laporan'), activeParams(overrides), {
+        preserveState: true,
+        preserveScroll: true,
+        replace,
     })
 }
 
-// Logic pewarnaan berdasarkan persentase
-const getRowClass = (persentase, target) => {
-    const targetBulanan = target ?? props.targetBulanan;
-    if (persentase >= targetBulanan) {
-        return 'bg-emerald-100/60 hover:bg-emerald-100 border-l-4 border-emerald-600' // Tercapai
-    } else if (persentase > 50) {
-        return 'bg-emerald-50/50 hover:bg-emerald-50 border-l-4 border-emerald-300' // 50.1 - Target
-    } else if (persentase > 30) {
-        return 'bg-amber-50 hover:bg-amber-100/80 border-l-4 border-amber-500' // 30.1-50%
-    } else {
-        return 'bg-rose-50 hover:bg-rose-100/80 border-l-4 border-rose-500' // 0-30%
+let searchTimeout = null
+watch(searchQuery, () => {
+    clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => applyFilters({}, true), 350)
+})
+
+watch([selectedMonth, selectedYear, perPage, kategoriSkor, selectedDivisi], () => {
+    applyFilters()
+})
+
+const setPreset = (preset) => {
+    const d = new Date()
+    if (preset === 'last_month') {
+        d.setMonth(d.getMonth() - 1)
     }
+    selectedMonth.value = d.getMonth() + 1
+    selectedYear.value = d.getFullYear()
 }
 
-const getBadgeClass = (persentase, target) => {
-    const targetBulanan = target ?? props.targetBulanan;
-    if (persentase >= targetBulanan) return 'bg-emerald-600 text-white shadow-sm'
-    if (persentase > 50) return 'bg-emerald-200 text-emerald-800'
-    if (persentase > 30) return 'bg-amber-200 text-amber-800'
-    return 'bg-rose-200 text-rose-800'
+const resetFilters = () => {
+    const d = new Date()
+    selectedMonth.value = d.getMonth() + 1
+    selectedYear.value = d.getFullYear()
+    searchQuery.value = ''
+    kategoriSkor.value = ''
+    selectedDivisi.value = ''
+    perPage.value = 10
+    sortField.value = 'skor'
+    sortDir.value = 'desc'
 }
+
+const toggleSort = (field) => {
+    if (sortField.value === field) {
+        sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
+    } else {
+        sortField.value = field
+        sortDir.value = field === 'name' ? 'asc' : 'desc'
+    }
+    applyFilters()
+}
+
+const hasActiveFilter = computed(() =>
+    Boolean(searchQuery.value || kategoriSkor.value || selectedDivisi.value)
+)
+
+const statusBadge = (persentase, target) => {
+    const t = target ?? props.targetBulanan
+    if (persentase >= t) return { label: 'Tercapai', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60', bar: 'bg-emerald-600' }
+    if (persentase > 50) return { label: 'Mendekati', cls: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60', bar: 'bg-sky-500' }
+    if (persentase > 30) return { label: 'Perhatian', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60', bar: 'bg-amber-500' }
+    return { label: 'Rendah', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60', bar: 'bg-rose-500' }
+}
+
+const inputClass = 'w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-colors'
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <Head title="Leaderboard & Laporan" />
+        <Head title="Laporan Habit Pegawai" />
 
-        <div class="space-y-6">
-            <!-- Header -->
-            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Rekap Habbit Pegawai</h2>
-                    <p class="text-sm text-slate-500 mt-1">
-                        Rekapitulasi Golden Habbit pegawai bulan <strong>{{ namaBulan }}</strong>.
-                    </p>
-                </div>
+        <PageContainer size="xl">
+            <PageHeader
+                title="Rekap Habit Pegawai"
+                :subtitle="`Periode ${namaBulan} · Skor maksimal ${formatNumber(skorMaksimalSebulan)} poin`"
+            >
+                <template #actions>
+                    <Link
+                        preserve-state
+                        preserve-scroll
+                        :href="route('admin.laporan.export', activeParams({ type: 'excel' }))"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] sm:min-h-0 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors"
+                    >
+                        Export Excel
+                    </Link>
+                    <Link
+                        preserve-state
+                        preserve-scroll
+                        :href="route('admin.laporan.export', activeParams({ type: 'pdf' }))"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] sm:min-h-0 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold transition-colors"
+                    >
+                        Export PDF
+                    </Link>
+                </template>
+            </PageHeader>
+
+            <!-- Ringkasan -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <StatCard
+                    label="Total pegawai"
+                    :value="formatNumber(summary.total_employees)"
+                    subtext="Pegawai dipantau"
+                    tone="neutral"
+                />
+                <StatCard
+                    label="Rata-rata capaian"
+                    :value="formatPercent(summary.average_percent, 1)"
+                    :progress="summary.average_percent || 0"
+                    :subtext="`Target sekolah ${targetBulanan}%`"
+                    tone="primary"
+                />
+                <StatCard
+                    label="Target tercapai"
+                    :value="formatNumber(summary.target_reached_count)"
+                    :subtext="`${formatNumber(summary.filled_employees)} pegawai sudah mengisi`"
+                    tone="good"
+                />
+                <StatCard
+                    label="Belum mengisi"
+                    :value="formatNumber(summary.unfilled_employees)"
+                    subtext="Belum ada entri bulan ini"
+                    :tone="(summary.unfilled_employees || 0) > 0 ? 'bad' : 'good'"
+                />
             </div>
-                
-            <!-- Controls Card -->
-            
-            <!-- Mobile Filter Toggle Button -->
-            <div class="lg:hidden">
-                <button @click="showMobileFilters = !showMobileFilters" class="w-full flex items-center justify-between px-5 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                    <span class="flex items-center gap-2.5">
-                        <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                        </svg>
-                        Filter & Pencarian
-                    </span>
-                    <svg class="w-5 h-5 text-slate-400 transform transition-transform" :class="{ 'rotate-180': showMobileFilters }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-            </div>
 
-            <div class="bg-white rounded-3xl lg:px-6 lg:pt-6 lg:pb-2 shadow-sm lg:border border-slate-100" :class="{ 'hidden lg:block': !showMobileFilters, 'p-5 border': showMobileFilters }">
-                <div class="flex flex-col lg:flex-row gap-6 items-start lg:items-end justify-between">
-                    
-                    <!-- Search & Filters -->
-                    <div class="flex-1 w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-                        <div class="col-span-1 md:col-span-2 xl:col-span-1">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cari</label>
-                            <div class="relative">
-                                <input type="text" v-model="searchQuery" placeholder="Cari nama pegawai..." class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 pr-4 py-2.5 transition-colors" />
-                                <svg class="w-5 h-5 absolute left-3 top-2.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bulan</label>
-                            <select v-model="selectedMonth" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
-                                <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tahun</label>
-                            <select v-model="selectedYear" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
-                                <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kategori</label>
-                            <select v-model="kategoriSkor" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
-                                <option value="">Semua Kategori</option>
-                                <option value="0-30">0% - 30%</option>
-                                <option value="30-50">30.1% - 50%</option>
-                                <option value="50-target">50.1% - &lt; Target</option>
-                                <option value="tercapai">&ge; Target</option>
-                            </select>
-                        </div>
-                        
-                        <div v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'">
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Divisi</label>
-                            <select v-model="selectedDivisi" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
-                                <option value="">Semua Divisi</option>
-                                <option v-for="divisi in divisis" :key="divisi" :value="divisi">{{ divisi }}</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tampil</label>
-                            <select v-model="perPage" class="bg-slate-50 border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full py-2.5 px-4 cursor-pointer transition-colors">
-                                <option :value="5">5 Baris</option>
-                                <option :value="10">10 Baris</option>
-                                <option :value="25">25 Baris</option>
-                                <option :value="50">50 Baris</option>
-                            </select>
-                        </div>
+            <!-- Bar Filter -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            @click="setPreset('this_month')"
+                            class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-primary-50 text-slate-700 hover:text-primary-700 dark:bg-slate-800 dark:text-slate-300 transition-colors cursor-pointer"
+                        >
+                            Bulan Ini
+                        </button>
+                        <button
+                            type="button"
+                            @click="setPreset('last_month')"
+                            class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-primary-50 text-slate-700 hover:text-primary-700 dark:bg-slate-800 dark:text-slate-300 transition-colors cursor-pointer"
+                        >
+                            Bulan Lalu
+                        </button>
+                        <button
+                            v-if="hasActiveFilter"
+                            type="button"
+                            @click="resetFilters"
+                            class="px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                        >
+                            Reset
+                        </button>
                     </div>
 
-                    <!-- Target & Export Actions -->
-                    <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto mt-4 lg:mt-0 border-t lg:border-t-0 pt-4 lg:pt-0 border-slate-100">
-                        <form @submit.prevent="saveTarget" class="flex items-end gap-2 bg-emerald-50 p-2 rounded-xl border border-emerald-100">
-                            <div>
-                                <label class="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 px-1">Target (%)</label>
-                                <input type="number" step="0.1" min="0" max="100" v-model="form.target" class="w-20 sm:w-24 px-3 py-2 text-sm font-black text-emerald-800 bg-white border-none rounded-lg focus:ring-2 focus:ring-emerald-500 text-center shadow-sm" />
-                            </div>
-                            <button type="submit" :disabled="form.processing" class="h-[36px] px-4 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm whitespace-nowrap">
+                    <div class="flex items-center gap-2">
+                        <form @submit.prevent="saveTarget" class="flex items-center gap-1.5">
+                            <label for="target-input" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Target (%):</label>
+                            <input
+                                id="target-input"
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                v-model="targetForm.target"
+                                class="w-16 px-2 py-1 text-xs font-bold text-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 tabular-nums"
+                            />
+                            <button
+                                type="submit"
+                                :disabled="targetForm.processing"
+                                class="px-2.5 py-1 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                            >
                                 Simpan
                             </button>
                         </form>
-                        
-                        <div class="flex gap-2 self-end">
-                            <Link preserve-state preserve-scroll :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'excel' })" class="h-[52px] px-4 bg-emerald-700 text-white text-sm font-bold rounded-xl hover:bg-emerald-800 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap Excel">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                <span class="hidden sm:inline">Excel</span>
-                            </Link>
-                            <Link preserve-state preserve-scroll :href="route('admin.laporan.export', { month: selectedMonth, year: selectedYear, search: searchQuery, kategori_skor: kategoriSkor, type: 'pdf' })" class="h-[52px] px-4 bg-rose-600 text-white text-sm font-bold rounded-xl hover:bg-rose-700 transition-all flex items-center justify-center gap-2 shadow-sm" title="Unduh Rekap PDF">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                <span class="hidden sm:inline">PDF</span>
-                            </Link>
+                        <button
+                            type="button"
+                            @click="showMobileFilters = !showMobileFilters"
+                            class="lg:hidden px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300"
+                        >
+                            {{ showMobileFilters ? 'Tutup Filter' : 'Filter' }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3" :class="{ 'hidden lg:grid': !showMobileFilters }">
+                    <div class="lg:col-span-3">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Cari pegawai</label>
+                        <input type="text" v-model="searchQuery" placeholder="Nama atau NIP..." :class="inputClass" />
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Bulan</label>
+                        <select v-model="selectedMonth" :class="inputClass">
+                            <option v-for="m in months" :key="m.value" :value="m.value">{{ m.label }}</option>
+                        </select>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Tahun</label>
+                        <select v-model="selectedYear" :class="inputClass">
+                            <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
+                        </select>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Divisi</label>
+                        <select v-model="selectedDivisi" :class="inputClass">
+                            <option value="">Semua Divisi</option>
+                            <option v-for="d in divisis" :key="d" :value="d">{{ d }}</option>
+                        </select>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Kategori</label>
+                        <select v-model="kategoriSkor" :class="inputClass">
+                            <option value="">Semua Kategori</option>
+                            <option value="tercapai">&ge; Target</option>
+                            <option value="50-target">50.1% – &lt; Target</option>
+                            <option value="30-50">30.1% – 50%</option>
+                            <option value="0-30">0% – 30%</option>
+                        </select>
+                    </div>
+                    <div class="lg:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Baris</label>
+                        <select v-model="perPage" :class="inputClass">
+                            <option :value="10">10</option>
+                            <option :value="25">25</option>
+                            <option :value="50">50</option>
+                            <option :value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabel Desktop & Kartu Mobile -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+                <!-- Desktop Table -->
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                        <thead class="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
+                            <tr>
+                                <th class="px-4 py-3 w-12 text-center">#</th>
+                                <th class="px-4 py-3">
+                                    <button type="button" @click="toggleSort('name')" class="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer">
+                                        Pegawai
+                                        <span v-if="sortField === 'name'">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+                                    </button>
+                                </th>
+                                <th class="px-4 py-3">Divisi</th>
+                                <th class="px-4 py-3">
+                                    <button type="button" @click="toggleSort('skor')" class="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer">
+                                        Capaian &amp; Skor
+                                        <span v-if="sortField === 'skor'">{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+                                    </button>
+                                </th>
+                                <th class="px-4 py-3 text-center">Terakhir Isi</th>
+                                <th class="px-4 py-3 text-center">Status</th>
+                                <th class="px-4 py-3 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <tr v-if="!leaderboard?.data?.length">
+                                <td colspan="7" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400">
+                                    Tidak ada data untuk filter ini.
+                                    <button v-if="hasActiveFilter" type="button" @click="resetFilters" class="ml-2 text-primary-600 font-semibold hover:underline cursor-pointer">
+                                        Reset filter
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-for="(u, idx) in leaderboard.data" :key="u.id" class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                                <td class="px-4 py-3 text-center font-semibold text-slate-400 tabular-nums">
+                                    {{ (leaderboard.from || 1) + idx }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="font-bold text-slate-900 dark:text-slate-100">{{ u.name }}</div>
+                                    <div class="text-[11px] text-slate-400">{{ u.nip || '-' }}</div>
+                                </td>
+                                <td class="px-4 py-3">{{ u.divisi || '-' }}</td>
+                                <td class="px-4 py-3 min-w-[200px]">
+                                    <div class="flex items-center justify-between gap-2 tabular-nums mb-1">
+                                        <span class="font-bold text-slate-900 dark:text-slate-100">{{ formatPercent(u.persentase, 1) }}</span>
+                                        <span class="text-slate-500 dark:text-slate-400">{{ formatNumber(u.skor) }} / {{ formatNumber(skorMaksimalSebulan) }}</span>
+                                    </div>
+                                    <div class="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                        <div class="h-full rounded-full" :class="statusBadge(u.persentase, u.target).bar" :style="{ width: `${Math.min(100, u.persentase)}%` }" />
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-center tabular-nums text-slate-500 dark:text-slate-400">
+                                    {{ u.last_filled_at || 'Belum ada' }}
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border" :class="statusBadge(u.persentase, u.target).cls">
+                                        {{ statusBadge(u.persentase, u.target).label }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <Link
+                                        :href="route('admin.laporan.detail', { user: u.id, month: selectedMonth, year: selectedYear })"
+                                        class="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-primary-50 text-slate-700 hover:text-primary-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-primary-950/60 font-semibold transition-colors"
+                                    >
+                                        Detail →
+                                    </Link>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mobile Cards -->
+                <div class="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                    <div v-if="!leaderboard?.data?.length" class="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                        Tidak ada data untuk filter ini.
+                    </div>
+                    <div v-for="u in leaderboard.data" :key="`m-${u.id}`" class="p-4 space-y-2.5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{{ u.name }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ u.divisi || '-' }} · {{ u.last_filled_at || 'Belum isi' }}</div>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold border shrink-0" :class="statusBadge(u.persentase, u.target).cls">
+                                {{ statusBadge(u.persentase, u.target).label }}
+                            </span>
                         </div>
-                    </div>
-                    
-                    
-                </div>
-                <div class="flex flex-wrap gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider p-3">
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-rose-500"></span> 0-30%
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-amber-500"></span> 30.1-50%
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-emerald-300"></span> 50.1% - &lt;{{ targetBulanan }}%
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="w-3 h-3 rounded-full bg-emerald-600"></span> &ge;{{ targetBulanan }}% (Tercapai)
-                    </div>
-                </div>
-            </div>
-
-            <!-- Legend -->
-
-            <!-- Leaderboard List -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <!-- Header Laporan -->
-                <div class="flex items-center px-4 py-2.5 gap-3 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <div class="w-8 flex-shrink-0 text-center">No</div>
-                    <div class="w-9 flex-shrink-0 hidden sm:block"></div>
-                    <div class="flex-1 min-w-0 ml-1">Nama Pegawai & Skor</div>
-                    <div class="flex-shrink-0 text-right w-24">Pencapaian</div>
-                </div>
-
-                <ul class="divide-y divide-slate-100">
-                    <li v-if="leaderboard.data.length === 0" class="p-8 text-center text-slate-500">Belum ada data pegawai.</li>
-                    
-                    <li v-for="(user, index) in leaderboard.data" :key="user.id" 
-                        class="transition-colors group"
-                        :class="getRowClass(user.persentase, user.target)"
-                    >
-                        <Link :href="route('admin.laporan.detail', user.id)" class="flex items-center px-4 py-2.5 gap-3">
-                            <!-- Rank -->
-                            <div class="w-8 flex-shrink-0 text-center">
-                                <span v-if="leaderboard.current_page === 1 && index === 0" class="text-xl">🥇</span>
-                                <span v-else-if="leaderboard.current_page === 1 && index === 1" class="text-xl">🥈</span>
-                                <span v-else-if="leaderboard.current_page === 1 && index === 2" class="text-xl">🥉</span>
-                                <span v-else class="text-base font-black text-slate-400">{{ (leaderboard.current_page - 1) * leaderboard.per_page + index + 1 }}</span>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs tabular-nums">
+                                <span class="font-bold text-slate-800 dark:text-slate-200">{{ formatPercent(u.persentase, 1) }}</span>
+                                <span class="text-slate-500 dark:text-slate-400">{{ formatNumber(u.skor) }} poin</span>
                             </div>
-
-                            <!-- Avatar & Name -->
-                            <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-slate-600 flex-shrink-0 overflow-hidden border-2 border-white shadow-sm" :class="!user.avatar ? 'bg-slate-200' : 'bg-transparent'">
-                                <img v-if="user.avatar" :src="user.avatar.startsWith('http') ? user.avatar : `/storage/${user.avatar}`" class="w-full h-full object-cover" />
-                                <span v-else class="text-xs">{{ user.name.charAt(0).toUpperCase() }}</span>
+                            <div class="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div class="h-full rounded-full" :class="statusBadge(u.persentase, u.target).bar" :style="{ width: `${Math.min(100, u.persentase)}%` }" />
                             </div>
-                            <div class="flex-1 min-w-0 ml-1">
-                                <div class="flex items-center gap-2">
-                                    <div class="font-bold text-slate-800 text-sm truncate group-hover:text-emerald-700 transition-colors">
-                                        {{ user.name }}
-                                    </div>
-                                    <div v-if="$page.props.global_settings?.feature_badges === '1' || $page.props.global_settings?.feature_badges === 'true'" class="flex -space-x-1">
-                                        <span v-for="badge in (user.badges || [])" :key="badge.id" class="text-sm bg-white rounded-full border border-slate-200 shadow-sm z-10" :title="badge.name" v-html="badge.icon"></span>
-                                    </div>
-                                </div>
-                                <div class="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5 flex flex-wrap gap-2 items-center">
-                                    <span>Skor: {{ user.skor }} / {{ skorMaksimalSebulan }}</span>
-                                    <span v-if="$page.props.global_settings?.feature_divisi === '1' || $page.props.global_settings?.feature_divisi === 'true'" class="text-emerald-600 font-bold">
-                                        • {{ user.divisi || 'Tanpa Divisi' }}
-                                    </span>
-                                    <span v-if="user.status && user.status !== 'Aktif' && ($page.props.global_settings?.feature_cuti === '1' || $page.props.global_settings?.feature_cuti === 'true')" class="bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded font-bold uppercase">
-                                        Sedang {{ user.status }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Percentage & Target -->
-                            <div class="flex-shrink-0 text-right flex items-center gap-2">
-                                <div class="flex flex-col items-end">
-                                    <div class="px-2.5 py-1 rounded-full font-black text-xs" :class="getBadgeClass(user.persentase, user.target)">
-                                        {{ user.persentase }}%
-                                    </div>
-                                    <div class="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-wider" title="Target skor untuk pegawai ini">
-                                        Trg: {{ user.target ?? targetBulanan }}%
-                                    </div>
-                                </div>
-                                <svg class="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </div>
+                        </div>
+                        <Link
+                            :href="route('admin.laporan.detail', { user: u.id, month: selectedMonth, year: selectedYear })"
+                            class="inline-flex items-center justify-center w-full min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
+                        >
+                            Lihat Detail Habit →
                         </Link>
-                    </li>
-                </ul>
-                
-                <!-- Pagination -->
-                <div v-if="leaderboard.links && leaderboard.links.length > 3" class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div class="text-sm text-slate-500">
-                        Menampilkan <span class="font-bold text-slate-700">{{ leaderboard.from || 0 }}</span> sampai <span class="font-bold text-slate-700">{{ leaderboard.to || 0 }}</span> dari <span class="font-bold text-slate-700">{{ leaderboard.total }}</span> data
-                    </div>
-                    <div class="flex flex-wrap gap-1">
-                        <template v-for="(link, i) in leaderboard.links" :key="i">
-                            <Link 
-                                v-if="link.url"
-                                :href="link.url"
-                                class="px-3 py-1.5 text-sm font-medium border rounded-lg transition-colors"
-                                :class="link.active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'"
-                                v-html="link.label"
-                                preserve-scroll
-                            />
-                            <span v-else class="px-3 py-1.5 text-sm font-medium border rounded-lg text-slate-400 border-slate-200 bg-slate-50" v-html="link.label"></span>
-                        </template>
                     </div>
                 </div>
+
+                <div v-if="leaderboard?.links?.length > 3" class="px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+                    <Pagination :links="leaderboard.links" />
+                </div>
             </div>
-            
-        </div>
+        </PageContainer>
     </AuthenticatedLayout>
 </template>

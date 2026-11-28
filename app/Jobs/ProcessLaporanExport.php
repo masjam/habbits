@@ -36,69 +36,22 @@ class ProcessLaporanExport implements ShouldQueue
      */
     public function handle(): void
     {
-        $month = $this->month;
-        $year = $this->year;
-        $search = $this->search;
-        $kategori_skor = $this->kategori_skor;
-        $divisi = $this->divisi;
+        $filters = [
+            'month' => $this->month,
+            'year' => $this->year,
+            'search' => $this->search,
+            'kategori_skor' => $this->kategori_skor,
+            'divisi' => $this->divisi,
+        ];
+
+        $reportQuery = app(\App\Queries\HabitReportQuery::class);
+        $ctx = $reportQuery->resolveContext($filters);
+        $date = $ctx['date'];
+        $skorMaksimalSebulan = $ctx['skorMaksimalSebulan'];
+        $targetBulanan = $ctx['targetBulanan'];
         $type = $this->type;
 
-        $date = \Carbon\Carbon::create($year, $month, 1);
-        $startOfMonth = $date->copy()->startOfMonth();
-        $endOfMonth   = $date->copy()->endOfMonth();
-        $daysInMonth  = $date->daysInMonth;
-        
-        $dailyMaxScore = \App\Models\Habit::allActiveCached()
-            ->where('is_pengganti_haid', false)
-            ->sum('skor_maksimal') ?: 100;
-        $skorMaksimalSebulan = $dailyMaxScore * $daysInMonth;
-
-        $settingTargetVal = \App\Models\Setting::get('monthly_target_score');
-        $targetBulanan = $settingTargetVal !== null ? (float) $settingTargetVal : 80.0;
-
-        $users = \App\Models\User::whereIn('id', \App\Models\User::getNonAdminUserIds())
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->when($divisi, function ($query, $div) {
-                $query->where('divisi', $div);
-            })
-            ->withSum(
-                ['habitLogs' => fn($q) => $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth])],
-                'skor_diperoleh'
-            )
-            ->when($kategori_skor, function ($query, $kategori) use ($skorMaksimalSebulan, $targetBulanan, $startOfMonth, $endOfMonth) {
-                // Build CASE statement for division targets
-                $divisions = \App\Models\Division::whereNotNull('target_divisi')->get();
-                $divisionCases = "";
-                foreach($divisions as $div) {
-                    $name = addslashes($div->name);
-                    $divisionCases .= " WHEN users.divisi = '{$name}' THEN {$div->target_divisi} ";
-                }
-                $divisionCaseSql = $divisionCases ? "CASE $divisionCases ELSE NULL END" : "NULL";
-
-                // Gunakan target dinamis admin: target khusus inaktif > target divisi > target global
-                $userTargetSql = "COALESCE(
-                    CASE WHEN status_kehadiran != 'Aktif' THEN target_tidak_aktif ELSE NULL END,
-                    $divisionCaseSql,
-                    $targetBulanan
-                )";
-
-                $scoreSql = "(SELECT COALESCE(SUM(skor_diperoleh), 0) FROM habit_logs WHERE habit_logs.user_id = users.id AND tanggal BETWEEN ? AND ?)";
-                
-                if ($kategori === '0-30') {
-                    $query->whereRaw("$scoreSql <= (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === '30-50') {
-                    $query->whereRaw("$scoreSql > (0.30 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
-                          ->whereRaw("$scoreSql <= (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === '50-target') {
-                    $query->whereRaw("$scoreSql > (0.50 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth])
-                          ->whereRaw("$scoreSql < (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                } elseif ($kategori === 'tercapai') {
-                    $query->whereRaw("$scoreSql >= (($userTargetSql) / 100 * $skorMaksimalSebulan)", [$startOfMonth, $endOfMonth]);
-                }
-            })
-            ->get();
+        $users = $reportQuery->baseQuery($filters, $ctx)->get();
 
         $divisionsLookup = \App\Models\Division::pluck('target_divisi', 'name')->toArray();
 
