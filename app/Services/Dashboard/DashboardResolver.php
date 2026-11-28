@@ -13,6 +13,10 @@ class DashboardResolver
      */
     public function resolve(User $user): DashboardBuilderInterface
     {
+        if ($simulated = $user->getSimulatedRole()) {
+            return $this->resolveForRole($user, $simulated);
+        }
+
         $user->loadMissing('roles');
 
         if ($user->roles->count() > 1) {

@@ -108,6 +108,13 @@ class RoleDashboardTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
+                ->where('dashboard.roleKey', 'user')
+            );
+
+        $this->actingAs($multi)
+            ->get(route('kurikulum.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
                 ->where('dashboard.roleKey', 'kurikulum')
             );
 
