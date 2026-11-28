@@ -38,3 +38,6 @@ Schedule::call(function () {
 Schedule::call(function () {
     DB::table('login_logs')->where('created_at', '<', now()->subMonths(6))->delete();
 })->weekly()->name('prune-login-logs');
+
+// Pengingat otomatis penilai delegasi KPI mendekati akhir periode
+Schedule::command('kpi:remind-pending')->dailyAt('08:00');

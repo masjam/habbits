@@ -9,7 +9,10 @@ use App\Models\Division;
 use App\Models\PerformanceEvaluation;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\PerformanceEvaluationNotification;
+use App\Policies\PerformanceEvaluationPolicy;
 use App\Services\AcademicYearService;
+use App\Services\PerformanceEvaluationWorkflow;
 use App\Services\PerformanceInsightService;
 use App\Services\PerformanceRubricService;
 use App\Services\PerformanceScoreCalculator;
@@ -30,7 +33,8 @@ class PerformanceEvaluationController extends Controller
         private readonly AcademicYearService $academicYearService,
         private readonly PerformanceScoreCalculator $calculator,
         private readonly PerformanceInsightService $insightService,
-        private readonly PerformanceRubricService $rubricService
+        private readonly PerformanceRubricService $rubricService,
+        private readonly PerformanceEvaluationWorkflow $workflow
     ) {}
 
     private function ensureFeatureEnabled(): void
@@ -49,12 +53,14 @@ class PerformanceEvaluationController extends Controller
         $this->ensureFeatureEnabled();
         Gate::authorize('viewAny', PerformanceEvaluation::class);
 
+        $isApprover = app(PerformanceEvaluationPolicy::class)->isApprover(Auth::user());
+
         $filters = $this->resolveFilters($request);
         if (!in_array($filters['category'], ['guru', 'karyawan'], true)) {
             $filters['category'] = 'guru';
         }
 
-        $allMatchingCategory = $this->buildFilteredRows(array_merge($filters, ['category' => 'all']));
+        $allMatchingCategory = $this->buildFilteredRows(array_merge($filters, ['category' => 'all']), !$isApprover);
         $categoryCounts = [
             'guru'     => $allMatchingCategory->where('category', 'guru')->count(),
             'karyawan' => $allMatchingCategory->where('category', 'karyawan')->count(),
@@ -82,13 +88,16 @@ class PerformanceEvaluationController extends Controller
         );
 
         return Inertia::render('Admin/Performance/Index', [
-            'employees'      => $paginated,
-            'filters'        => $filters,
-            'categoryCounts' => $categoryCounts,
-            'academicYears'  => $this->academicYearService->getAcademicYears(),
-            'divisions'      => Division::orderBy('name')->pluck('name')->values()->all(),
-            'rubric'         => $this->rubricService->getRubric(),
-            'summary'        => [
+            'employees'            => $paginated,
+            'filters'              => $filters,
+            'categoryCounts'       => $categoryCounts,
+            'academicYears'        => $this->academicYearService->getAcademicYears(),
+            'divisions'            => Division::orderBy('name')->pluck('name')->values()->all(),
+            'rubric'               => $this->rubricService->getRubric(),
+            'canEvaluate'          => $isApprover,
+            'canManageApprovals'   => $isApprover,
+            'pendingApprovalCount' => $isApprover ? PerformanceEvaluation::submitted()->count() : 0,
+            'summary'              => [
                 'total'         => $totalCount,
                 'evaluated'     => $evaluatedRows->count(),
                 'not_evaluated' => $totalCount - $evaluatedRows->count(),
@@ -104,7 +113,6 @@ class PerformanceEvaluationController extends Controller
     public function insight(Request $request): JsonResponse
     {
         $this->ensureFeatureEnabled();
-        Gate::authorize('viewAny', PerformanceEvaluation::class);
 
         $validated = $request->validate([
             'user_id'       => ['required', 'integer', 'exists:users,id'],
@@ -115,6 +123,13 @@ class PerformanceEvaluationController extends Controller
         ]);
 
         $target = User::findOrFail($validated['user_id']);
+        Gate::authorize('viewInsight', [
+            PerformanceEvaluation::class,
+            $target,
+            $validated['academic_year'],
+            $validated['period_type'],
+            $validated['period_label'],
+        ]);
         $insight = $this->insightService->forUser(
             $target,
             $validated['academic_year'],
@@ -137,89 +152,55 @@ class PerformanceEvaluationController extends Controller
         Gate::authorize('evaluate', [PerformanceEvaluation::class, $target]);
 
         $status = $request->input('status');
-        $category = $request->input('category');
-        $calculated = $this->calculator->calculate(
-            $category,
-            $request->input('indicator_scores', []),
-            $status === 'published'
-        );
+        $actor = Auth::user();
 
-        [$evalMonth, $evalYear] = $this->extractMonthYear(
-            $request->input('period_type'),
-            $request->input('period_label'),
-            $request->input('academic_year')
-        );
-
-        $aspectValues = array_values($calculated['aspect_scores']);
-
-        $existing = PerformanceEvaluation::where('user_id', $target->id)
-            ->where('academic_year', $request->input('academic_year'))
-            ->where('period_type', $request->input('period_type'))
-            ->where('period_label', $request->input('period_label'))
-            ->first();
-
-        $publishedAt = $status === 'published'
-            ? ($existing?->published_at ?? now())
-            : null;
-
-        PerformanceEvaluation::updateOrCreate(
-            [
-                'user_id'       => $target->id,
-                'academic_year' => $request->input('academic_year'),
-                'period_type'   => $request->input('period_type'),
-                'period_label'  => $request->input('period_label'),
-            ],
-            [
-                'evaluator_id'       => Auth::id(),
-                'evaluation_month'   => $evalMonth,
-                'evaluation_year'    => $evalYear,
-                'category'           => $category,
-                'rubric_version'     => $calculated['rubric_version'],
-                'indicator_scores'   => $request->input('indicator_scores'),
-                'aspect_scores'      => $calculated['aspect_scores'],
-                'score_pedagogic'    => $aspectValues[0] ?? 0,
-                'score_professional' => $aspectValues[1] ?? 0,
-                'score_personality'  => $aspectValues[2] ?? 0,
-                'score_social'       => $aspectValues[3] ?? 0,
-                'average_score'      => $calculated['final_score'],
-                'final_score'        => $calculated['final_score'],
-                'predicate'          => $calculated['predicate'],
-                'notes'              => $request->input('notes'),
-                'status'             => $status,
-                'published_at'       => $publishedAt,
-            ]
-        );
-
-        $msg = $status === 'published'
-            ? "Penilaian kinerja {$target->name} berhasil dipublikasikan."
-            : "Draft penilaian kinerja {$target->name} berhasil disimpan.";
+        if ($status === PerformanceEvaluation::STATUS_PUBLISHED) {
+            $eval = $this->workflow->directPublish($actor, $target, $request->validated());
+            $target->notify(new PerformanceEvaluationNotification(
+                'evaluation_approved',
+                'Hasil Evaluasi Kinerja Tersedia',
+                "Hasil evaluasi KPI Anda periode {$eval->period_label} telah dipublikasikan.",
+                route('performance.index'),
+                ['evaluation_id' => $eval->id]
+            ));
+            $msg = "Penilaian kinerja {$target->name} berhasil dipublikasikan.";
+        } else {
+            $this->workflow->saveDraft($actor, $target, $request->validated());
+            $msg = "Draft penilaian kinerja {$target->name} berhasil disimpan.";
+        }
 
         return redirect()->back()->with('success', $msg);
     }
 
     /**
-     * Transisi eksplisit status: Draft -> Published.
+     * Transisi eksplisit status: Draft / Submitted -> Published.
      */
     public function publish(PerformanceEvaluation $evaluation)
     {
         $this->ensureFeatureEnabled();
-        Gate::authorize('publish', $evaluation);
+        Gate::authorize('approve', $evaluation);
 
-        $calculated = $this->calculator->calculate(
-            $evaluation->category,
-            $evaluation->indicator_scores ?? [],
-            true
-        );
+        $approver = Auth::user();
+        if ($evaluation->status === PerformanceEvaluation::STATUS_SUBMITTED) {
+            $published = $this->workflow->approve($evaluation, $approver);
+        } else {
+            $published = $this->workflow->directPublish($approver, $evaluation->user, [
+                'academic_year'    => $evaluation->academic_year,
+                'period_type'      => $evaluation->period_type,
+                'period_label'     => $evaluation->period_label,
+                'category'         => $evaluation->category,
+                'indicator_scores' => $evaluation->indicator_scores ?? [],
+                'notes'            => $evaluation->notes,
+            ]);
+        }
 
-        $evaluation->update([
-            'evaluator_id'  => Auth::id(),
-            'aspect_scores' => $calculated['aspect_scores'],
-            'final_score'   => $calculated['final_score'],
-            'average_score' => $calculated['final_score'],
-            'predicate'     => $calculated['predicate'],
-            'status'        => 'published',
-            'published_at'  => $evaluation->published_at ?? now(),
-        ]);
+        $published->user?->notify(new PerformanceEvaluationNotification(
+            'evaluation_approved',
+            'Hasil Evaluasi Kinerja Tersedia',
+            "Hasil evaluasi KPI Anda periode {$published->period_label} telah dipublikasikan.",
+            route('performance.index'),
+            ['evaluation_id' => $published->id]
+        ));
 
         return redirect()->back()->with('success', 'Penilaian kinerja berhasil dipublikasikan.');
     }
@@ -230,12 +211,9 @@ class PerformanceEvaluationController extends Controller
     public function unpublish(PerformanceEvaluation $evaluation)
     {
         $this->ensureFeatureEnabled();
-        Gate::authorize('publish', $evaluation);
+        Gate::authorize('reopen', $evaluation);
 
-        $evaluation->update([
-            'status'       => 'draft',
-            'published_at' => null,
-        ]);
+        $this->workflow->reopen($evaluation, Auth::user(), 'Dibuka kembali ke status draft');
 
         return redirect()->back()->with('success', 'Penilaian kinerja dikembalikan ke status draft.');
     }
@@ -248,8 +226,9 @@ class PerformanceEvaluationController extends Controller
         $this->ensureFeatureEnabled();
         Gate::authorize('export', PerformanceEvaluation::class);
 
+        $isApprover = app(PerformanceEvaluationPolicy::class)->isApprover(Auth::user());
         $filters = $this->resolveFilters($request);
-        $rows = $this->buildFilteredRows($filters)->map(function ($r) use ($filters) {
+        $rows = $this->buildFilteredRows($filters, !$isApprover)->map(function ($r) use ($filters) {
             $eval = $r['evaluation'];
             $scores = $eval['aspect_scores'] ?? [];
             $vals = array_values($scores);
@@ -298,7 +277,7 @@ class PerformanceEvaluationController extends Controller
         $user = Auth::user();
 
         $evaluations = PerformanceEvaluation::query()
-            ->with('evaluator:id,name')
+            ->with(['evaluator:id,name', 'approver:id,name'])
             ->where('user_id', $user->id)
             ->published()
             ->orderByDesc('academic_year')
@@ -319,6 +298,8 @@ class PerformanceEvaluationController extends Controller
                     'predicate'        => $e->predicate,
                     'notes'            => $e->notes,
                     'evaluator_name'   => $e->evaluator?->name ?? 'Pimpinan',
+                    'approver_name'    => $e->approver?->name ?? 'Kepala Sekolah',
+                    'approved_at'      => ($e->approved_at ?? $e->published_at)?->locale('id')->isoFormat('D MMMM Y'),
                     'published_at'     => $e->published_at?->locale('id')->isoFormat('D MMMM Y'),
                 ];
             })
@@ -397,17 +378,19 @@ class PerformanceEvaluationController extends Controller
         ];
     }
 
-    private function buildFilteredRows(array $filters): Collection
+    private function buildFilteredRows(array $filters, bool $onlyPublished = false): Collection
     {
         $query = User::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['user', 'kurikulum', 'tata_usaha', 'koperasi']))
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'kepala_sekolah'))
             ->with('roles:id,name')
             ->withExists(['teacherJournals', 'teacherAdministrations'])
-            ->with(['performanceEvaluations' => function ($q) use ($filters) {
+            ->with(['performanceEvaluations' => function ($q) use ($filters, $onlyPublished) {
                 $q->where('academic_year', $filters['academic_year'])
                     ->where('period_type', $filters['period_type'])
                     ->where('period_label', $filters['period_label'])
-                    ->with('evaluator:id,name');
+                    ->when($onlyPublished, fn ($sub) => $sub->where('status', PerformanceEvaluation::STATUS_PUBLISHED))
+                    ->with(['evaluator:id,name', 'approver:id,name']);
             }])
             ->orderBy('name');
 
@@ -443,8 +426,12 @@ class PerformanceEvaluationController extends Controller
                     'final_score'      => (float) $eval->final_score,
                     'predicate'        => $eval->predicate,
                     'notes'            => $eval->notes,
+                    'revision_note'    => $eval->revision_note,
                     'status'           => $eval->status,
                     'evaluator_name'   => $eval->evaluator?->name,
+                    'approver_name'    => $eval->approver?->name,
+                    'submitted_at'     => $eval->submitted_at?->timezone('Asia/Jakarta')->format('d M Y H:i'),
+                    'approved_at'      => $eval->approved_at?->timezone('Asia/Jakarta')->format('d M Y H:i'),
                 ] : null,
             ];
         });
@@ -455,10 +442,8 @@ class PerformanceEvaluationController extends Controller
 
         if ($filters['status'] === 'belum') {
             $rows = $rows->filter(fn ($r) => $r['evaluation'] === null);
-        } elseif ($filters['status'] === 'draft') {
-            $rows = $rows->filter(fn ($r) => ($r['evaluation']['status'] ?? null) === 'draft');
-        } elseif ($filters['status'] === 'published') {
-            $rows = $rows->filter(fn ($r) => ($r['evaluation']['status'] ?? null) === 'published');
+        } elseif (in_array($filters['status'], ['draft', 'submitted', 'revision_requested', 'published'], true)) {
+            $rows = $rows->filter(fn ($r) => ($r['evaluation']['status'] ?? null) === $filters['status']);
         } elseif ($filters['status'] === 'sudah') {
             $rows = $rows->filter(fn ($r) => $r['evaluation'] !== null);
         }

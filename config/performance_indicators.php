@@ -3,6 +3,9 @@
 return [
     'version' => '2026.1',
 
+    // Fallback bila akun Kepala Sekolah kosong/berhalangan: izinkan superadmin kelola delegasi & persetujuan
+    'allow_superadmin_fallback' => env('KPI_ALLOW_SUPERADMIN_FALLBACK', true),
+
     'scale' => [
         'min'        => 1,
         'max'        => 5,

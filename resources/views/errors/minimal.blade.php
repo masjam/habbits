@@ -160,13 +160,13 @@
 
             <div class="actions">
                 @if(in_array($status, [408, 419, 429, 500, 503], true))
-                    <button type="button" class="btn btn-primary" onclick="window.location.reload()">Muat Ulang</button>
+                    <button type="button" class="btn btn-primary" onclick="(window.top || window).location.reload()">Muat Ulang</button>
                 @else
-                    <a href="{{ $homeUrl }}" class="btn btn-primary">{{ $homeLabel }}</a>
+                    <a href="{{ $homeUrl }}" target="_top" class="btn btn-primary">{{ $homeLabel }}</a>
                 @endif
 
                 @if(!$isKioskContext)
-                    <button type="button" class="btn btn-sec" onclick="window.history.length > 1 ? window.history.back() : (window.location.href='{{ $homeUrl }}')">← Kembali</button>
+                    <button type="button" class="btn btn-sec" onclick="var w = (window.top || window); w.history.length > 1 ? w.history.back() : (w.location.href='{{ $homeUrl }}')">← Kembali</button>
                 @endif
             </div>
 

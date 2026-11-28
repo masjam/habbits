@@ -74,6 +74,21 @@ class HandleInertiaRequests extends Middleware
             $user->loadMissing('roles');
         }
 
+        $isKpiApprover = $user && app(\App\Policies\PerformanceEvaluationPolicy::class)->isApprover($user);
+
+        $hasKpiAssignments = false;
+        $pendingKpiApprovals = 0;
+        if ($user) {
+            try {
+                $hasKpiAssignments = \App\Models\PerformanceAssignment::active()->where('assessor_id', $user->id)->exists();
+                if ($isKpiApprover) {
+                    $pendingKpiApprovals = \App\Models\PerformanceEvaluation::submitted()->count();
+                }
+            } catch (\Throwable) {
+                // Abaikan bila migrasi tabel delegasi KPI belum dijalankan
+            }
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -83,6 +98,11 @@ class HandleInertiaRequests extends Middleware
                 'simulated_role' => $user ? $user->getSimulatedRole() : null,
                 'multi_accounts' => $request->session()->get('multi_accounts', []),
                 'is_adding_account' => $request->session()->get('is_adding_account', false),
+            ],
+            'kpi_nav' => [
+                'has_assignments'   => $hasKpiAssignments,
+                'is_approver'       => $isKpiApprover,
+                'pending_approvals' => $pendingKpiApprovals,
             ],
             'global_settings' => $publicSettings,
             'webpush' => [

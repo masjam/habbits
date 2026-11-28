@@ -7,8 +7,9 @@ import Button from '@/Components/UI/Button.vue'
 import Pagination from '@/Components/UI/Pagination.vue'
 import EvaluationFormModal from './EvaluationFormModal.vue'
 import RubricManagerModal from './RubricManagerModal.vue'
+import EvaluationStatusBadge from '@/Components/Performance/EvaluationStatusBadge.vue'
 import { usePerformanceScore } from '@/Composables/usePerformanceScore'
-import { Head, router } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
@@ -19,6 +20,9 @@ const props = defineProps({
     divisions: { type: Array, default: () => [] },
     rubric: { type: Object, required: true },
     summary: { type: Object, required: true },
+    canEvaluate: { type: Boolean, default: false },
+    canManageApprovals: { type: Boolean, default: false },
+    pendingApprovalCount: { type: Number, default: 0 },
 })
 
 const { predicateVariant } = usePerformanceScore(props.rubric)
@@ -104,6 +108,23 @@ const inputClass = 'w-full px-3 py-2 text-xs font-semibold rounded-xl border bor
                 subtitle="Penilaian kinerja berbasis rubrik kompetensi untuk Guru dan Karyawan."
             >
                 <template #actions>
+                    <Link
+                        v-if="canManageApprovals"
+                        :href="route('admin.performance.assignments.index')"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        Delegasi Penilai
+                    </Link>
+                    <Link
+                        v-if="canManageApprovals"
+                        :href="route('admin.performance.approvals.index')"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-xs transition-colors"
+                    >
+                        Antrean Persetujuan
+                        <span v-if="pendingApprovalCount > 0" class="px-1.5 py-0.5 rounded-full bg-white text-sky-700 text-[10px] font-black">
+                            {{ pendingApprovalCount }}
+                        </span>
+                    </Link>
                     <Button
                         type="button"
                         variant="outline"
@@ -317,15 +338,20 @@ const inputClass = 'w-full px-3 py-2 text-xs font-semibold rounded-xl border bor
                                 </td>
 
                                 <td class="px-3 py-3 text-center whitespace-nowrap">
-                                    <Badge v-if="!emp.evaluation" variant="danger">Belum Dinilai</Badge>
-                                    <Badge v-else-if="emp.evaluation.status === 'draft'" variant="warning">Draft</Badge>
-                                    <Badge v-else :variant="predicateVariant(emp.evaluation.predicate)">
-                                        {{ emp.evaluation.predicate }}
-                                    </Badge>
+                                    <div v-if="!emp.evaluation">
+                                        <EvaluationStatusBadge :status="null" />
+                                    </div>
+                                    <div v-else class="inline-flex items-center gap-1.5">
+                                        <EvaluationStatusBadge :status="emp.evaluation.status" />
+                                        <Badge v-if="emp.evaluation.status === 'published'" :variant="predicateVariant(emp.evaluation.predicate)">
+                                            {{ emp.evaluation.predicate }}
+                                        </Badge>
+                                    </div>
                                 </td>
 
                                 <td class="px-4 py-3 text-right whitespace-nowrap">
                                     <Button
+                                        v-if="canEvaluate && (!emp.evaluation || emp.evaluation.status === 'draft' || emp.evaluation.status === 'revision_requested')"
                                         type="button"
                                         size="sm"
                                         :variant="emp.evaluation ? 'outline' : 'primary'"
@@ -333,6 +359,10 @@ const inputClass = 'w-full px-3 py-2 text-xs font-semibold rounded-xl border bor
                                     >
                                         {{ emp.evaluation ? 'Edit Nilai' : 'Beri Nilai' }}
                                     </Button>
+                                    <span v-else-if="emp.evaluation?.status === 'submitted'" class="text-[11px] font-semibold text-sky-600 dark:text-sky-400">
+                                        Menunggu Persetujuan
+                                    </span>
+                                    <span v-else class="text-[11px] text-slate-400">-</span>
                                 </td>
                             </tr>
 

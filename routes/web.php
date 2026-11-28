@@ -111,6 +111,10 @@ Route::middleware('auth')->group(function () {
 
     // ─── Penilaian Kinerja (KPI) ──────────────────────────────────────────────
     Route::get('/performance-evaluations', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'userIndex'])->name('performance.index');
+    Route::get('/performance-evaluations/assigned', [\App\Http\Controllers\Corporate\AssignedPerformanceController::class, 'index'])->name('performance.assigned.index');
+    Route::get('/performance-evaluations/assigned/insight', [\App\Http\Controllers\Corporate\AssignedPerformanceController::class, 'insight'])->name('performance.assigned.insight');
+    Route::post('/performance-evaluations/assigned/draft', [\App\Http\Controllers\Corporate\AssignedPerformanceController::class, 'saveDraft'])->name('performance.assigned.save-draft');
+    Route::post('/performance-evaluations/assigned/submit', [\App\Http\Controllers\Corporate\AssignedPerformanceController::class, 'submit'])->name('performance.assigned.submit');
 
     // ─── Notulen Rapat ──────────────────────────────────────────────
     Route::get('/notulen/create', [\App\Http\Controllers\Corporate\NotulenController::class, 'create'])->name('notulen.create');
@@ -256,6 +260,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/performance-evaluations/{evaluation}/unpublish', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'unpublish'])->name('admin.performance.unpublish');
         Route::put('/performance-evaluations/rubric', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'updateRubric'])->name('admin.performance.rubric.update');
         Route::post('/performance-evaluations/rubric/reset', [\App\Http\Controllers\Corporate\PerformanceEvaluationController::class, 'resetRubric'])->name('admin.performance.rubric.reset');
+
+        // Delegasi Penilai & Antrean Persetujuan (Kepala Sekolah / Fallback Superadmin)
+        Route::get('/performance-evaluations/assignments', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'assignmentsIndex'])->name('admin.performance.assignments.index');
+        Route::post('/performance-evaluations/assignments', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'storeAssignment'])->name('admin.performance.assignments.store');
+        Route::post('/performance-evaluations/assignments/bulk', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'bulkStoreAssignment'])->name('admin.performance.assignments.bulk-store');
+        Route::delete('/performance-evaluations/assignments/{assignment}', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'revokeAssignment'])->name('admin.performance.assignments.revoke');
+
+        Route::get('/performance-evaluations/approvals', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'approvalsIndex'])->name('admin.performance.approvals.index');
+        Route::post('/performance-evaluations/approvals/bulk-approve', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'bulkApprove'])->name('admin.performance.approvals.bulk-approve');
+        Route::post('/performance-evaluations/{evaluation}/approve', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'approve'])->name('admin.performance.approvals.approve');
+        Route::post('/performance-evaluations/{evaluation}/update-and-approve', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'updateAndApprove'])->name('admin.performance.approvals.update-and-approve');
+        Route::post('/performance-evaluations/{evaluation}/request-revision', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'requestRevision'])->name('admin.performance.approvals.request-revision');
+        Route::post('/performance-evaluations/{evaluation}/reopen', [\App\Http\Controllers\Corporate\PerformanceDelegationController::class, 'reopen'])->name('admin.performance.reopen');
+
         Route::get('/teacher-journals', [\App\Http\Controllers\Admin\TeacherJournalController::class, 'index'])->name('admin.teacher-journals.index');
     });
 

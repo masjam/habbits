@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Policies\PerformanceEvaluationPolicy;
 use App\Services\PerformanceScoreCalculator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -12,7 +13,7 @@ class StorePerformanceEvaluationRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        return $user !== null && $user->hasAnyRole(['admin', 'superadmin', 'kepala_sekolah']);
+        return $user !== null && app(PerformanceEvaluationPolicy::class)->isApprover($user);
     }
 
     public function rules(): array

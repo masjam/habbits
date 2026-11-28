@@ -109,7 +109,8 @@ const chartOptions = {
                                 </span>
                                 <span class="text-xs text-emerald-100">
                                     Dinilai oleh {{ selectedEval.evaluator_name }}
-                                    <template v-if="selectedEval.published_at"> • {{ selectedEval.published_at }}</template>
+                                    <template v-if="selectedEval.approver_name"> · Disetujui oleh {{ selectedEval.approver_name }}</template>
+                                    <template v-if="selectedEval.approved_at || selectedEval.published_at"> pada {{ selectedEval.approved_at || selectedEval.published_at }}</template>
                                 </span>
                             </div>
                         </div>

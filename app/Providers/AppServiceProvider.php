@@ -29,10 +29,32 @@ class AppServiceProvider extends ServiceProvider
                            ->symbols();
         });
 
-        Gate::before(fn ($user) => $user->hasRole('superadmin') ? true : null);
+        Gate::before(function ($user, $ability, $arguments = []) {
+            if (!$user->hasRole('superadmin')) {
+                return null;
+            }
+
+            $target = $arguments[0] ?? null;
+            if ($target === \App\Models\PerformanceEvaluation::class
+                || $target instanceof \App\Models\PerformanceEvaluation
+                || $target === \App\Models\PerformanceAssignment::class
+                || $target instanceof \App\Models\PerformanceAssignment
+            ) {
+                return null;
+            }
+
+            return true;
+        });
+
+        \Illuminate\Notifications\DatabaseNotification::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+        });
 
         Gate::policy(\App\Models\Notulen::class, \App\Policies\NotulenPolicy::class);
         Gate::policy(\App\Models\PerformanceEvaluation::class, \App\Policies\PerformanceEvaluationPolicy::class);
+        Gate::policy(\App\Models\PerformanceAssignment::class, \App\Policies\PerformanceAssignmentPolicy::class);
 
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Notifications\Events\NotificationSent::class,

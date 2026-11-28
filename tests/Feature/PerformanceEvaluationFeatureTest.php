@@ -61,16 +61,32 @@ class PerformanceEvaluationFeatureTest extends TestCase
         $this->assertEquals('guru', $teacherByActivity->evaluationCategory());
     }
 
-    public function test_admin_can_store_draft_and_publish_with_server_recalculation(): void
+    public function test_kepala_sekolah_can_store_draft_and_publish_while_admin_cannot(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole('admin');
 
+        $ks = User::factory()->create();
+        $ks->assignRole('kepala_sekolah');
+
         $teacher = User::factory()->create(['divisi' => 'Guru Kelas']);
         $teacher->assignRole('user');
 
-        // 1. Store draft (partial)
+        // Admin tidak boleh menilai/mempublikasikan langsung
         $this->actingAs($admin)
+            ->post(route('admin.performance.store'), [
+                'user_id'          => $teacher->id,
+                'academic_year'    => '2026/2027',
+                'period_type'      => 'bulanan',
+                'period_label'     => '2026-11',
+                'category'         => 'guru',
+                'indicator_scores' => ['pedagogik' => ['ped_perencanaan' => 5]],
+                'status'           => 'draft',
+            ])
+            ->assertForbidden();
+
+        // 1. Store draft (partial) oleh Kepala Sekolah
+        $this->actingAs($ks)
             ->post(route('admin.performance.store'), [
                 'user_id'          => $teacher->id,
                 'academic_year'    => '2026/2027',
@@ -88,7 +104,7 @@ class PerformanceEvaluationFeatureTest extends TestCase
         $this->assertNull($eval->published_at);
 
         // 2. Publish incomplete harus gagal validasi
-        $this->actingAs($admin)
+        $this->actingAs($ks)
             ->post(route('admin.performance.store'), [
                 'user_id'          => $teacher->id,
                 'academic_year'    => '2026/2027',
@@ -101,7 +117,7 @@ class PerformanceEvaluationFeatureTest extends TestCase
             ->assertSessionHasErrors('indicator_scores');
 
         // 3. Publish lengkap -> update record yang sama (unique per periode) & hitung ulang di server
-        $this->actingAs($admin)
+        $this->actingAs($ks)
             ->post(route('admin.performance.store'), [
                 'user_id'          => $teacher->id,
                 'academic_year'    => '2026/2027',
