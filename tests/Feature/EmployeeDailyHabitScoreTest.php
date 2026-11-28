@@ -115,4 +115,56 @@ class EmployeeDailyHabitScoreTest extends TestCase
         $this->assertSame(50 * $ctx->daysInMonth, $monthSummary['max_score']);
         $this->assertSame(80.0, (float) $monthSummary['target_percentage']);
     }
+
+    public function test_malformed_encrypted_menstruation_log_does_not_crash_dashboard(): void
+    {
+        $this->seed([RoleSeeder::class]);
+        Cache::flush();
+
+        Setting::updateOrCreate(['key' => 'maintenance_mode'], ['value' => '0']);
+        Setting::updateOrCreate(['key' => 'feature_habit'], ['value' => '1']);
+
+        $habit = Habit::create([
+            'nama_habit' => 'Sholat Wajib',
+            'kategori' => 'Ibadah',
+            'template' => 'angka',
+            'target_pencapaian' => 5,
+            'skor_maksimal' => 50,
+            'status_aktif' => true,
+            'is_pengganti_haid' => false,
+            'hide_saat_haid' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'gender' => 'P',
+            'password' => Hash::make('password'),
+        ]);
+        $user->assignRole('user');
+
+        HabitLog::create([
+            'user_id' => $user->id,
+            'habit_id' => $habit->id,
+            'tanggal' => Carbon::now('Asia/Jakarta')->toDateString(),
+            'skor_diperoleh' => 30,
+        ]);
+
+        // Insert a double-encrypted / undecryptable raw payload directly into DB
+        \Illuminate\Support\Facades\DB::table('menstruation_logs')->insert([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $user->id,
+            'waktu_mulai' => \Illuminate\Support\Facades\Crypt::encryptString('eyJpdiI6ImludmFsaWQifQ=='),
+            'waktu_selesai' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $ctx = new DashboardContext();
+        $builder = app(EmployeeDashboardBuilder::class);
+
+        $summary = $builder->build($user, $ctx);
+        $deferred = $builder->buildDeferred($user, $ctx);
+
+        $this->assertSame(30, $summary['personal']['habit_today']['score']);
+        $this->assertSame(30, $deferred['habit_trend']['summary']['total_score']);
+    }
 }

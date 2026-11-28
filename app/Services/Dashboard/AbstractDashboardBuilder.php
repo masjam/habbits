@@ -153,12 +153,30 @@ abstract class AbstractDashboardBuilder implements DashboardBuilderInterface
         $habitsById = Habit::allCachedById();
         $haidIntervals = [];
         if ($user->gender === 'P') {
+            $parseHaidDate = static function (mixed $raw): ?string {
+                if (!$raw) {
+                    return null;
+                }
+                if ($raw instanceof \DateTimeInterface) {
+                    return Carbon::instance($raw)->timezone('Asia/Jakarta')->toDateString();
+                }
+                $str = (string) $raw;
+                if (str_starts_with($str, 'eyJ')) {
+                    $str = \Illuminate\Support\Facades\Crypt::decryptString($str);
+                }
+                return Carbon::parse($str)->timezone('Asia/Jakarta')->toDateString();
+            };
+
             $haidLogs = MenstruationLog::where('user_id', $user->id)->get(['waktu_mulai', 'waktu_selesai']);
             foreach ($haidLogs as $hl) {
-                $start = $hl->waktu_mulai ? Carbon::parse($hl->waktu_mulai)->timezone('Asia/Jakarta')->toDateString() : null;
-                $end = $hl->waktu_selesai ? Carbon::parse($hl->waktu_selesai)->timezone('Asia/Jakarta')->toDateString() : null;
-                if ($start) {
-                    $haidIntervals[] = [$start, $end];
+                try {
+                    $start = $parseHaidDate($hl->waktu_mulai);
+                    $end = $parseHaidDate($hl->waktu_selesai);
+                    if ($start) {
+                        $haidIntervals[] = [$start, $end];
+                    }
+                } catch (\Throwable) {
+                    continue;
                 }
             }
         }
