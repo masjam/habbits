@@ -114,7 +114,7 @@ class AuthController extends Controller
             \App\Jobs\ResolveLoginLocationJob::dispatch($loginLog->id, $ip, $lat, $lon, $source);
 
             // Jika user adalah Petugas Koperasi murni, arahkan langsung ke Sistem POS
-            if ($user->hasRole('koperasi') && !$user->hasAnyRole(['admin', 'superadmin'])) {
+            if ($user->roles->count() === 1 && $user->hasRole('koperasi')) {
                 return redirect()->intended(route('koperasi.pos'));
             }
 

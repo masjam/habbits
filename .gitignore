@@ -88,3 +88,5 @@ Thumbs.db
 
 
 
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

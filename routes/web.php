@@ -277,8 +277,22 @@ Route::middleware('auth')->group(function () {
     Route::put('/tata-usaha/disposisi/{disposisi}/status', [\App\Http\Controllers\TataUsaha\DisposisiController::class, 'updateStatus'])->name('tata-usaha.disposisi.update-status');
     Route::get('/tata-usaha/surat-masuk/{suratMasuk}/file', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'file'])->name('tata-usaha.surat-masuk.file');
 
+    // ─── Dashboard Role Tambahan (Kurikulum, Kepala Sekolah, Admin) ───────────
+    Route::middleware('role:kurikulum|superadmin')->get('/kurikulum/dashboard', [\App\Http\Controllers\System\DashboardController::class, 'roleDashboard'])
+        ->defaults('role', 'kurikulum')
+        ->name('kurikulum.dashboard');
+    Route::middleware('role:kepala_sekolah|superadmin')->get('/kepala-sekolah/dashboard', [\App\Http\Controllers\System\DashboardController::class, 'roleDashboard'])
+        ->defaults('role', 'kepala_sekolah')
+        ->name('kepala-sekolah.dashboard');
+    Route::middleware('role:admin|superadmin')->get('/admin/dashboard', [\App\Http\Controllers\System\DashboardController::class, 'roleDashboard'])
+        ->defaults('role', 'admin')
+        ->name('admin.dashboard');
+
     // ─── Tata Usaha & Kepala Sekolah Routes ─────────────────────────────────────────────
     Route::middleware('role:tata_usaha|superadmin|kepala_sekolah')->prefix('tata-usaha')->name('tata-usaha.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\System\DashboardController::class, 'roleDashboard'])
+            ->defaults('role', 'tata_usaha')
+            ->name('dashboard');
         Route::get('/surat-masuk', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'index'])->name('surat-masuk.index');
         Route::post('/surat-masuk', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'store'])->name('surat-masuk.store');
         Route::put('/surat-masuk/{suratMasuk}', [\App\Http\Controllers\TataUsaha\SuratMasukController::class, 'update'])->name('surat-masuk.update');

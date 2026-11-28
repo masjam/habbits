@@ -12,6 +12,7 @@ import KepalaSekolahDashboard from '@/Pages/Dashboard/Roles/KepalaSekolahDashboa
 const props = defineProps({
     dashboard: { type: Object, required: true },
     deferred: { type: Object, default: null },
+    missedDates: { type: Array, default: () => [] },
 })
 
 const activeComponent = computed(() => {
@@ -34,7 +35,7 @@ const activeComponent = computed(() => {
     <AuthenticatedLayout>
         <Head title="Dashboard" />
         <PageContainer size="xl">
-            <component :is="activeComponent" :dashboard="dashboard" :deferred="deferred" />
+            <component :is="activeComponent" :dashboard="dashboard" :deferred="deferred" :missed-dates="missedDates" />
         </PageContainer>
     </AuthenticatedLayout>
 </template>

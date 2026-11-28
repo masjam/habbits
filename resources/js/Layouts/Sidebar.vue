@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import {
     IconDashboard,
     IconQuranHadis,
@@ -147,6 +147,23 @@ const directMenus = computed(() => {
             icon: IconDashboard,
             route: 'dashboard',
             activeRoutes: ['dashboard'],
+        },
+        {
+            key: 'kepala-sekolah-dashboard',
+            label: 'Dashboard Kepala Sekolah',
+            icon: IconDashboard,
+            route: 'kepala-sekolah.dashboard',
+            activeRoutes: ['kepala-sekolah.dashboard'],
+            roles: ['kepala_sekolah'],
+        },
+        {
+            key: 'admin-dashboard',
+            label: 'Dashboard Admin',
+            icon: IconDashboard,
+            route: 'admin.dashboard',
+            activeRoutes: ['admin.dashboard'],
+            roles: ['admin', 'superadmin'],
+            visible: () => props.roles.length > 1,
         },
         {
             key: 'presensiku',
@@ -335,7 +352,16 @@ const rawMenuGroups = computed(() => [
         label: 'Tata Usaha',
         icon: IconSuratMasuk,
         roles: ['tata_usaha', 'kepala_sekolah', 'superadmin'],
+        dashboardRoute: hasAnyRole(['tata_usaha', 'superadmin']) ? 'tata-usaha.dashboard' : null,
         items: [
+            {
+                key: 'tata-usaha-dashboard',
+                label: 'Dashboard Tata Usaha',
+                icon: IconDashboard,
+                route: 'tata-usaha.dashboard',
+                activeRoutes: ['tata-usaha.dashboard'],
+                roles: ['tata_usaha', 'superadmin'],
+            },
             {
                 key: 'surat-masuk',
                 label: 'Surat Masuk',
@@ -375,6 +401,7 @@ const rawMenuGroups = computed(() => [
         label: 'Koperasi Rabbani',
         icon: IconKoperasi,
         roles: ['koperasi', 'superadmin'],
+        dashboardRoute: 'koperasi.dashboard',
         items: [
             {
                 key: 'koperasi-dashboard',
@@ -465,7 +492,16 @@ const rawMenuGroups = computed(() => [
             : 'Monitoring Guru',
         icon: IconRekapAdministrasiGuru,
         roles: ['admin', 'superadmin', 'kepala_sekolah', 'kurikulum'],
+        dashboardRoute: hasAnyRole(['kurikulum', 'superadmin']) ? 'kurikulum.dashboard' : null,
         items: [
+            {
+                key: 'kurikulum-dashboard',
+                label: 'Dashboard Kurikulum',
+                icon: IconDashboard,
+                route: 'kurikulum.dashboard',
+                activeRoutes: ['kurikulum.dashboard'],
+                roles: ['kurikulum', 'superadmin'],
+            },
             {
                 key: 'rekap-administrasi-guru',
                 label: 'Rekap Administrasi Guru',
@@ -672,14 +708,26 @@ const openGroups = ref(
     )
 )
 
-const toggleGroup = (key) => {
+const toggleGroup = (group) => {
+    const navigateIfNeeded = () => {
+        if (group.dashboardRoute && !isAnyActive(group.activeRoutes)) {
+            closeSidebar()
+            router.visit(route(group.dashboardRoute))
+        }
+    }
+
     if (!props.isOpen) {
         emit('expand')
         emit('toggle')
-        openGroups.value[key] = true
+        openGroups.value[group.key] = true
+        navigateIfNeeded()
         return
     }
-    openGroups.value[key] = !openGroups.value[key]
+    const willOpen = !openGroups.value[group.key]
+    openGroups.value[group.key] = willOpen
+    if (willOpen) {
+        navigateIfNeeded()
+    }
 }
 
 // ─── Dynamic Classes (Responsive Desktop Rail vs Expanded Drawer) ───────────
@@ -797,7 +845,7 @@ const subIconClass = (routePatterns) => {
             <div v-for="group in menuGroups" :key="group.key" class="space-y-1">
                 <button
                     type="button"
-                    @click="toggleGroup(group.key)"
+                    @click="toggleGroup(group)"
                     :class="accordionButtonClass(group)"
                     :title="!isOpen ? group.label : undefined"
                 >

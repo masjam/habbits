@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { Deferred } from '@inertiajs/vue3'
 import DashboardShell from '@/Components/Dashboard/DashboardShell.vue'
@@ -7,6 +7,7 @@ import StatCard from '@/Components/Dashboard/StatCard.vue'
 import ProgressRing from '@/Components/Dashboard/ProgressRing.vue'
 import MiniTrendChart from '@/Components/Dashboard/MiniTrendChart.vue'
 import ActionList from '@/Components/Dashboard/ActionList.vue'
+import Modal from '@/Components/UI/Modal.vue'
 import NotificationsCard from '@/Pages/Dashboard/Partials/NotificationsCard.vue'
 import { useIslamicData } from '@/Composables/useIslamicData'
 import { formatNumber, formatTime } from '@/utils/formatters'
@@ -14,6 +15,7 @@ import { formatNumber, formatTime } from '@/utils/formatters'
 const props = defineProps({
     dashboard: { type: Object, required: true },
     deferred: { type: Object, default: null },
+    missedDates: { type: Array, default: () => [] },
 })
 
 const page = usePage()
@@ -26,6 +28,26 @@ const monthlyAtt = computed(() => p.value.monthly_attendance || { hadir: 0, terl
 
 const isChecking = ref(false)
 const activeTrendTab = ref('habit_daily') // habit_daily | habit_monthly | attendance_monthly
+const showMissedDatesModal = ref(false)
+
+onMounted(() => {
+    if (props.missedDates?.length > 0) {
+        showMissedDatesModal.value = true
+    }
+})
+
+const formatMissedDate = (dateStr) => {
+    try {
+        return new Date(`${dateStr}T00:00:00`).toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        })
+    } catch {
+        return dateStr
+    }
+}
 const quickAttendance = () => {
     if (!att.value || isChecking.value) return
     router.visit(route('attendance.index'))
@@ -236,6 +258,22 @@ const teacherItems = computed(() => {
         </template>
 
         <template #sidebar>
+            <button
+                v-if="missedDates.length > 0"
+                type="button"
+                @click="showMissedDatesModal = true"
+                class="w-full text-left bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 hover:border-amber-400 rounded-2xl p-3.5 shrink-0 transition-colors cursor-pointer"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-amber-900 dark:text-amber-200">Habit Belum Terisi</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-100">
+                        {{ missedDates.length }} hari
+                    </span>
+                </div>
+                <p class="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                    Klik untuk melengkapi tanggal yang terlewat bulan ini.
+                </p>
+            </button>
             <NotificationsCard class="flex-1 min-h-[180px]" />
             <div v-if="dashboard.announcement" class="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-3.5 shrink-0">
                 <div class="text-xs font-bold text-amber-900 dark:text-amber-200">Pengumuman</div>
@@ -243,4 +281,50 @@ const teacherItems = computed(() => {
             </div>
         </template>
     </DashboardShell>
+
+    <Modal :show="showMissedDatesModal" max-width="md" @close="showMissedDatesModal = false">
+        <div class="p-5 sm:p-6">
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+                        Ada hari yang belum terisi
+                    </h3>
+                    <p class="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        Terdapat <strong class="text-slate-900 dark:text-slate-100">{{ missedDates.length }} hari</strong> yang belum diisi laporan ibadahnya. Lengkapi catatan agar skor bulanan tetap maksimal.
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-4 max-h-60 overflow-y-auto pr-1 space-y-2">
+                <Link
+                    v-for="date in missedDates"
+                    :key="date"
+                    :href="route('habit.form', { date })"
+                    class="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-primary-50 dark:hover:bg-primary-950/40 border border-slate-200 dark:border-slate-700 hover:border-primary-300 rounded-xl transition-colors group"
+                >
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-200 group-hover:text-primary-700 dark:group-hover:text-primary-300">
+                        {{ formatMissedDate(date) }}
+                    </span>
+                    <span class="text-xs font-bold text-primary-600 dark:text-primary-400">
+                        Isi →
+                    </span>
+                </Link>
+            </div>
+
+            <div class="mt-5 flex justify-end">
+                <button
+                    type="button"
+                    @click="showMissedDatesModal = false"
+                    class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </Modal>
 </template>

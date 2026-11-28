@@ -63,6 +63,43 @@ class DashboardController extends Controller
     }
 
     /**
+     * Dashboard khusus untuk role tambahan (Tata Usaha, Kurikulum, Kepala Sekolah, Admin).
+     */
+    public function roleDashboard(Request $request, DashboardResolver $resolver, string $role)
+    {
+        $user = Auth::user();
+        $ctx = new DashboardContext();
+        $builder = $resolver->resolveForRole($user, $role);
+        $dashboard = $builder->build($user, $ctx);
+        $deferred = Inertia::defer(fn () => $builder->buildDeferred($user, $ctx));
+
+        if (in_array($builder->roleKey(), ['admin', 'superadmin'], true)) {
+            $admin = $dashboard['admin'] ?? [];
+            return Inertia::render('Admin/Dashboard', [
+                'dashboard' => $dashboard,
+                'deferred' => $deferred,
+                'skorHariIni' => $admin['habit_today']['score_today'] ?? 0,
+                'skorMaksimalHariIni' => $admin['habit_today']['max_score_today'] ?? 0,
+                'totalPegawai' => $admin['total_employees'] ?? 0,
+                'dailyChartData' => [],
+                'monthlyChartData' => [],
+                'semester' => $ctx->now->month <= 6 ? 'Semester 1' : 'Semester 2',
+                'tahun' => $ctx->now->year,
+                'targetRatio' => [
+                    'hit' => 0,
+                    'miss' => 0,
+                    'target' => (float) $ctx->setting('monthly_target_score', 80),
+                ],
+            ]);
+        }
+
+        return Inertia::render('Dashboard', [
+            'dashboard' => $dashboard,
+            'deferred' => $deferred,
+        ]);
+    }
+
+    /**
      * Dashboard khusus pengguna (Pegawai).
      */
     private function userDashboard(Request $request, User $user, array $extraProps = [])
